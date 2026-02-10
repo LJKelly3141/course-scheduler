@@ -17,6 +17,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Database
+*.db
+
 # Build output
 dist/
 build/
