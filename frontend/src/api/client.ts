@@ -1,4 +1,6 @@
-const API_BASE = "/api";
+// When loaded from file:// (Electron production), use absolute URL to backend
+const isFileProtocol = window.location.protocol === "file:";
+const API_BASE = isFileProtocol ? "http://127.0.0.1:8000/api" : "/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem("token");

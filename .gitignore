@@ -24,3 +24,9 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+dist-electron/
+
+# PyInstaller
+backend/dist/
+backend/build/
+*.spec.bak

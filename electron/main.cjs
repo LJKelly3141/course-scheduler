@@ -1,0 +1,178 @@
+const { app, BrowserWindow } = require("electron");
+const { spawn } = require("child_process");
+const path = require("path");
+const http = require("http");
+
+let backendProcess = null;
+let mainWindow = null;
+
+const isDev = !app.isPackaged;
+const BACKEND_PORT = 8000;
+const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
+
+function getBackendPath() {
+  if (isDev) {
+    // In dev mode, we assume the Python backend is started separately
+    return null;
+  }
+  // In production, the PyInstaller binary is in extraResources/backend/
+  const resourcesPath = process.resourcesPath;
+  const binaryName =
+    process.platform === "win32" ? "course_scheduler.exe" : "course_scheduler";
+  return path.join(resourcesPath, "backend", binaryName);
+}
+
+function getDatabasePath() {
+  const userDataPath = app.getPath("userData");
+  return path.join(userDataPath, "scheduler.db");
+}
+
+function startBackend() {
+  const backendPath = getBackendPath();
+  if (!backendPath) {
+    console.log("[electron] Dev mode: assuming backend is running externally.");
+    return;
+  }
+
+  console.log(`[electron] Starting backend: ${backendPath}`);
+  console.log(`[electron] Database path: ${getDatabasePath()}`);
+
+  backendProcess = spawn(backendPath, [], {
+    env: {
+      ...process.env,
+      DATABASE_PATH: getDatabasePath(),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  backendProcess.stdout.on("data", (data) => {
+    console.log(`[backend] ${data.toString().trim()}`);
+  });
+
+  backendProcess.stderr.on("data", (data) => {
+    console.error(`[backend] ${data.toString().trim()}`);
+  });
+
+  backendProcess.on("error", (err) => {
+    console.error("[electron] Failed to start backend:", err);
+  });
+
+  backendProcess.on("exit", (code) => {
+    console.log(`[electron] Backend exited with code ${code}`);
+    backendProcess = null;
+  });
+}
+
+function pollBackendHealth(retries = 30, interval = 500) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+
+    function check() {
+      attempts++;
+      const req = http.get(`${BACKEND_URL}/api/health`, (res) => {
+        if (res.statusCode === 200) {
+          console.log("[electron] Backend is ready.");
+          resolve();
+        } else {
+          retry();
+        }
+      });
+
+      req.on("error", () => retry());
+      req.setTimeout(1000, () => {
+        req.destroy();
+        retry();
+      });
+    }
+
+    function retry() {
+      if (attempts >= retries) {
+        reject(new Error("Backend did not start in time"));
+      } else {
+        setTimeout(check, interval);
+      }
+    }
+
+    check();
+  });
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    title: "UWRF Course Scheduler",
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  if (isDev) {
+    // Dev mode: load from Vite dev server
+    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.webContents.openDevTools();
+  } else {
+    // Production: load the built React app from extraResources
+    const indexPath = path.join(process.resourcesPath, "frontend", "dist", "index.html");
+    mainWindow.loadFile(indexPath);
+  }
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+
+function stopBackend() {
+  if (backendProcess) {
+    console.log("[electron] Stopping backend...");
+    backendProcess.kill("SIGTERM");
+
+    // Force kill after 5 seconds if it doesn't stop
+    setTimeout(() => {
+      if (backendProcess) {
+        console.log("[electron] Force killing backend...");
+        backendProcess.kill("SIGKILL");
+      }
+    }, 5000);
+  }
+}
+
+app.whenReady().then(async () => {
+  startBackend();
+
+  try {
+    await pollBackendHealth();
+  } catch (err) {
+    console.error("[electron]", err.message);
+    // In dev mode, backend might just be slow — continue anyway
+    if (!isDev) {
+      app.quit();
+      return;
+    }
+  }
+
+  createWindow();
+
+  app.on("activate", () => {
+    // macOS: re-create window if dock icon clicked and no windows open
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on("window-all-closed", () => {
+  // On macOS, apps typically stay open until Cmd+Q
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+app.on("before-quit", () => {
+  stopBackend();
+});
+
+app.on("will-quit", () => {
+  stopBackend();
+});

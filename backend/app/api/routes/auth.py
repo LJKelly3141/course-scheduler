@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,7 +17,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-SECRET_KEY = "uwrf-scheduler-secret-key-change-in-production"
+SECRET_KEY = os.environ.get("SECRET_KEY", "uwrf-scheduler-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 

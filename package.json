@@ -1,0 +1,49 @@
+{
+  "name": "uwrf-course-scheduler",
+  "version": "1.0.0",
+  "description": "UWRF Course Scheduler - Desktop Application",
+  "main": "electron/main.cjs",
+  "private": true,
+  "scripts": {
+    "electron:dev": "electron .",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && pyinstaller course_scheduler.spec --noconfirm",
+    "build:app": "npm run build:frontend && npm run build:backend && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "edu.uwrf.coursescheduler",
+    "productName": "UWRF Course Scheduler",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "frontend/dist",
+        "to": "frontend/dist"
+      },
+      {
+        "from": "backend/dist/course_scheduler",
+        "to": "backend"
+      }
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.education"
+    },
+    "dmg": {
+      "title": "UWRF Course Scheduler",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
