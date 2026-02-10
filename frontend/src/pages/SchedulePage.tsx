@@ -63,6 +63,21 @@ export function SchedulePage() {
     },
   });
 
+  const moveMutation = useMutation({
+    mutationFn: ({ meetingId, targetBlock }: { meetingId: number; targetBlock: TimeBlock }) =>
+      api.put(`/meetings/${meetingId}`, {
+        time_block_id: targetBlock.id,
+        days_of_week: targetBlock.days_of_week,
+        start_time: targetBlock.start_time,
+        end_time: targetBlock.end_time,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meetings"] });
+      queryClient.invalidateQueries({ queryKey: ["validation"] });
+      queryClient.invalidateQueries({ queryKey: ["sections"] });
+    },
+  });
+
   if (!selectedTerm) {
     return <p className="text-muted-foreground">Select a term to view the schedule.</p>;
   }
@@ -186,6 +201,8 @@ export function SchedulePage() {
             conflictMeetingIds={conflictMeetingIds}
             onEdit={(m) => { setEditingMeeting(m); setDialogOpen(true); }}
             onDelete={(id) => { if (confirm("Delete this meeting?")) deleteMutation.mutate(id); }}
+            onMove={(meetingId, targetBlock) => moveMutation.mutate({ meetingId, targetBlock })}
+            isMoving={moveMutation.isPending}
           />
         </div>
 

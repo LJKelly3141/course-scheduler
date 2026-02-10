@@ -1,0 +1,89 @@
+import { useDraggable } from "@dnd-kit/core";
+import type { Meeting, TimeBlock } from "../../api/types";
+import { cn, parseDaysOfWeek, formatTime, getLevelColor } from "../../lib/utils";
+
+interface Props {
+  meeting: Meeting;
+  block: TimeBlock;
+  day: string;
+  hasConflict: boolean;
+  activeDragMeetingId: number | null;
+  popoverOpen: boolean;
+  onTogglePopover: () => void;
+  onEdit: (meeting: Meeting) => void;
+  onDelete: (id: number) => void;
+}
+
+export function DraggableMeetingCard({
+  meeting,
+  block,
+  day,
+  hasConflict,
+  activeDragMeetingId,
+  popoverOpen,
+  onTogglePopover,
+  onEdit,
+  onDelete,
+}: Props) {
+  const isDraggable = meeting.time_block_id != null;
+  const isBeingDragged = activeDragMeetingId === meeting.id;
+
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: `meeting-${meeting.id}-${day}-${block.id}`,
+    data: { meeting, sourceBlock: block },
+    disabled: !isDraggable,
+  });
+
+  const courseNum = meeting.section?.course?.course_number ?? "";
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={style}
+      onClick={onTogglePopover}
+      className={cn(
+        "rounded px-1.5 py-1 mb-0.5 text-white text-[11px] leading-tight relative",
+        getLevelColor(courseNum),
+        hasConflict && "ring-2 ring-red-500",
+        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+        isBeingDragged && "opacity-40"
+      )}
+    >
+      <div className="font-semibold">
+        {meeting.section?.course?.department_code} {courseNum}-{meeting.section?.section_number}
+      </div>
+      <div className="opacity-90">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
+      <div className="opacity-80">
+        {meeting.room ? `${meeting.room.building?.abbreviation} ${meeting.room.room_number}` : "Online"}
+      </div>
+
+      {popoverOpen && (
+        <div
+          className="absolute z-50 bg-white text-foreground border border-border rounded-lg shadow-lg p-3 w-56 left-0 top-full mt-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="font-semibold text-sm mb-1">
+            {meeting.section?.course?.department_code} {meeting.section?.course?.course_number}-{meeting.section?.section_number}
+          </p>
+          <p className="text-muted-foreground">{meeting.section?.course?.title}</p>
+          <p className="mt-1">Instructor: {meeting.instructor?.name ?? "TBD"}</p>
+          <p>Room: {meeting.room ? `${meeting.room.building?.abbreviation} ${meeting.room.room_number}` : "Online"}</p>
+          <p>Time: {formatTime(meeting.start_time)} - {formatTime(meeting.end_time)}</p>
+          <p>Days: {parseDaysOfWeek(meeting.days_of_week).join(", ")}</p>
+          {!isDraggable && <p className="text-muted-foreground text-[10px] mt-1">Custom time — use Edit to reschedule</p>}
+          {hasConflict && <p className="text-destructive font-medium mt-1">Has conflicts!</p>}
+          <div className="flex gap-2 mt-2 pt-2 border-t border-border">
+            <button onClick={() => onEdit(meeting)} className="text-primary text-xs hover:underline">Edit</button>
+            <button onClick={() => onDelete(meeting.id)} className="text-destructive text-xs hover:underline">Delete</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

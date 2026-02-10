@@ -1,6 +1,18 @@
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import type { Meeting, TimeBlock } from "../../api/types";
-import { cn, parseDaysOfWeek, formatTime, getLevelColor } from "../../lib/utils";
+import { parseDaysOfWeek } from "../../lib/utils";
 import { useState } from "react";
+import { DraggableMeetingCard } from "./DraggableMeetingCard";
+import { DroppableCell } from "./DroppableCell";
+import { MeetingDragOverlay } from "./MeetingDragOverlay";
 
 interface Props {
   meetings: Meeting[];
@@ -8,13 +20,28 @@ interface Props {
   conflictMeetingIds: Set<number>;
   onEdit: (meeting: Meeting) => void;
   onDelete: (id: number) => void;
+  onMove?: (meetingId: number, targetBlock: TimeBlock) => void;
+  isMoving?: boolean;
 }
 
 const DAY_LABELS = ["M", "T", "W", "Th", "F"];
 const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-export function ScheduleGrid({ meetings, timeBlocks, conflictMeetingIds, onEdit, onDelete }: Props) {
+export function ScheduleGrid({
+  meetings,
+  timeBlocks,
+  conflictMeetingIds,
+  onEdit,
+  onDelete,
+  onMove,
+  isMoving,
+}: Props) {
   const [popoverId, setPopoverId] = useState<number | null>(null);
+  const [activeDragMeeting, setActiveDragMeeting] = useState<Meeting | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   // Sort time blocks by start time
   const sortedBlocks = [...timeBlocks].sort((a, b) => {
@@ -52,78 +79,96 @@ export function ScheduleGrid({ meetings, timeBlocks, conflictMeetingIds, onEdit,
     });
   };
 
-  return (
-    <div className="bg-white rounded-lg border border-border overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="px-2 py-2 text-left w-28 sticky left-0 bg-muted/50">Time</th>
-            {DAY_LABELS.map((day, i) => (
-              <th key={day} className="px-2 py-2 text-center min-w-[140px]">{DAY_FULL[i]}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {allBlocks.map((block) => (
-            <tr key={block.id} className="border-b border-border">
-              <td className="px-2 py-1 text-muted-foreground sticky left-0 bg-white text-[11px] whitespace-nowrap">
-                {block.label}
-              </td>
-              {DAY_LABELS.map((day) => {
-                const cellMeetings = getMeetingsForCell(day, block);
-                return (
-                  <td key={day} className="px-1 py-1 align-top relative min-h-[48px]">
-                    {cellMeetings.map((m) => {
-                      const courseNum = m.section?.course?.course_number ?? "";
-                      const hasConflict = conflictMeetingIds.has(m.id);
-                      return (
-                        <div
-                          key={m.id}
-                          onClick={() => setPopoverId(popoverId === m.id ? null : m.id)}
-                          className={cn(
-                            "rounded px-1.5 py-1 mb-0.5 cursor-pointer text-white text-[11px] leading-tight",
-                            getLevelColor(courseNum),
-                            hasConflict && "ring-2 ring-red-500"
-                          )}
-                        >
-                          <div className="font-semibold">
-                            {m.section?.course?.department_code} {courseNum}-{m.section?.section_number}
-                          </div>
-                          <div className="opacity-90">{m.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
-                          <div className="opacity-80">{m.room ? `${m.room.building?.abbreviation} ${m.room.room_number}` : "Online"}</div>
+  function handleDragStart(event: DragStartEvent) {
+    const { meeting } = event.active.data.current as { meeting: Meeting };
+    setActiveDragMeeting(meeting);
+    setPopoverId(null);
+  }
 
-                          {popoverId === m.id && (
-                            <div
-                              className="absolute z-50 bg-white text-foreground border border-border rounded-lg shadow-lg p-3 w-56 left-0 top-full mt-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <p className="font-semibold text-sm mb-1">
-                                {m.section?.course?.department_code} {m.section?.course?.course_number}-{m.section?.section_number}
-                              </p>
-                              <p className="text-muted-foreground">{m.section?.course?.title}</p>
-                              <p className="mt-1">Instructor: {m.instructor?.name ?? "TBD"}</p>
-                              <p>Room: {m.room ? `${m.room.building?.abbreviation} ${m.room.room_number}` : "Online"}</p>
-                              <p>Time: {formatTime(m.start_time)} - {formatTime(m.end_time)}</p>
-                              <p>Days: {parseDaysOfWeek(m.days_of_week).join(", ")}</p>
-                              {hasConflict && <p className="text-destructive font-medium mt-1">Has conflicts!</p>}
-                              <div className="flex gap-2 mt-2 pt-2 border-t border-border">
-                                <button onClick={() => { setPopoverId(null); onEdit(m); }}
-                                  className="text-primary text-xs hover:underline">Edit</button>
-                                <button onClick={() => { setPopoverId(null); onDelete(m.id); }}
-                                  className="text-destructive text-xs hover:underline">Delete</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </td>
-                );
-              })}
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveDragMeeting(null);
+
+    if (!over || !onMove) return;
+
+    const { meeting, sourceBlock } = active.data.current as {
+      meeting: Meeting;
+      sourceBlock: TimeBlock;
+    };
+    const { block: targetBlock } = over.data.current as { block: TimeBlock };
+
+    if (targetBlock.id !== sourceBlock.id) {
+      onMove(meeting.id, targetBlock);
+    }
+  }
+
+  function handleDragCancel() {
+    setActiveDragMeeting(null);
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="bg-white rounded-lg border border-border overflow-x-auto">
+        {isMoving && (
+          <div className="px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium border-b border-border">
+            Moving meeting...
+          </div>
+        )}
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              <th className="px-2 py-2 text-left w-28 sticky left-0 bg-muted/50">Time</th>
+              {DAY_LABELS.map((day, i) => (
+                <th key={day} className="px-2 py-2 text-center min-w-[140px]">{DAY_FULL[i]}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {allBlocks.map((block) => (
+              <tr key={block.id} className="border-b border-border">
+                <td className="px-2 py-1 text-muted-foreground sticky left-0 bg-white text-[11px] whitespace-nowrap">
+                  {block.label}
+                </td>
+                {DAY_LABELS.map((day) => {
+                  const cellMeetings = getMeetingsForCell(day, block);
+                  return (
+                    <DroppableCell
+                      key={day}
+                      block={block}
+                      day={day}
+                      isDragging={activeDragMeeting != null}
+                    >
+                      {cellMeetings.map((m) => (
+                        <DraggableMeetingCard
+                          key={m.id}
+                          meeting={m}
+                          block={block}
+                          day={day}
+                          hasConflict={conflictMeetingIds.has(m.id)}
+                          activeDragMeetingId={activeDragMeeting?.id ?? null}
+                          popoverOpen={popoverId === m.id}
+                          onTogglePopover={() => setPopoverId(popoverId === m.id ? null : m.id)}
+                          onEdit={(meeting) => { setPopoverId(null); onEdit(meeting); }}
+                          onDelete={(id) => { setPopoverId(null); onDelete(id); }}
+                        />
+                      ))}
+                    </DroppableCell>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <DragOverlay dropAnimation={null}>
+        {activeDragMeeting ? <MeetingDragOverlay meeting={activeDragMeeting} /> : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
