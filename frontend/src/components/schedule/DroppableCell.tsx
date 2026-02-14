@@ -1,30 +1,33 @@
 import { useDroppable } from "@dnd-kit/core";
-import type { TimeBlock } from "../../api/types";
 import { cn } from "../../lib/utils";
 
 interface Props {
-  block: TimeBlock;
   day: string;
+  slotIndex: number;
   isDragging: boolean;
-  children: React.ReactNode;
+  style: React.CSSProperties;
 }
 
-export function DroppableCell({ block, day, isDragging, children }: Props) {
+export function DroppableCell({ day, slotIndex, isDragging, style }: Props) {
   const { isOver, setNodeRef } = useDroppable({
-    id: `cell-${block.id}-${day}`,
-    data: { block, day },
+    id: `slot-${day}-${slotIndex}`,
+    data: { day, slotIndex },
   });
 
+  const isHourBoundary = slotIndex % 4 === 0;
+
   return (
-    <td
+    <div
       ref={setNodeRef}
+      style={style}
       className={cn(
-        "px-1 py-1 align-top relative min-h-[48px]",
+        "border-r border-border/30",
+        isHourBoundary
+          ? "border-t border-t-border"
+          : "border-t border-t-border/20",
         isDragging && "transition-colors duration-150",
-        isOver && "bg-primary/10 outline-dashed outline-2 outline-primary/40 -outline-offset-2"
+        isOver && "bg-primary/10"
       )}
-    >
-      {children}
-    </td>
+    />
   );
 }

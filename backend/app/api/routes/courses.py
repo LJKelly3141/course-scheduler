@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.course import Course
-from app.schemas.schemas import CourseCreate, CourseRead, CourseUpdate
+from app.schemas.schemas import BatchDeleteRequest, CourseCreate, CourseRead, CourseUpdate
 
 router = APIRouter()
 
@@ -50,6 +50,12 @@ def update_course(
     db.commit()
     db.refresh(course)
     return course
+
+
+@router.post("/batch-delete", status_code=204)
+def batch_delete_courses(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
+    db.query(Course).filter(Course.id.in_(payload.ids)).delete(synchronize_session=False)
+    db.commit()
 
 
 @router.delete("/{course_id}", status_code=204)

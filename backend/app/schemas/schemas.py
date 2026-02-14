@@ -234,10 +234,22 @@ class UserRead(BaseModel):
 
 
 # --- Import ---
+class BatchDeleteRequest(BaseModel):
+    ids: list[int]
+
+
 class ImportPreview(BaseModel):
     rows: list[dict]
     errors: list[str] = []
     valid_count: int = 0
+
+class InstructorMatch(BaseModel):
+    name: str
+    matches: list[dict] = []
+
+class ScheduleImportPreview(ImportPreview):
+    suggested_term: Optional[dict] = None
+    instructor_matches: list[InstructorMatch] = []
 
 class ImportResult(BaseModel):
     created: int = 0

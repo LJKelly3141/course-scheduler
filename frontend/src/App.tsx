@@ -7,6 +7,7 @@ import { InstructorsPage } from "./pages/InstructorsPage";
 import { RoomsPage } from "./pages/RoomsPage";
 import { CoursesPage } from "./pages/CoursesPage";
 import { ImportPage } from "./pages/ImportPage";
+import { TermsPage } from "./pages/TermsPage";
 import { LoginPage } from "./pages/LoginPage";
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/instructors" element={<InstructorsPage />} />
             <Route path="/rooms" element={<RoomsPage />} />
             <Route path="/courses" element={<CoursesPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/import" element={<ImportPage />} />
           </Route>
         </Routes>

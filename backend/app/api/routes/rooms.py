@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.room import Room
-from app.schemas.schemas import RoomCreate, RoomReadWithBuilding, RoomUpdate
+from app.schemas.schemas import BatchDeleteRequest, RoomCreate, RoomReadWithBuilding, RoomUpdate
 
 router = APIRouter()
 
@@ -74,6 +74,12 @@ def update_room(room_id: int, payload: RoomUpdate, db: Session = Depends(get_db)
         .first()
     )
     return room
+
+
+@router.post("/batch-delete", status_code=204)
+def batch_delete_rooms(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
+    db.query(Room).filter(Room.id.in_(payload.ids)).delete(synchronize_session=False)
+    db.commit()
 
 
 @router.delete("/{room_id}", status_code=204)

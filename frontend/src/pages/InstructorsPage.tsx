@@ -9,6 +9,7 @@ export function InstructorsPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<Partial<Instructor>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: instructors = [] } = useQuery({
     queryKey: ["instructors"],
@@ -46,18 +47,53 @@ export function InstructorsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["instructors"] }),
   });
 
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => api.post("/instructors/batch-delete", { ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["instructors"] });
+      setSelectedIds(new Set());
+    },
+  });
+
   const [showAdd, setShowAdd] = useState(false);
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === instructors.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(instructors.map((i) => i.id)));
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Instructors</h2>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-        >
-          + Add Instructor
-        </button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete ${selectedIds.size} instructor(s)?`))
+                  batchDeleteMutation.mutate([...selectedIds]);
+              }}
+              className="bg-destructive text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+          >
+            + Add Instructor
+          </button>
+        </div>
       </div>
 
       {showAdd && (
@@ -88,6 +124,13 @@ export function InstructorsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left">
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={instructors.length > 0 && selectedIds.size === instructors.length}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Department</th>
@@ -100,6 +143,13 @@ export function InstructorsPage() {
           <tbody>
             {instructors.map((inst) => (
               <tr key={inst.id} className="border-b border-border hover:bg-muted/30">
+                <td className="px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(inst.id)}
+                    onChange={() => toggleSelect(inst.id)}
+                  />
+                </td>
                 <td className="px-4 py-2.5">{inst.name}</td>
                 <td className="px-4 py-2.5">{inst.email}</td>
                 <td className="px-4 py-2.5">{inst.department}</td>

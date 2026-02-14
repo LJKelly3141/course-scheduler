@@ -11,6 +11,7 @@ export function CoursesPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<Partial<Course>>({ credits: 3 });
   const [sectionForm, setSectionForm] = useState<Partial<Section>>({ enrollment_cap: 30, modality: "in_person" });
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: courses = [] } = useQuery({
     queryKey: ["courses"],
@@ -43,14 +44,51 @@ export function CoursesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sections"] }),
   });
 
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => api.post("/courses/batch-delete", { ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["sections"] });
+      setSelectedIds(new Set());
+    },
+  });
+
+  const toggleSelect = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === courses.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(courses.map((c) => c.id)));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Courses & Sections</h2>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90">
-          + Add Course
-        </button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete ${selectedIds.size} course(s) and their sections?`))
+                  batchDeleteMutation.mutate([...selectedIds]);
+              }}
+              className="bg-destructive text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90">
+            + Add Course
+          </button>
+        </div>
       </div>
 
       {showAdd && (
@@ -74,6 +112,13 @@ export function CoursesPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left">
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={courses.length > 0 && selectedIds.size === courses.length}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="px-4 py-3 w-8"></th>
               <th className="px-4 py-3">Dept</th>
               <th className="px-4 py-3">Course #</th>
@@ -91,6 +136,14 @@ export function CoursesPage() {
                 <>
                   <tr key={course.id} className="border-b border-border hover:bg-muted/30 cursor-pointer"
                     onClick={() => setExpandedCourse(expanded ? null : course.id)}>
+                    <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(course.id)}
+                        onChange={() => {}}
+                        onClick={(e) => toggleSelect(course.id, e)}
+                      />
+                    </td>
                     <td className="px-4 py-2.5">{expanded ? "▼" : "▶"}</td>
                     <td className="px-4 py-2.5">{course.department_code}</td>
                     <td className="px-4 py-2.5">{course.course_number}</td>
@@ -104,7 +157,7 @@ export function CoursesPage() {
                   </tr>
                   {expanded && (
                     <tr key={`${course.id}-sections`}>
-                      <td colSpan={7} className="px-8 py-3 bg-muted/20">
+                      <td colSpan={8} className="px-8 py-3 bg-muted/20">
                         <div className="space-y-2">
                           {courseSections.map((s) => (
                             <div key={s.id} className="flex items-center gap-4 text-xs">

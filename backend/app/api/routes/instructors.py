@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.instructor import Instructor, InstructorAvailability
 from app.schemas.schemas import (
+    BatchDeleteRequest,
     InstructorAvailabilityCreate,
     InstructorAvailabilityRead,
     InstructorCreate,
@@ -64,6 +65,12 @@ def update_instructor(
     db.commit()
     db.refresh(instructor)
     return instructor
+
+
+@router.post("/batch-delete", status_code=204)
+def batch_delete_instructors(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
+    db.query(Instructor).filter(Instructor.id.in_(payload.ids)).delete(synchronize_session=False)
+    db.commit()
 
 
 @router.delete("/{instructor_id}", status_code=204)

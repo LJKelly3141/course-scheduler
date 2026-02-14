@@ -8,7 +8,19 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import type { Meeting, TimeBlock } from "../../api/types";
-import { parseDaysOfWeek } from "../../lib/utils";
+import {
+  parseDaysOfWeek,
+  timeToMinutes,
+  meetingPosition,
+  findNearestBlock,
+  formatHourLabel,
+  GRID_START_HOUR,
+  GRID_END_HOUR,
+  SLOT_HEIGHT_PX,
+  TOTAL_SLOTS,
+  GRID_START_MINUTES,
+  SLOT_MINUTES,
+} from "../../lib/utils";
 import { useState } from "react";
 import { DraggableMeetingCard } from "./DraggableMeetingCard";
 import { DroppableCell } from "./DroppableCell";
@@ -27,6 +39,81 @@ interface Props {
 const DAY_LABELS = ["M", "T", "W", "Th", "F"];
 const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
+interface OverlapInfo {
+  column: number;
+  totalColumns: number;
+}
+
+/** Greedy interval partitioning: assign meetings to columns so overlapping ones sit side-by-side */
+function computeOverlapColumns(dayMeetings: Meeting[]): Map<number, OverlapInfo> {
+  const sorted = [...dayMeetings].sort(
+    (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
+  );
+
+  // columns[i] = end time (in minutes) of the last meeting in column i
+  const columns: number[] = [];
+  const assignments = new Map<number, OverlapInfo>();
+
+  for (const m of sorted) {
+    const start = timeToMinutes(m.start_time);
+    // Find first column where the meeting fits (no overlap)
+    let col = -1;
+    for (let c = 0; c < columns.length; c++) {
+      if (columns[c] <= start) {
+        col = c;
+        break;
+      }
+    }
+    if (col === -1) {
+      col = columns.length;
+      columns.push(0);
+    }
+    columns[col] = timeToMinutes(m.end_time);
+    assignments.set(m.id, { column: col, totalColumns: 0 });
+  }
+
+  // Now determine max overlap depth for each meeting by checking how many columns were active
+  // Simple approach: totalColumns = max columns used at any point during this meeting's span
+  for (const m of sorted) {
+    const mStart = timeToMinutes(m.start_time);
+    const mEnd = timeToMinutes(m.end_time);
+    let maxCols = 1;
+    for (const other of sorted) {
+      if (other.id === m.id) continue;
+      const oStart = timeToMinutes(other.start_time);
+      const oEnd = timeToMinutes(other.end_time);
+      if (oStart < mEnd && oEnd > mStart) {
+        // overlaps with m
+        const info = assignments.get(other.id)!;
+        maxCols = Math.max(maxCols, info.column + 1);
+      }
+    }
+    const myInfo = assignments.get(m.id)!;
+    maxCols = Math.max(maxCols, myInfo.column + 1);
+    myInfo.totalColumns = maxCols;
+  }
+
+  // Normalize totalColumns: for each group of overlapping meetings, set totalColumns to the max
+  for (const m of sorted) {
+    const mStart = timeToMinutes(m.start_time);
+    const mEnd = timeToMinutes(m.end_time);
+    const myInfo = assignments.get(m.id)!;
+    for (const other of sorted) {
+      if (other.id === m.id) continue;
+      const oStart = timeToMinutes(other.start_time);
+      const oEnd = timeToMinutes(other.end_time);
+      if (oStart < mEnd && oEnd > mStart) {
+        const otherInfo = assignments.get(other.id)!;
+        const maxTotal = Math.max(myInfo.totalColumns, otherInfo.totalColumns);
+        myInfo.totalColumns = maxTotal;
+        otherInfo.totalColumns = maxTotal;
+      }
+    }
+  }
+
+  return assignments;
+}
+
 export function ScheduleGrid({
   meetings,
   timeBlocks,
@@ -43,41 +130,13 @@ export function ScheduleGrid({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Sort time blocks by start time
-  const sortedBlocks = [...timeBlocks].sort((a, b) => {
-    const ta = typeof a.start_time === "string" ? a.start_time : "";
-    const tb = typeof b.start_time === "string" ? b.start_time : "";
-    return ta.localeCompare(tb);
-  });
-
-  // Group blocks by pattern for display
-  const mwfBlocks = sortedBlocks.filter((b) => b.pattern === "mwf");
-  const tthBlocks = sortedBlocks.filter((b) => b.pattern === "tth");
-  const eveningBlocks = sortedBlocks.filter((b) => b.pattern === "evening");
-
-  // Create unified time rows - use all blocks
-  const allBlocks = [...mwfBlocks, ...tthBlocks, ...eveningBlocks];
-
-  // Find meetings for a given day and time block
-  const getMeetingsForCell = (day: string, block: TimeBlock): Meeting[] => {
-    const blockDays = parseDaysOfWeek(block.days_of_week);
-    if (!blockDays.includes(day)) return [];
-
+  // Get meetings for a specific day
+  function getMeetingsForDay(day: string): Meeting[] {
     return meetings.filter((m) => {
-      const meetingDays = parseDaysOfWeek(m.days_of_week);
-      if (!meetingDays.includes(day)) return false;
-
-      // Match by time block ID or by time overlap
-      if (m.time_block_id === block.id) return true;
-
-      const mStart = typeof m.start_time === "string" ? m.start_time : "";
-      const mEnd = typeof m.end_time === "string" ? m.end_time : "";
-      const bStart = typeof block.start_time === "string" ? block.start_time : "";
-      const bEnd = typeof block.end_time === "string" ? block.end_time : "";
-
-      return mStart < bEnd && mEnd > bStart;
+      const days = parseDaysOfWeek(m.days_of_week);
+      return days.includes(day);
     });
-  };
+  }
 
   function handleDragStart(event: DragStartEvent) {
     const { meeting } = event.active.data.current as { meeting: Meeting };
@@ -91,13 +150,14 @@ export function ScheduleGrid({
 
     if (!over || !onMove) return;
 
-    const { meeting, sourceBlock } = active.data.current as {
-      meeting: Meeting;
-      sourceBlock: TimeBlock;
-    };
-    const { block: targetBlock } = over.data.current as { block: TimeBlock };
+    const { meeting } = active.data.current as { meeting: Meeting };
+    const { day, slotIndex } = over.data.current as { day: string; slotIndex: number };
 
-    if (targetBlock.id !== sourceBlock.id) {
+    const dropMinute = GRID_START_MINUTES + slotIndex * SLOT_MINUTES;
+    const targetBlock = findNearestBlock(day, dropMinute, timeBlocks);
+
+    if (!targetBlock) return;
+    if (targetBlock.id !== meeting.time_block_id) {
       onMove(meeting.id, targetBlock);
     }
   }
@@ -105,6 +165,14 @@ export function ScheduleGrid({
   function handleDragCancel() {
     setActiveDragMeeting(null);
   }
+
+  // Hours for labels
+  const hours: number[] = [];
+  for (let h = GRID_START_HOUR; h < GRID_END_HOUR; h++) {
+    hours.push(h);
+  }
+
+  const gridHeight = TOTAL_SLOTS * SLOT_HEIGHT_PX;
 
   return (
     <DndContext
@@ -119,51 +187,112 @@ export function ScheduleGrid({
             Moving meeting...
           </div>
         )}
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="px-2 py-2 text-left w-28 sticky left-0 bg-muted/50">Time</th>
-              {DAY_LABELS.map((day, i) => (
-                <th key={day} className="px-2 py-2 text-center min-w-[140px]">{DAY_FULL[i]}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {allBlocks.map((block) => (
-              <tr key={block.id} className="border-b border-border">
-                <td className="px-2 py-1 text-muted-foreground sticky left-0 bg-white text-[11px] whitespace-nowrap">
-                  {block.label}
-                </td>
-                {DAY_LABELS.map((day) => {
-                  const cellMeetings = getMeetingsForCell(day, block);
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "60px repeat(5, 1fr)",
+            gridTemplateRows: `auto repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT_PX}px)`,
+          }}
+        >
+          {/* Header row */}
+          <div className="sticky top-0 z-20 bg-muted/50 border-b border-border px-2 py-2 text-xs font-medium text-left"
+            style={{ gridColumn: 1, gridRow: 1 }}
+          >
+            Time
+          </div>
+          {DAY_LABELS.map((day, i) => (
+            <div
+              key={day}
+              className="sticky top-0 z-20 bg-muted/50 border-b border-border px-2 py-2 text-xs font-medium text-center"
+              style={{ gridColumn: i + 2, gridRow: 1 }}
+            >
+              {DAY_FULL[i]}
+            </div>
+          ))}
+
+          {/* Hour labels in column 1 */}
+          {hours.map((hour) => {
+            const slotIndex = (hour - GRID_START_HOUR) * 4;
+            return (
+              <div
+                key={hour}
+                className="text-[11px] text-muted-foreground text-right pr-2 sticky left-0 bg-white z-10 border-t border-t-border"
+                style={{
+                  gridColumn: 1,
+                  gridRow: `${slotIndex + 2} / span 4`,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "flex-end",
+                  paddingTop: "2px",
+                }}
+              >
+                {formatHourLabel(hour)}
+              </div>
+            );
+          })}
+
+          {/* Droppable background cells: 52 slots × 5 days = 260 cells */}
+          {Array.from({ length: TOTAL_SLOTS }, (_, slotIdx) =>
+            DAY_LABELS.map((day, dayIdx) => (
+              <DroppableCell
+                key={`${day}-${slotIdx}`}
+                day={day}
+                slotIndex={slotIdx}
+                isDragging={activeDragMeeting != null}
+                style={{
+                  gridColumn: dayIdx + 2,
+                  gridRow: slotIdx + 2,
+                }}
+              />
+            ))
+          )}
+
+          {/* Day column overlays with absolutely-positioned meeting cards */}
+          {DAY_LABELS.map((day, dayIdx) => {
+            const dayMeetings = getMeetingsForDay(day);
+            const overlapMap = computeOverlapColumns(dayMeetings);
+
+            return (
+              <div
+                key={`overlay-${day}`}
+                style={{
+                  gridColumn: dayIdx + 2,
+                  gridRow: `2 / span ${TOTAL_SLOTS}`,
+                  position: "relative",
+                  pointerEvents: "none",
+                }}
+              >
+                {dayMeetings.map((m) => {
+                  const { topPx, heightPx } = meetingPosition(m.start_time, m.end_time);
+                  const overlap = overlapMap.get(m.id) ?? { column: 0, totalColumns: 1 };
+                  const widthPct = 100 / overlap.totalColumns;
+                  const leftPct = overlap.column * widthPct;
+
                   return (
-                    <DroppableCell
-                      key={day}
-                      block={block}
+                    <DraggableMeetingCard
+                      key={m.id}
+                      meeting={m}
                       day={day}
-                      isDragging={activeDragMeeting != null}
-                    >
-                      {cellMeetings.map((m) => (
-                        <DraggableMeetingCard
-                          key={m.id}
-                          meeting={m}
-                          block={block}
-                          day={day}
-                          hasConflict={conflictMeetingIds.has(m.id)}
-                          activeDragMeetingId={activeDragMeeting?.id ?? null}
-                          popoverOpen={popoverId === m.id}
-                          onTogglePopover={() => setPopoverId(popoverId === m.id ? null : m.id)}
-                          onEdit={(meeting) => { setPopoverId(null); onEdit(meeting); }}
-                          onDelete={(id) => { setPopoverId(null); onDelete(id); }}
-                        />
-                      ))}
-                    </DroppableCell>
+                      hasConflict={conflictMeetingIds.has(m.id)}
+                      activeDragMeetingId={activeDragMeeting?.id ?? null}
+                      popoverOpen={popoverId === m.id}
+                      onTogglePopover={() => setPopoverId(popoverId === m.id ? null : m.id)}
+                      onEdit={(meeting) => { setPopoverId(null); onEdit(meeting); }}
+                      onDelete={(id) => { setPopoverId(null); onDelete(id); }}
+                      style={{
+                        top: `${topPx}px`,
+                        height: `${heightPx}px`,
+                        left: `${leftPct}%`,
+                        width: `${widthPct}%`,
+                      }}
+                    />
                   );
                 })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <DragOverlay dropAnimation={null}>

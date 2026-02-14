@@ -9,6 +9,7 @@ export function RoomsPage() {
   const [form, setForm] = useState<Partial<Room>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCap, setEditCap] = useState<number>(0);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: rooms = [] } = useQuery({
     queryKey: ["rooms"],
@@ -43,16 +44,51 @@ export function RoomsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rooms"] }),
   });
 
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => api.post("/rooms/batch-delete", { ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      setSelectedIds(new Set());
+    },
+  });
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === rooms.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(rooms.map((r) => r.id)));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Rooms</h2>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-        >
-          + Add Room
-        </button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete ${selectedIds.size} room(s)?`))
+                  batchDeleteMutation.mutate([...selectedIds]);
+              }}
+              className="bg-destructive text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+          >
+            + Add Room
+          </button>
+        </div>
       </div>
 
       {showAdd && (
@@ -77,6 +113,13 @@ export function RoomsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left">
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={rooms.length > 0 && selectedIds.size === rooms.length}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="px-4 py-3">Building</th>
               <th className="px-4 py-3">Room #</th>
               <th className="px-4 py-3">Capacity</th>
@@ -86,6 +129,13 @@ export function RoomsPage() {
           <tbody>
             {rooms.map((room) => (
               <tr key={room.id} className="border-b border-border hover:bg-muted/30">
+                <td className="px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(room.id)}
+                    onChange={() => toggleSelect(room.id)}
+                  />
+                </td>
                 <td className="px-4 py-2.5">{room.building?.name ?? `Building ${room.building_id}`}</td>
                 <td className="px-4 py-2.5">{room.room_number}</td>
                 <td className="px-4 py-2.5">

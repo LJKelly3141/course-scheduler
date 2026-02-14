@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import csv
 import io
-from typing import Union
+import json
+from datetime import time as dt_time
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse, HTMLResponse
@@ -13,8 +15,17 @@ from app.models.building import Building
 from app.models.room import Room
 from app.models.instructor import Instructor, ModalityConstraint
 from app.models.course import Course
-from app.schemas.schemas import ImportPreview, ImportResult
+from app.models.section import Section, Modality, SectionStatus
+from app.models.meeting import Meeting
+from app.models.time_block import TimeBlock
+from app.models.term import Term
+from app.schemas.schemas import ImportPreview, ImportResult, ScheduleImportPreview
 from app.services.export import export_term_csv, export_print_html
+from app.services.xlsx_schedule_parser import (
+    read_xlsx_schedule,
+    match_time_block,
+    find_instructor_matches,
+)
 
 router = APIRouter()
 
@@ -344,6 +355,213 @@ async def import_courses(
         except Exception as exc:
             import_errors.append(
                 f"Error importing course {row['department_code']} {row['course_number']}: {str(exc)}"
+            )
+
+    db.commit()
+    return ImportResult(created=created, errors=import_errors)
+
+
+# ---------------------------------------------------------------------------
+# POST /import/schedule  (XLSX)
+# ---------------------------------------------------------------------------
+@router.post("/import/schedule", response_model=Union[ScheduleImportPreview, ImportResult])
+async def import_schedule(
+    file: UploadFile = File(...),
+    term_id: int = Query(...),
+    preview: bool = Query(default=True),
+    instructor_mappings: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    contents = await file.read()
+    valid_rows, errors, suggested_term = read_xlsx_schedule(contents)
+
+    if preview:
+        # Collect unique instructor names and find matches
+        unique_names = list(dict.fromkeys(
+            row["instructor_name"] for row in valid_rows if row.get("instructor_name")
+        ))
+        existing_instructors = db.query(Instructor).all()
+        matches = find_instructor_matches(unique_names, existing_instructors)
+
+        return ScheduleImportPreview(
+            rows=valid_rows,
+            errors=errors,
+            valid_count=len(valid_rows),
+            suggested_term=suggested_term,
+            instructor_matches=matches,
+        )
+
+    if errors:
+        raise HTTPException(status_code=400, detail=errors)
+
+    # Validate term exists
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if not term:
+        raise HTTPException(status_code=404, detail=f"Term {term_id} not found")
+
+    # Parse instructor mappings from JSON
+    # Format: { "Instructor Name": instructor_id_or_null }
+    mappings: dict = {}
+    if instructor_mappings:
+        try:
+            mappings = json.loads(instructor_mappings)
+        except json.JSONDecodeError:
+            pass
+
+    # Load time blocks for matching
+    time_blocks = db.query(TimeBlock).all()
+
+    created = 0
+    import_errors: list[str] = []
+
+    for row in valid_rows:
+        try:
+            # --- Course: find or create ---
+            course = (
+                db.query(Course)
+                .filter(
+                    Course.department_code == row["department_code"],
+                    Course.course_number == row["course_number"],
+                )
+                .first()
+            )
+            if not course:
+                course = Course(
+                    department_code=row["department_code"],
+                    course_number=row["course_number"],
+                    title=row["title"],
+                    credits=3,
+                )
+                db.add(course)
+                db.flush()
+
+            # --- Instructor: use mapping or find/create ---
+            instructor = None
+            if row.get("instructor_name"):
+                name = row["instructor_name"]
+                mapped_id = mappings.get(name)
+
+                if mapped_id is not None:
+                    # User mapped this name to an existing instructor
+                    instructor = db.query(Instructor).filter(
+                        Instructor.id == int(mapped_id)
+                    ).first()
+                else:
+                    # Try exact match, then create
+                    instructor = (
+                        db.query(Instructor)
+                        .filter(Instructor.name == name)
+                        .first()
+                    )
+                    if not instructor:
+                        name_parts = name.lower().split()
+                        email_slug = ".".join(name_parts)
+                        placeholder_email = f"{email_slug}@uwrf.edu"
+                        existing_email = (
+                            db.query(Instructor)
+                            .filter(Instructor.email == placeholder_email)
+                            .first()
+                        )
+                        if existing_email:
+                            placeholder_email = f"{email_slug}.import@uwrf.edu"
+                        instructor = Instructor(
+                            name=name,
+                            email=placeholder_email,
+                            department=row["department_code"],
+                            modality_constraint=ModalityConstraint.any,
+                            max_credits=12,
+                        )
+                        db.add(instructor)
+                        db.flush()
+
+            # --- Building & Room: find or create ---
+            room = None
+            if row.get("building_name") and row.get("room_number"):
+                building = (
+                    db.query(Building)
+                    .filter(Building.name == row["building_name"])
+                    .first()
+                )
+                if not building:
+                    abbr = "".join(
+                        w[0].upper() for w in row["building_name"].split() if w
+                    )
+                    building = Building(
+                        name=row["building_name"], abbreviation=abbr
+                    )
+                    db.add(building)
+                    db.flush()
+                room = (
+                    db.query(Room)
+                    .filter(
+                        Room.building_id == building.id,
+                        Room.room_number == row["room_number"],
+                    )
+                    .first()
+                )
+                if not room:
+                    room = Room(
+                        building_id=building.id,
+                        room_number=row["room_number"],
+                        capacity=30,
+                    )
+                    db.add(room)
+                    db.flush()
+
+            # --- Section: skip if duplicate ---
+            existing_section = (
+                db.query(Section)
+                .filter(
+                    Section.course_id == course.id,
+                    Section.term_id == term_id,
+                    Section.section_number == row["section_number"],
+                )
+                .first()
+            )
+            if existing_section:
+                import_errors.append(
+                    f"{row['department_code']} {row['course_number']}-{row['section_number']} "
+                    f"already exists in this term (skipped)"
+                )
+                continue
+
+            modality_val = Modality.online if row["modality"] == "online" else Modality.in_person
+            has_schedule = row.get("days") is not None
+
+            section = Section(
+                course_id=course.id,
+                term_id=term_id,
+                section_number=row["section_number"],
+                enrollment_cap=30,
+                modality=modality_val,
+                status=SectionStatus.scheduled if has_schedule else SectionStatus.unscheduled,
+            )
+            db.add(section)
+            db.flush()
+
+            # --- Meeting: create if days/times exist ---
+            if has_schedule and row.get("start_time") and row.get("end_time"):
+                days_json = json.dumps(row["days"])
+                start = dt_time.fromisoformat(row["start_time"])
+                end = dt_time.fromisoformat(row["end_time"])
+                tb_id = match_time_block(row["days"], start, end, time_blocks)
+
+                meeting = Meeting(
+                    section_id=section.id,
+                    days_of_week=days_json,
+                    start_time=start,
+                    end_time=end,
+                    time_block_id=tb_id,
+                    room_id=room.id if room else None,
+                    instructor_id=instructor.id if instructor else None,
+                )
+                db.add(meeting)
+
+            created += 1
+        except Exception as exc:
+            import_errors.append(
+                f"Error importing {row.get('department_code', '?')} "
+                f"{row.get('course_number', '?')}-{row.get('section_number', '?')}: {str(exc)}"
             )
 
     db.commit()
