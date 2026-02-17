@@ -104,8 +104,8 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {instructors.filter(i => i.is_active).map((inst) => {
-                  const instMeetings = meetings.filter((m) => m.instructor_id === inst.id);
-                  const credits = instMeetings.reduce((sum, m) => sum + (m.section?.course?.credits ?? 3), 0);
+                  const instSections = sections.filter((s) => s.instructor_id === inst.id);
+                  const credits = instSections.reduce((sum, s) => sum + (s.course?.credits ?? 3), 0);
                   const over = credits >= inst.max_credits;
                   return (
                     <tr key={inst.id} className={over ? "bg-yellow-50" : ""}>
