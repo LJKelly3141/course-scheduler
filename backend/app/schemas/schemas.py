@@ -140,6 +140,7 @@ class SectionBase(BaseModel):
     section_number: str
     enrollment_cap: int = 30
     modality: str = "in_person"
+    instructor_id: Optional[int] = None
 
 class SectionCreate(SectionBase):
     pass
@@ -149,10 +150,13 @@ class SectionUpdate(BaseModel):
     enrollment_cap: Optional[int] = None
     modality: Optional[str] = None
     status: Optional[str] = None
+    instructor_id: Optional[int] = None
 
 class SectionRead(SectionBase):
     id: int
     status: str
+    instructor_id: Optional[int] = None
+    instructor: Optional[InstructorRead] = None
     model_config = {"from_attributes": True}
 
 class SectionReadWithCourse(SectionRead):

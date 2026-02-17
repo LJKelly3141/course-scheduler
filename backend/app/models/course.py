@@ -12,4 +12,4 @@ class Course(Base):
     title: Mapped[str] = mapped_column(String(200))
     credits: Mapped[int] = mapped_column(Integer, default=3)
 
-    sections = relationship("Section", back_populates="course")
+    sections = relationship("Section", back_populates="course", cascade="all, delete-orphan")

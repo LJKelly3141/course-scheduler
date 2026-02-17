@@ -43,15 +43,22 @@ export function TermsPage() {
     },
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["terms"] });
+    queryClient.invalidateQueries({ queryKey: ["sections"] });
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["validation"] });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/terms/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["terms"] }),
+    onSettled: invalidateAll,
   });
 
   const batchDeleteMutation = useMutation({
     mutationFn: (ids: number[]) => api.post("/terms/batch-delete", { ids }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["terms"] });
+    onSettled: () => {
+      invalidateAll();
       setSelectedIds(new Set());
     },
   });

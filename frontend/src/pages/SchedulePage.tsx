@@ -6,7 +6,7 @@ import type { Term, Meeting, Room, Instructor, TimeBlock, Section, ValidationRes
 import { ScheduleGrid } from "../components/schedule/ScheduleGrid";
 import { ConflictSidebar } from "../components/conflicts/ConflictSidebar";
 import { MeetingDialog } from "../components/meetings/MeetingDialog";
-import { cn, parseDaysOfWeek } from "../lib/utils";
+import { cn, parseDaysOfWeek, buildColorMap, getLevelHexColor } from "../lib/utils";
 
 type ViewMode = "room" | "instructor" | "level";
 
@@ -14,8 +14,8 @@ export function SchedulePage() {
   const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>("room");
-  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
-  const [selectedInstructorId, setSelectedInstructorId] = useState<number | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | "all">("all");
+  const [selectedInstructorId, setSelectedInstructorId] = useState<number | "all">("all");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,13 +54,15 @@ export function SchedulePage() {
     enabled: !!selectedTerm,
   });
 
+  const invalidateSchedule = () => {
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["validation"] });
+    queryClient.invalidateQueries({ queryKey: ["sections"] });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/meetings/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meetings"] });
-      queryClient.invalidateQueries({ queryKey: ["validation"] });
-      queryClient.invalidateQueries({ queryKey: ["sections"] });
-    },
+    onSettled: invalidateSchedule,
   });
 
   const moveMutation = useMutation({
@@ -71,11 +73,7 @@ export function SchedulePage() {
         start_time: targetBlock.start_time,
         end_time: targetBlock.end_time,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meetings"] });
-      queryClient.invalidateQueries({ queryKey: ["validation"] });
-      queryClient.invalidateQueries({ queryKey: ["sections"] });
-    },
+    onSettled: invalidateSchedule,
   });
 
   if (!selectedTerm) {
@@ -84,9 +82,9 @@ export function SchedulePage() {
 
   // Filter meetings based on view mode
   let filteredMeetings = meetings;
-  if (viewMode === "room" && selectedRoomId) {
+  if (viewMode === "room" && selectedRoomId !== "all") {
     filteredMeetings = meetings.filter((m) => m.room_id === selectedRoomId);
-  } else if (viewMode === "instructor" && selectedInstructorId) {
+  } else if (viewMode === "instructor" && selectedInstructorId !== "all") {
     filteredMeetings = meetings.filter((m) => m.instructor_id === selectedInstructorId);
   } else if (viewMode === "level" && selectedLevel !== "all") {
     filteredMeetings = meetings.filter((m) => {
@@ -97,13 +95,50 @@ export function SchedulePage() {
     });
   }
 
-  // Auto-select first room/instructor
-  if (viewMode === "room" && !selectedRoomId && rooms.length > 0) {
-    setSelectedRoomId(rooms[0].id);
+  // Exclude meetings with no time data (defensive for online-only)
+  filteredMeetings = filteredMeetings.filter(
+    (m) => m.start_time && m.days_of_week && m.days_of_week.length > 0
+  );
+
+  // Online async sections: modality is "online" and no meetings with time data
+  const sectionIdsWithMeetings = new Set(meetings.map((m) => m.section_id));
+
+  let onlineAsyncSections = sections.filter(
+    (s) => s.modality === "online" && !sectionIdsWithMeetings.has(s.id)
+  );
+
+  // Apply the same view-mode filter to the online table
+  if (viewMode === "room" && selectedRoomId !== "all") {
+    // Online sections have no room — hide when filtering by a specific room
+    onlineAsyncSections = [];
+  } else if (viewMode === "instructor" && selectedInstructorId !== "all") {
+    onlineAsyncSections = onlineAsyncSections.filter(
+      (s) => s.instructor_id === selectedInstructorId
+    );
+  } else if (viewMode === "level" && selectedLevel !== "all") {
+    onlineAsyncSections = onlineAsyncSections.filter((s) => {
+      const num = s.course?.course_number;
+      if (!num) return false;
+      const level = Math.floor(parseInt(num) / 100) * 100;
+      return String(level) === selectedLevel;
+    });
   }
-  if (viewMode === "instructor" && !selectedInstructorId && instructors.length > 0) {
-    setSelectedInstructorId(instructors[0].id);
-  }
+
+  // Build color maps for rooms and instructors
+  const roomColorMap = buildColorMap(rooms.map((r) => r.id));
+  const instructorColorMap = buildColorMap(instructors.filter((i) => i.is_active).map((i) => i.id));
+
+  const colorFn = (m: Meeting): string => {
+    if (viewMode === "room") {
+      return m.room_id ? (roomColorMap.get(m.room_id) ?? "#9ca3af") : "#9ca3af";
+    }
+    if (viewMode === "instructor") {
+      return m.instructor_id ? (instructorColorMap.get(m.instructor_id) ?? "#9ca3af") : "#9ca3af";
+    }
+    // level mode
+    const courseNum = m.section?.course?.course_number ?? "";
+    return getLevelHexColor(courseNum);
+  };
 
   const allConflicts = [
     ...(validation?.hard_conflicts ?? []),
@@ -144,9 +179,13 @@ export function SchedulePage() {
         {viewMode === "room" && (
           <select
             className="border border-border rounded-md px-2 py-1.5 text-sm"
-            value={selectedRoomId ?? ""}
-            onChange={(e) => setSelectedRoomId(Number(e.target.value))}
+            value={selectedRoomId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSelectedRoomId(v === "all" ? "all" : Number(v));
+            }}
           >
+            <option value="all">All Rooms</option>
             {rooms.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.building?.abbreviation} {r.room_number} (cap: {r.capacity})
@@ -158,9 +197,13 @@ export function SchedulePage() {
         {viewMode === "instructor" && (
           <select
             className="border border-border rounded-md px-2 py-1.5 text-sm"
-            value={selectedInstructorId ?? ""}
-            onChange={(e) => setSelectedInstructorId(Number(e.target.value))}
+            value={selectedInstructorId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSelectedInstructorId(v === "all" ? "all" : Number(v));
+            }}
           >
+            <option value="all">All Instructors</option>
             {instructors.filter(i => i.is_active).map((i) => (
               <option key={i.id} value={i.id}>{i.name}</option>
             ))}
@@ -193,12 +236,35 @@ export function SchedulePage() {
         </button>
       </div>
 
+      {/* Color legend */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {viewMode === "room" && rooms.map((r) => (
+          <span key={r.id} className="inline-flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: roomColorMap.get(r.id) }} />
+            {r.building?.abbreviation} {r.room_number}
+          </span>
+        ))}
+        {viewMode === "instructor" && instructors.filter(i => i.is_active).map((i) => (
+          <span key={i.id} className="inline-flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: instructorColorMap.get(i.id) }} />
+            {i.name}
+          </span>
+        ))}
+        {viewMode === "level" && ["100", "200", "300", "400", "600", "700"].map((l) => (
+          <span key={l} className="inline-flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: getLevelHexColor(l) }} />
+            {l}-level
+          </span>
+        ))}
+      </div>
+
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           <ScheduleGrid
             meetings={filteredMeetings}
             timeBlocks={timeBlocks}
             conflictMeetingIds={conflictMeetingIds}
+            colorFn={colorFn}
             onEdit={(m) => { setEditingMeeting(m); setDialogOpen(true); }}
             onDelete={(id) => { if (confirm("Delete this meeting?")) deleteMutation.mutate(id); }}
             onMove={(meetingId, targetBlock) => moveMutation.mutate({ meetingId, targetBlock })}
@@ -214,6 +280,62 @@ export function SchedulePage() {
           />
         )}
       </div>
+
+      {onlineAsyncSections.length > 0 && (
+        <div className="bg-white rounded-lg border border-border p-4">
+          <h3 className="text-lg font-semibold mb-3">Online Asynchronous Sections</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th className="py-2 pr-4 w-6"></th>
+                <th className="py-2 pr-4">Course</th>
+                <th className="py-2 pr-4">Section</th>
+                <th className="py-2 pr-4">Title</th>
+                <th className="py-2 pr-4">Level</th>
+                <th className="py-2 pr-4">Instructor</th>
+                <th className="py-2 pr-4">Credits</th>
+                <th className="py-2 pr-4">Enrollment Cap</th>
+                <th className="py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {onlineAsyncSections.map((s) => {
+                const courseNum = s.course?.course_number ?? "";
+                const level = Math.floor(parseInt(courseNum) / 100) * 100;
+                let rowColor = "#9ca3af";
+                if (viewMode === "instructor" && s.instructor_id) {
+                  rowColor = instructorColorMap.get(s.instructor_id) ?? "#9ca3af";
+                } else if (viewMode === "level") {
+                  rowColor = getLevelHexColor(courseNum);
+                } else if (viewMode === "room") {
+                  rowColor = getLevelHexColor(courseNum);
+                }
+
+                return (
+                  <tr key={s.id} className="border-b border-border/50">
+                    <td className="py-2 pr-4">
+                      <span
+                        className="inline-block w-3 h-3 rounded"
+                        style={{ backgroundColor: rowColor }}
+                      />
+                    </td>
+                    <td className="py-2 pr-4 font-medium">
+                      {s.course?.department_code} {courseNum}
+                    </td>
+                    <td className="py-2 pr-4">{s.section_number}</td>
+                    <td className="py-2 pr-4">{s.course?.title}</td>
+                    <td className="py-2 pr-4">{level || "—"}-level</td>
+                    <td className="py-2 pr-4">{s.instructor?.name ?? "TBD"}</td>
+                    <td className="py-2 pr-4">{s.course?.credits}</td>
+                    <td className="py-2 pr-4">{s.enrollment_cap ?? "—"}</td>
+                    <td className="py-2 capitalize">{s.status}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {dialogOpen && (
         <MeetingDialog

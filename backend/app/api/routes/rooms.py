@@ -4,13 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
+from app.models.meeting import Meeting
 from app.models.room import Room
 from app.schemas.schemas import BatchDeleteRequest, RoomCreate, RoomReadWithBuilding, RoomUpdate
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[RoomReadWithBuilding])
+@router.get("", response_model=list[RoomReadWithBuilding])
 def list_rooms(
     building_id: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
@@ -21,7 +22,7 @@ def list_rooms(
     return query.all()
 
 
-@router.post("/", response_model=RoomReadWithBuilding, status_code=201)
+@router.post("", response_model=RoomReadWithBuilding, status_code=201)
 def create_room(payload: RoomCreate, db: Session = Depends(get_db)):
     room = Room(
         building_id=payload.building_id,
@@ -78,6 +79,10 @@ def update_room(room_id: int, payload: RoomUpdate, db: Session = Depends(get_db)
 
 @router.post("/batch-delete", status_code=204)
 def batch_delete_rooms(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
+    # Nullify room references on meetings before deleting
+    db.query(Meeting).filter(Meeting.room_id.in_(payload.ids)).update(
+        {Meeting.room_id: None}, synchronize_session=False
+    )
     db.query(Room).filter(Room.id.in_(payload.ids)).delete(synchronize_session=False)
     db.commit()
 
@@ -88,5 +93,9 @@ def delete_room(room_id: int, db: Session = Depends(get_db)):
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
+    # Nullify room references on meetings before deleting
+    db.query(Meeting).filter(Meeting.room_id == room_id).update(
+        {Meeting.room_id: None}, synchronize_session=False
+    )
     db.delete(room)
     db.commit()

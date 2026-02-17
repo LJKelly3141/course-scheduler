@@ -8,6 +8,6 @@ from app.schemas.schemas import TimeBlockRead
 router = APIRouter()
 
 
-@router.get("/", response_model=list[TimeBlockRead])
+@router.get("", response_model=list[TimeBlockRead])
 def list_time_blocks(db: Session = Depends(get_db)):
     return db.query(TimeBlock).all()

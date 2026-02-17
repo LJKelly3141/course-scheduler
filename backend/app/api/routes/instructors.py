@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.instructor import Instructor, InstructorAvailability
+from app.models.meeting import Meeting
 from app.schemas.schemas import (
     BatchDeleteRequest,
     InstructorAvailabilityCreate,
@@ -17,12 +18,12 @@ from app.schemas.schemas import (
 router = APIRouter()
 
 
-@router.get("/", response_model=list[InstructorRead])
+@router.get("", response_model=list[InstructorRead])
 def list_instructors(db: Session = Depends(get_db)):
     return db.query(Instructor).all()
 
 
-@router.post("/", response_model=InstructorRead, status_code=201)
+@router.post("", response_model=InstructorRead, status_code=201)
 def create_instructor(payload: InstructorCreate, db: Session = Depends(get_db)):
     instructor = Instructor(
         name=payload.name,
@@ -69,6 +70,14 @@ def update_instructor(
 
 @router.post("/batch-delete", status_code=204)
 def batch_delete_instructors(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
+    # Nullify instructor references on meetings before deleting
+    db.query(Meeting).filter(Meeting.instructor_id.in_(payload.ids)).update(
+        {Meeting.instructor_id: None}, synchronize_session=False
+    )
+    # Delete availability records
+    db.query(InstructorAvailability).filter(
+        InstructorAvailability.instructor_id.in_(payload.ids)
+    ).delete(synchronize_session=False)
     db.query(Instructor).filter(Instructor.id.in_(payload.ids)).delete(synchronize_session=False)
     db.commit()
 
@@ -81,6 +90,14 @@ def delete_instructor(instructor_id: int, db: Session = Depends(get_db)):
     if not instructor:
         raise HTTPException(status_code=404, detail="Instructor not found")
 
+    # Nullify instructor references on meetings before deleting
+    db.query(Meeting).filter(Meeting.instructor_id == instructor_id).update(
+        {Meeting.instructor_id: None}, synchronize_session=False
+    )
+    # Delete availability records
+    db.query(InstructorAvailability).filter(
+        InstructorAvailability.instructor_id == instructor_id
+    ).delete(synchronize_session=False)
     db.delete(instructor)
     db.commit()
 

@@ -12,21 +12,21 @@ from app.schemas.schemas import (
 router = APIRouter()
 
 
-@router.get("/", response_model=list[SectionReadWithCourse])
+@router.get("", response_model=list[SectionReadWithCourse])
 def list_sections(
     term_id: int = Query(...),
     db: Session = Depends(get_db),
 ):
     sections = (
         db.query(Section)
-        .options(joinedload(Section.course))
+        .options(joinedload(Section.course), joinedload(Section.instructor))
         .filter(Section.term_id == term_id)
         .all()
     )
     return sections
 
 
-@router.post("/", response_model=SectionReadWithCourse, status_code=201)
+@router.post("", response_model=SectionReadWithCourse, status_code=201)
 def create_section(payload: SectionCreate, db: Session = Depends(get_db)):
     section = Section(
         course_id=payload.course_id,
@@ -34,14 +34,15 @@ def create_section(payload: SectionCreate, db: Session = Depends(get_db)):
         section_number=payload.section_number,
         enrollment_cap=payload.enrollment_cap,
         modality=payload.modality,
+        instructor_id=payload.instructor_id,
     )
     db.add(section)
     db.commit()
     db.refresh(section)
-    # Re-query with eager load for course in response
+    # Re-query with eager load for course and instructor in response
     section = (
         db.query(Section)
-        .options(joinedload(Section.course))
+        .options(joinedload(Section.course), joinedload(Section.instructor))
         .filter(Section.id == section.id)
         .first()
     )
@@ -52,7 +53,7 @@ def create_section(payload: SectionCreate, db: Session = Depends(get_db)):
 def get_section(section_id: int, db: Session = Depends(get_db)):
     section = (
         db.query(Section)
-        .options(joinedload(Section.course))
+        .options(joinedload(Section.course), joinedload(Section.instructor))
         .filter(Section.id == section_id)
         .first()
     )
@@ -74,10 +75,10 @@ def update_section(
         setattr(section, field, value)
 
     db.commit()
-    # Re-query with eager load for course in response
+    # Re-query with eager load for course and instructor in response
     section = (
         db.query(Section)
-        .options(joinedload(Section.course))
+        .options(joinedload(Section.course), joinedload(Section.instructor))
         .filter(Section.id == section_id)
         .first()
     )

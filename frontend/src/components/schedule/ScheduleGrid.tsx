@@ -30,6 +30,7 @@ interface Props {
   meetings: Meeting[];
   timeBlocks: TimeBlock[];
   conflictMeetingIds: Set<number>;
+  colorFn?: (meeting: Meeting) => string;
   onEdit: (meeting: Meeting) => void;
   onDelete: (id: number) => void;
   onMove?: (meetingId: number, targetBlock: TimeBlock) => void;
@@ -118,6 +119,7 @@ export function ScheduleGrid({
   meetings,
   timeBlocks,
   conflictMeetingIds,
+  colorFn,
   onEdit,
   onDelete,
   onMove,
@@ -275,6 +277,7 @@ export function ScheduleGrid({
                       meeting={m}
                       day={day}
                       hasConflict={conflictMeetingIds.has(m.id)}
+                      bgColor={colorFn?.(m)}
                       activeDragMeetingId={activeDragMeeting?.id ?? null}
                       popoverOpen={popoverId === m.id}
                       onTogglePopover={() => setPopoverId(popoverId === m.id ? null : m.id)}
@@ -296,7 +299,7 @@ export function ScheduleGrid({
       </div>
 
       <DragOverlay dropAnimation={null}>
-        {activeDragMeeting ? <MeetingDragOverlay meeting={activeDragMeeting} /> : null}
+        {activeDragMeeting ? <MeetingDragOverlay meeting={activeDragMeeting} bgColor={colorFn?.(activeDragMeeting)} /> : null}
       </DragOverlay>
     </DndContext>
   );

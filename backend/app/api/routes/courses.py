@@ -8,12 +8,12 @@ from app.schemas.schemas import BatchDeleteRequest, CourseCreate, CourseRead, Co
 router = APIRouter()
 
 
-@router.get("/", response_model=list[CourseRead])
+@router.get("", response_model=list[CourseRead])
 def list_courses(db: Session = Depends(get_db)):
     return db.query(Course).all()
 
 
-@router.post("/", response_model=CourseRead, status_code=201)
+@router.post("", response_model=CourseRead, status_code=201)
 def create_course(payload: CourseCreate, db: Session = Depends(get_db)):
     course = Course(
         department_code=payload.department_code,
@@ -54,7 +54,9 @@ def update_course(
 
 @router.post("/batch-delete", status_code=204)
 def batch_delete_courses(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
-    db.query(Course).filter(Course.id.in_(payload.ids)).delete(synchronize_session=False)
+    courses = db.query(Course).filter(Course.id.in_(payload.ids)).all()
+    for course in courses:
+        db.delete(course)
     db.commit()
 
 

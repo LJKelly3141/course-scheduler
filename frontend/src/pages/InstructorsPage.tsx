@@ -42,15 +42,21 @@ export function InstructorsPage() {
     },
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["instructors"] });
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["validation"] });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/instructors/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["instructors"] }),
+    onSettled: invalidateAll,
   });
 
   const batchDeleteMutation = useMutation({
     mutationFn: (ids: number[]) => api.post("/instructors/batch-delete", { ids }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["instructors"] });
+    onSettled: () => {
+      invalidateAll();
       setSelectedIds(new Set());
     },
   });

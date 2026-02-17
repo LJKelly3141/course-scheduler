@@ -1,4 +1,5 @@
 import enum
+from typing import Optional
 from sqlalchemy import String, Integer, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
@@ -28,7 +29,11 @@ class Section(Base):
     status: Mapped[SectionStatus] = mapped_column(
         Enum(SectionStatus), default=SectionStatus.unscheduled
     )
+    instructor_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("instructors.id"), nullable=True
+    )
 
     course = relationship("Course", back_populates="sections")
     term = relationship("Term", back_populates="sections")
+    instructor = relationship("Instructor")
     meetings = relationship("Meeting", back_populates="section", cascade="all, delete-orphan")

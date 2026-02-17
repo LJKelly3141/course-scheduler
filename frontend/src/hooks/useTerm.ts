@@ -14,16 +14,20 @@ export function useTerm() {
     queryFn: () => api.get<Term[]>("/terms"),
   });
 
-  const selectedTerm = terms.find((t) => t.id === selectedTermId) || terms[0] || null;
+  const matchedTerm = terms.find((t) => t.id === selectedTermId);
+  const selectedTerm = matchedTerm || terms[0] || null;
 
   const selectTerm = (id: number) => {
     setSelectedTermId(id);
     localStorage.setItem("selectedTermId", String(id));
   };
 
-  // Auto-select first term
-  if (!selectedTermId && terms.length > 0) {
+  // Auto-select first term, or clear stale selection
+  if (terms.length > 0 && !matchedTerm) {
     selectTerm(terms[0].id);
+  } else if (terms.length === 0 && selectedTermId !== null) {
+    setSelectedTermId(null);
+    localStorage.removeItem("selectedTermId");
   }
 
   return { terms, selectedTerm, selectTerm };

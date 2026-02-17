@@ -3,19 +3,18 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.term import Term
-from app.models.section import Section
 from app.schemas.schemas import BatchDeleteRequest, TermCreate, TermRead, TermUpdate, ValidationResult
 from app.services.term_validation import finalize_term, validate_term
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[TermRead])
+@router.get("", response_model=list[TermRead])
 def list_terms(db: Session = Depends(get_db)):
     return db.query(Term).all()
 
 
-@router.post("/", response_model=TermRead, status_code=201)
+@router.post("", response_model=TermRead, status_code=201)
 def create_term(payload: TermCreate, db: Session = Depends(get_db)):
     term = Term(
         name=payload.name,
@@ -54,21 +53,9 @@ def update_term(term_id: int, payload: TermUpdate, db: Session = Depends(get_db)
 
 @router.post("/batch-delete", status_code=204)
 def batch_delete_terms(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
-    # Check for terms with sections
-    terms_with_sections = (
-        db.query(Term.id)
-        .join(Section, Section.term_id == Term.id)
-        .filter(Term.id.in_(payload.ids))
-        .distinct()
-        .all()
-    )
-    blocked_ids = {t.id for t in terms_with_sections}
-    if blocked_ids:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot delete {len(blocked_ids)} term(s) that have sections. Remove sections first.",
-        )
-    db.query(Term).filter(Term.id.in_(payload.ids)).delete(synchronize_session=False)
+    terms = db.query(Term).filter(Term.id.in_(payload.ids)).all()
+    for term in terms:
+        db.delete(term)
     db.commit()
 
 
@@ -77,12 +64,6 @@ def delete_term(term_id: int, db: Session = Depends(get_db)):
     term = db.query(Term).filter(Term.id == term_id).first()
     if not term:
         raise HTTPException(status_code=404, detail="Term not found")
-    section_count = db.query(Section).filter(Section.term_id == term_id).count()
-    if section_count > 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot delete term with {section_count} sections. Remove sections first.",
-        )
     db.delete(term)
     db.commit()
 

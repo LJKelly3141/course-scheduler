@@ -24,5 +24,5 @@ class Term(Base):
     end_date: Mapped[str] = mapped_column(Date)
     status: Mapped[TermStatus] = mapped_column(Enum(TermStatus), default=TermStatus.draft)
 
-    sections = relationship("Section", back_populates="term")
-    instructor_availabilities = relationship("InstructorAvailability", back_populates="term")
+    sections = relationship("Section", back_populates="term", cascade="all, delete-orphan")
+    instructor_availabilities = relationship("InstructorAvailability", back_populates="term", cascade="all, delete-orphan")

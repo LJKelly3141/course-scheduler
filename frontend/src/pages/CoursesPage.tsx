@@ -34,21 +34,27 @@ export function CoursesPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["sections"] }); setSectionForm({ enrollment_cap: 30, modality: "in_person" }); },
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["courses"] });
+    queryClient.invalidateQueries({ queryKey: ["sections"] });
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["validation"] });
+  };
+
   const deleteCourseMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/courses/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["courses"] }),
+    onSettled: invalidateAll,
   });
 
   const deleteSectionMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/sections/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sections"] }),
+    onSettled: invalidateAll,
   });
 
   const batchDeleteMutation = useMutation({
     mutationFn: (ids: number[]) => api.post("/courses/batch-delete", { ids }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["courses"] });
-      queryClient.invalidateQueries({ queryKey: ["sections"] });
+    onSettled: () => {
+      invalidateAll();
       setSelectedIds(new Set());
     },
   });

@@ -527,6 +527,7 @@ async def import_schedule(
 
             modality_val = Modality.online if row["modality"] == "online" else Modality.in_person
             has_schedule = row.get("days") is not None
+            is_online = modality_val == Modality.online
 
             section = Section(
                 course_id=course.id,
@@ -534,7 +535,8 @@ async def import_schedule(
                 section_number=row["section_number"],
                 enrollment_cap=30,
                 modality=modality_val,
-                status=SectionStatus.scheduled if has_schedule else SectionStatus.unscheduled,
+                status=SectionStatus.scheduled if (has_schedule or is_online) else SectionStatus.unscheduled,
+                instructor_id=instructor.id if instructor else None,
             )
             db.add(section)
             db.flush()

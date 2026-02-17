@@ -5,6 +5,35 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** A palette of visually distinct colors for schedule entities (white text readable on all) */
+export const ENTITY_COLORS = [
+  "#3b82f6", // blue
+  "#22c55e", // green
+  "#f97316", // orange
+  "#a855f7", // purple
+  "#14b8a6", // teal
+  "#dc2626", // red
+  "#ec4899", // pink
+  "#ca8a04", // amber
+  "#6366f1", // indigo
+  "#65a30d", // lime
+  "#06b6d4", // cyan
+  "#f43f5e", // rose
+  "#8b5cf6", // violet
+  "#d946ef", // fuchsia
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+];
+
+/** Given ordered unique IDs, returns a map from ID → hex color */
+export function buildColorMap(ids: (number | string)[]): Map<number | string, string> {
+  const map = new Map<number | string, string>();
+  ids.forEach((id, i) => {
+    map.set(id, ENTITY_COLORS[i % ENTITY_COLORS.length]);
+  });
+  return map;
+}
+
 export function getLevelColor(courseNumber: string): string {
   const level = Math.floor(parseInt(courseNumber) / 100) * 100;
   const colors: Record<number, string> = {
@@ -16,6 +45,20 @@ export function getLevelColor(courseNumber: string): string {
     700: "bg-level-700",
   };
   return colors[level] || "bg-gray-400";
+}
+
+/** Returns hex color for a course level */
+export function getLevelHexColor(courseNumber: string): string {
+  const level = Math.floor(parseInt(courseNumber) / 100) * 100;
+  const colors: Record<number, string> = {
+    100: "#3b82f6",
+    200: "#22c55e",
+    300: "#f97316",
+    400: "#a855f7",
+    600: "#14b8a6",
+    700: "#dc2626",
+  };
+  return colors[level] || "#9ca3af";
 }
 
 export function getLevelBorderColor(courseNumber: string): string {

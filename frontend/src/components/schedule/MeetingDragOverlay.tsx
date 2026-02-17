@@ -3,17 +3,19 @@ import { cn, getLevelColor } from "../../lib/utils";
 
 interface Props {
   meeting: Meeting;
+  bgColor?: string;
 }
 
-export function MeetingDragOverlay({ meeting }: Props) {
+export function MeetingDragOverlay({ meeting, bgColor }: Props) {
   const courseNum = meeting.section?.course?.course_number ?? "";
 
   return (
     <div
+      style={bgColor ? { backgroundColor: bgColor } : undefined}
       className={cn(
         "rounded px-1.5 py-1 text-white text-[11px] leading-tight w-[130px]",
         "shadow-lg scale-105 opacity-90",
-        getLevelColor(courseNum)
+        !bgColor && getLevelColor(courseNum)
       )}
     >
       <div className="font-semibold">

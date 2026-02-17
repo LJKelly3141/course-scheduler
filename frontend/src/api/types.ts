@@ -57,7 +57,9 @@ export interface Section {
   enrollment_cap: number;
   modality: string;
   status: string;
+  instructor_id: number | null;
   course?: Course;
+  instructor?: Instructor;
 }
 
 export interface TimeBlock {

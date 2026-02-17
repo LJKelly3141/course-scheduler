@@ -65,8 +65,9 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     )
 
     # --- Credit overload check ---
-    # Group meetings by instructor, sum credits from their sections' courses
-    instructor_credits: dict[int, float] = defaultdict(float)
+    # Group meetings by instructor, sum credits from their sections' courses.
+    # Also include online async sections assigned directly to instructors
+    # (which have no meetings).
     instructor_meeting_ids: dict[int, list[int]] = defaultdict(list)
     instructor_objects: dict[int, Instructor] = {}
 
@@ -75,17 +76,32 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
             continue
         if m.instructor is not None:
             instructor_objects[m.instructor_id] = m.instructor
-        if m.section and m.section.course:
-            # Only count credits once per section (not per meeting)
-            pass
 
-    # Gather unique section-instructor pairs to avoid double-counting credits
-    # when a section has multiple meetings (e.g., lecture + lab)
+    # Gather unique section-instructor pairs from meetings
     instructor_sections: dict[int, set[int]] = defaultdict(set)
     for m in meetings:
         if m.instructor_id is not None and m.section_id is not None:
             instructor_meeting_ids[m.instructor_id].append(m.id)
             instructor_sections[m.instructor_id].add(m.section_id)
+
+    # Also include sections assigned directly to instructors (online async)
+    direct_sections = (
+        db.query(Section)
+        .options(joinedload(Section.course))
+        .filter(
+            Section.term_id == term_id,
+            Section.instructor_id.isnot(None),
+        )
+        .all()
+    )
+    for s in direct_sections:
+        if s.instructor_id is not None:
+            instructor_sections[s.instructor_id].add(s.id)
+            # Load instructor object if not already known from meetings
+            if s.instructor_id not in instructor_objects:
+                inst = db.query(Instructor).filter(Instructor.id == s.instructor_id).first()
+                if inst:
+                    instructor_objects[s.instructor_id] = inst
 
     for instructor_id, section_ids in instructor_sections.items():
         total_credits = 0

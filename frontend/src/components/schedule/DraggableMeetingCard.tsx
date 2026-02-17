@@ -6,6 +6,7 @@ interface Props {
   meeting: Meeting;
   day: string;
   hasConflict: boolean;
+  bgColor?: string;
   activeDragMeetingId: number | null;
   popoverOpen: boolean;
   onTogglePopover: () => void;
@@ -18,6 +19,7 @@ export function DraggableMeetingCard({
   meeting,
   day,
   hasConflict,
+  bgColor,
   activeDragMeetingId,
   popoverOpen,
   onTogglePopover,
@@ -38,20 +40,24 @@ export function DraggableMeetingCard({
   const durationMin = timeToMinutes(meeting.end_time) - timeToMinutes(meeting.start_time);
   const isCompact = durationMin <= 50;
 
+  const baseStyle: React.CSSProperties = bgColor
+    ? { ...style, backgroundColor: bgColor, pointerEvents: "auto" }
+    : { ...style, pointerEvents: "auto" };
+
   const dragStyle = transform
-    ? { ...style, transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
-    : style;
+    ? { ...baseStyle, transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
+    : baseStyle;
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      style={{ ...dragStyle, pointerEvents: "auto" }}
+      style={dragStyle}
       onClick={onTogglePopover}
       className={cn(
         "absolute rounded px-1.5 py-0.5 text-white text-[11px] leading-tight overflow-hidden",
-        getLevelColor(courseNum),
+        !bgColor && getLevelColor(courseNum),
         hasConflict && "ring-2 ring-red-500",
         isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         isBeingDragged && "opacity-40"

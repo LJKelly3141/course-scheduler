@@ -10,4 +10,4 @@ class Building(Base):
     name: Mapped[str] = mapped_column(String(100))
     abbreviation: Mapped[str] = mapped_column(String(10))
 
-    rooms = relationship("Room", back_populates="building")
+    rooms = relationship("Room", back_populates="building", cascade="all, delete-orphan")

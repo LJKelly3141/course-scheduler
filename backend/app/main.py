@@ -15,7 +15,7 @@ from app.models import Base
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="UWRF Course Scheduler", version="0.1.0")
+app = FastAPI(title="UWRF Course Scheduler", version="0.1.0", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,

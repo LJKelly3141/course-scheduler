@@ -39,15 +39,21 @@ export function RoomsPage() {
     },
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["validation"] });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/rooms/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["rooms"] }),
+    onSettled: invalidateAll,
   });
 
   const batchDeleteMutation = useMutation({
     mutationFn: (ids: number[]) => api.post("/rooms/batch-delete", { ids }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    onSettled: () => {
+      invalidateAll();
       setSelectedIds(new Set());
     },
   });
