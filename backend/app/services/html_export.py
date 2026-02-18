@@ -239,10 +239,10 @@ def save_to_directory(db: Session, term_id: int) -> str:
 def push_to_github(db: Session, term_id: int) -> dict:
     """Push HTML export to a GitHub repo via the Contents API. Returns pages_url + filename."""
     repo_url = _get_setting(db, "github_repo_url")
-    token = _get_setting(db, "github_token")
+    token = os.environ.get("GITHUB_TOKEN", "")
 
     if not repo_url or not token:
-        raise ValueError("GitHub repo URL and token must be configured in Settings.")
+        raise ValueError("GitHub not configured. Use the GitHub Setup wizard in Settings.")
 
     # Parse owner/repo from URL like https://github.com/owner/repo
     match = re.search(r"github\.com[/:]([^/]+)/([^/.]+)", repo_url)

@@ -5,23 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** A palette of visually distinct accent colors for schedule entities */
+/** A palette of visually distinct accent colors for schedule entities.
+ *  Ordered to maximize hue distance between adjacent colors. */
 export const ENTITY_COLORS = [
-  "#4F46E5", // indigo
-  "#0D9488", // teal
-  "#E11D48", // rose
-  "#7C3AED", // violet
   "#2563EB", // blue
-  "#EA580C", // orange
-  "#059669", // emerald
-  "#DB2777", // pink
-  "#0891B2", // cyan
-  "#D97706", // amber
-  "#9333EA", // purple
-  "#16A34A", // green
   "#DC2626", // red
-  "#0284C7", // sky
-  "#6D28D9", // violet-dark
+  "#059669", // emerald
+  "#9333EA", // purple
+  "#EA580C", // orange
+  "#0891B2", // cyan
+  "#DB2777", // pink
+  "#2D6A4F", // forest
+  "#D97706", // amber
+  "#4F46E5", // indigo
+  "#16A34A", // green
+  "#BE185D", // magenta
+  "#0D9488", // teal
+  "#B45309", // brown
+  "#7C3AED", // violet
   "#64748B", // slate
 ];
 

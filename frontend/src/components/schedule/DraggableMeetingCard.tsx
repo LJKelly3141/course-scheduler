@@ -62,7 +62,6 @@ export function DraggableMeetingCard({
       onClick={onTogglePopover}
       className={cn(
         "absolute rounded-md px-1.5 py-0.5 text-[11px] leading-tight overflow-hidden",
-        hasConflict && "ring-2 ring-red-500",
         isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         isBeingDragged && "opacity-40"
       )}

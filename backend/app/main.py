@@ -3,6 +3,13 @@ from __future__ import annotations
 import logging
 import os
 
+from dotenv import load_dotenv
+
+# Load .env from the backend directory
+_env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+if os.path.isfile(_env_path):
+    load_dotenv(_env_path, override=True)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
