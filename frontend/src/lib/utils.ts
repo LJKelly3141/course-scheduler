@@ -5,24 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** A palette of visually distinct colors for schedule entities (white text readable on all) */
+/** A palette of visually distinct accent colors for schedule entities */
 export const ENTITY_COLORS = [
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#f97316", // orange
-  "#a855f7", // purple
-  "#14b8a6", // teal
-  "#dc2626", // red
-  "#ec4899", // pink
-  "#ca8a04", // amber
-  "#6366f1", // indigo
-  "#65a30d", // lime
-  "#06b6d4", // cyan
-  "#f43f5e", // rose
-  "#8b5cf6", // violet
-  "#d946ef", // fuchsia
-  "#0ea5e9", // sky
-  "#10b981", // emerald
+  "#4F46E5", // indigo
+  "#0D9488", // teal
+  "#E11D48", // rose
+  "#7C3AED", // violet
+  "#2563EB", // blue
+  "#EA580C", // orange
+  "#059669", // emerald
+  "#DB2777", // pink
+  "#0891B2", // cyan
+  "#D97706", // amber
+  "#9333EA", // purple
+  "#16A34A", // green
+  "#DC2626", // red
+  "#0284C7", // sky
+  "#6D28D9", // violet-dark
+  "#64748B", // slate
 ];
 
 /** Given ordered unique IDs, returns a map from ID → hex color */
@@ -34,44 +34,19 @@ export function buildColorMap(ids: (number | string)[]): Map<number | string, st
   return map;
 }
 
-export function getLevelColor(courseNumber: string): string {
-  const level = Math.floor(parseInt(courseNumber) / 100) * 100;
-  const colors: Record<number, string> = {
-    100: "bg-level-100",
-    200: "bg-level-200",
-    300: "bg-level-300",
-    400: "bg-level-400",
-    600: "bg-level-600",
-    700: "bg-level-700",
-  };
-  return colors[level] || "bg-gray-400";
-}
-
-/** Returns hex color for a course level */
+/** Returns hex accent color for a course level */
 export function getLevelHexColor(courseNumber: string): string {
   const level = Math.floor(parseInt(courseNumber) / 100) * 100;
   const colors: Record<number, string> = {
-    100: "#3b82f6",
-    200: "#22c55e",
-    300: "#f97316",
-    400: "#a855f7",
-    600: "#14b8a6",
-    700: "#dc2626",
+    100: "#2563EB", // blue
+    200: "#0891B2", // cyan
+    300: "#059669", // emerald
+    400: "#7C3AED", // violet
+    500: "#EA580C", // orange
+    600: "#DB2777", // pink
+    700: "#E11D48", // rose
   };
-  return colors[level] || "#9ca3af";
-}
-
-export function getLevelBorderColor(courseNumber: string): string {
-  const level = Math.floor(parseInt(courseNumber) / 100) * 100;
-  const colors: Record<number, string> = {
-    100: "border-level-100",
-    200: "border-level-200",
-    300: "border-level-300",
-    400: "border-level-400",
-    600: "border-level-600",
-    700: "border-level-700",
-  };
-  return colors[level] || "border-gray-400";
+  return colors[level] || "#64748B";
 }
 
 export function formatTime(time: string): string {

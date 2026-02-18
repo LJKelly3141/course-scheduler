@@ -1,5 +1,5 @@
 import type { Meeting } from "../../api/types";
-import { cn, getLevelColor } from "../../lib/utils";
+import { getLevelHexColor } from "../../lib/utils";
 
 interface Props {
   meeting: Meeting;
@@ -8,21 +8,21 @@ interface Props {
 
 export function MeetingDragOverlay({ meeting, bgColor }: Props) {
   const courseNum = meeting.section?.course?.course_number ?? "";
+  const accentColor = bgColor || getLevelHexColor(courseNum);
 
   return (
     <div
-      style={bgColor ? { backgroundColor: bgColor } : undefined}
-      className={cn(
-        "rounded px-1.5 py-1 text-white text-[11px] leading-tight w-[130px]",
-        "shadow-lg scale-105 opacity-90",
-        !bgColor && getLevelColor(courseNum)
-      )}
+      style={{
+        backgroundColor: `${accentColor}18`,
+        borderLeft: `3px solid ${accentColor}`,
+      }}
+      className="rounded-md px-1.5 py-1 text-[11px] leading-tight w-[130px] shadow-lg scale-105 opacity-95"
     >
-      <div className="font-semibold">
+      <div className="font-semibold text-slate-800">
         {meeting.section?.course?.department_code} {courseNum}-{meeting.section?.section_number}
       </div>
-      <div className="opacity-90">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
-      <div className="opacity-80">
+      <div className="text-slate-500">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
+      <div className="text-slate-400">
         {meeting.room ? `${meeting.room.building?.abbreviation} ${meeting.room.room_number}` : "Online"}
       </div>
     </div>

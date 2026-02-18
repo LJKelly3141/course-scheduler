@@ -20,6 +20,8 @@ export function SchedulePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
 
   const { data: meetings = [] } = useQuery({
     queryKey: ["meetings", selectedTerm?.id],
@@ -151,13 +153,86 @@ export function SchedulePage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Schedule — {selectedTerm.name}</h2>
-        <button
-          onClick={() => { setEditingMeeting(null); setDialogOpen(true); }}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-        >
-          + Add Meeting
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className="border border-border bg-white px-4 py-2 rounded-md text-sm font-medium hover:bg-accent"
+            >
+              Export HTML
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-border rounded-lg shadow-lg z-50 py-1">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                  onClick={async () => {
+                    setExportMenuOpen(false);
+                    try {
+                      const res = await fetch(`/api/terms/${selectedTerm.id}/export/html`);
+                      if (!res.ok) throw new Error("Download failed");
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `schedule-${selectedTerm.id}.html`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      setExportStatus("Downloaded.");
+                    } catch (e: unknown) {
+                      setExportStatus(`Error: ${e instanceof Error ? e.message : "Unknown"}`);
+                    }
+                    setTimeout(() => setExportStatus(null), 4000);
+                  }}
+                >
+                  Download HTML
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                  onClick={async () => {
+                    setExportMenuOpen(false);
+                    try {
+                      const res = await api.post<{ filepath: string }>(`/terms/${selectedTerm.id}/export/html/save`);
+                      setExportStatus(`Saved to ${res.filepath}`);
+                    } catch (e: unknown) {
+                      setExportStatus(`Error: ${e instanceof Error ? e.message : "Unknown"}`);
+                    }
+                    setTimeout(() => setExportStatus(null), 6000);
+                  }}
+                >
+                  Save to Local Directory
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                  onClick={async () => {
+                    setExportMenuOpen(false);
+                    try {
+                      const res = await api.post<{ pages_url: string; filename: string }>(`/terms/${selectedTerm.id}/export/html/github`);
+                      setExportStatus(`Published: ${res.pages_url}`);
+                    } catch (e: unknown) {
+                      setExportStatus(`Error: ${e instanceof Error ? e.message : "Unknown"}`);
+                    }
+                    setTimeout(() => setExportStatus(null), 8000);
+                  }}
+                >
+                  Push to GitHub Pages
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => { setEditingMeeting(null); setDialogOpen(true); }}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+          >
+            + Add Meeting
+          </button>
+        </div>
       </div>
+
+      {exportStatus && (
+        <div className="bg-accent/50 border border-border rounded-md px-3 py-2 text-sm">
+          {exportStatus}
+        </div>
+      )}
 
       {/* View mode tabs + selector */}
       <div className="flex items-center gap-4 flex-wrap">
@@ -238,24 +313,30 @@ export function SchedulePage() {
 
       {/* Color legend */}
       <div className="flex flex-wrap gap-2 text-xs">
-        {viewMode === "room" && rooms.map((r) => (
-          <span key={r.id} className="inline-flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: roomColorMap.get(r.id) }} />
-            {r.building?.abbreviation} {r.room_number}
-          </span>
-        ))}
-        {viewMode === "instructor" && instructors.filter(i => i.is_active).map((i) => (
-          <span key={i.id} className="inline-flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: instructorColorMap.get(i.id) }} />
-            {i.name}
-          </span>
-        ))}
-        {viewMode === "level" && ["100", "200", "300", "400", "600", "700"].map((l) => (
-          <span key={l} className="inline-flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: getLevelHexColor(l) }} />
-            {l}-level
-          </span>
-        ))}
+        {viewMode === "room" && rooms.map((r) => {
+          const c = roomColorMap.get(r.id);
+          return (
+            <span key={r.id} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-slate-700" style={{ backgroundColor: `${c}14`, borderLeft: `3px solid ${c}` }}>
+              {r.building?.abbreviation} {r.room_number}
+            </span>
+          );
+        })}
+        {viewMode === "instructor" && instructors.filter(i => i.is_active).map((i) => {
+          const c = instructorColorMap.get(i.id);
+          return (
+            <span key={i.id} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-slate-700" style={{ backgroundColor: `${c}14`, borderLeft: `3px solid ${c}` }}>
+              {i.name}
+            </span>
+          );
+        })}
+        {viewMode === "level" && ["100", "200", "300", "400", "600", "700"].map((l) => {
+          const c = getLevelHexColor(l);
+          return (
+            <span key={l} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-slate-700" style={{ backgroundColor: `${c}14`, borderLeft: `3px solid ${c}` }}>
+              {l}-level
+            </span>
+          );
+        })}
       </div>
 
       <div className="flex gap-4">
@@ -315,8 +396,8 @@ export function SchedulePage() {
                   <tr key={s.id} className="border-b border-border/50">
                     <td className="py-2 pr-4">
                       <span
-                        className="inline-block w-3 h-3 rounded"
-                        style={{ backgroundColor: rowColor }}
+                        className="inline-block w-3 h-3 rounded-sm"
+                        style={{ backgroundColor: `${rowColor}20`, borderLeft: `2px solid ${rowColor}` }}
                       />
                     </td>
                     <td className="py-2 pr-4 font-medium">

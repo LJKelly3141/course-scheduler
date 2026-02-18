@@ -8,6 +8,7 @@ from app.models.section import Section
 from app.models.meeting import Meeting
 from app.models.time_block import TimeBlock
 from app.models.user import User
+from app.models.settings import AppSetting
 
 __all__ = [
     "Base",
@@ -21,4 +22,5 @@ __all__ = [
     "Meeting",
     "TimeBlock",
     "User",
+    "AppSetting",
 ]

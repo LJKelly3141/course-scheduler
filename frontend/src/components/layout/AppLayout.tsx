@@ -11,6 +11,7 @@ const navItems = [
   { to: "/courses", label: "Courses" },
   { to: "/terms", label: "Terms" },
   { to: "/import", label: "Import" },
+  { to: "/settings", label: "Settings" },
 ];
 
 export function AppLayout() {

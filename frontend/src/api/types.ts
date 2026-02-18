@@ -111,3 +111,8 @@ export interface LoginResponse {
   token_type: string;
   user: User;
 }
+
+export interface AppSetting {
+  key: string;
+  value: string;
+}

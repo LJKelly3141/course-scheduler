@@ -259,3 +259,14 @@ class ImportResult(BaseModel):
     created: int = 0
     updated: int = 0
     errors: list[str] = []
+
+
+# --- AppSetting ---
+class AppSettingRead(BaseModel):
+    key: str
+    value: str
+    model_config = {"from_attributes": True}
+
+class AppSettingWrite(BaseModel):
+    key: str
+    value: str
