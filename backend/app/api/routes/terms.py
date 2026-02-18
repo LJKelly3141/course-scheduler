@@ -1,7 +1,13 @@
+from __future__ import annotations
+
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.dismissed_warning import DismissedWarning
 from app.models.term import Term
 from app.schemas.schemas import BatchDeleteRequest, TermCreate, TermRead, TermUpdate, ValidationResult
 from app.services.term_validation import finalize_term, validate_term
@@ -90,3 +96,36 @@ def finalize_term_endpoint(term_id: int, db: Session = Depends(get_db)):
     if not term:
         raise HTTPException(status_code=404, detail="Term not found")
     return finalize_term(db, term_id)
+
+
+# --- Dismissed warnings ---
+
+class DismissWarningRequest(BaseModel):
+    warning_key: str
+
+
+@router.get("/{term_id}/dismissed-warnings", response_model=List[str])
+def list_dismissed_warnings(term_id: int, db: Session = Depends(get_db)):
+    rows = db.query(DismissedWarning).filter(DismissedWarning.term_id == term_id).all()
+    return [r.warning_key for r in rows]
+
+
+@router.post("/{term_id}/dismissed-warnings", status_code=201)
+def dismiss_warning(term_id: int, payload: DismissWarningRequest, db: Session = Depends(get_db)):
+    existing = (
+        db.query(DismissedWarning)
+        .filter(DismissedWarning.term_id == term_id, DismissedWarning.warning_key == payload.warning_key)
+        .first()
+    )
+    if not existing:
+        db.add(DismissedWarning(term_id=term_id, warning_key=payload.warning_key))
+        db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{term_id}/dismissed-warnings/{warning_key}", status_code=204)
+def undismiss_warning(term_id: int, warning_key: str, db: Session = Depends(get_db)):
+    db.query(DismissedWarning).filter(
+        DismissedWarning.term_id == term_id, DismissedWarning.warning_key == warning_key
+    ).delete()
+    db.commit()

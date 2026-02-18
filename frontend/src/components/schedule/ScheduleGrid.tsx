@@ -29,10 +29,9 @@ import { MeetingDragOverlay } from "./MeetingDragOverlay";
 interface Props {
   meetings: Meeting[];
   timeBlocks: TimeBlock[];
-  conflictMeetingIds: Set<number>;
   colorFn?: (meeting: Meeting) => string;
+  onDetail: (meeting: Meeting) => void;
   onEdit: (meeting: Meeting) => void;
-  onDelete: (id: number) => void;
   onMove?: (meetingId: number, targetBlock: TimeBlock) => void;
   isMoving?: boolean;
 }
@@ -118,14 +117,12 @@ function computeOverlapColumns(dayMeetings: Meeting[]): Map<number, OverlapInfo>
 export function ScheduleGrid({
   meetings,
   timeBlocks,
-  conflictMeetingIds,
   colorFn,
+  onDetail,
   onEdit,
-  onDelete,
   onMove,
   isMoving,
 }: Props) {
-  const [popoverId, setPopoverId] = useState<number | null>(null);
   const [activeDragMeeting, setActiveDragMeeting] = useState<Meeting | null>(null);
 
   const sensors = useSensors(
@@ -143,7 +140,6 @@ export function ScheduleGrid({
   function handleDragStart(event: DragStartEvent) {
     const { meeting } = event.active.data.current as { meeting: Meeting };
     setActiveDragMeeting(meeting);
-    setPopoverId(null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -276,13 +272,10 @@ export function ScheduleGrid({
                       key={m.id}
                       meeting={m}
                       day={day}
-                      hasConflict={conflictMeetingIds.has(m.id)}
                       bgColor={colorFn?.(m)}
                       activeDragMeetingId={activeDragMeeting?.id ?? null}
-                      popoverOpen={popoverId === m.id}
-                      onTogglePopover={() => setPopoverId(popoverId === m.id ? null : m.id)}
-                      onEdit={(meeting) => { setPopoverId(null); onEdit(meeting); }}
-                      onDelete={(id) => { setPopoverId(null); onDelete(id); }}
+                      onDetail={onDetail}
+                      onEdit={onEdit}
                       style={{
                         top: `${topPx}px`,
                         height: `${heightPx}px`,

@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext } from "react-router-dom";
 import { api } from "../api/client";
-import type { Course, Section, Term } from "../api/types";
+import type { Course, Section, Meeting, Room, Instructor, TimeBlock, Term } from "../api/types";
+import { MeetingDialog } from "../components/meetings/MeetingDialog";
+import { formatTime, parseDaysOfWeek } from "../lib/utils";
 
 export function CoursesPage() {
   const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
@@ -12,6 +14,9 @@ export function CoursesPage() {
   const [form, setForm] = useState<Partial<Course>>({ credits: 3 });
   const [sectionForm, setSectionForm] = useState<Partial<Section>>({ enrollment_cap: 30, modality: "in_person" });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [schedulingSection, setSchedulingSection] = useState<Section | null>(null);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
 
   const { data: courses = [] } = useQuery({
     queryKey: ["courses"],
@@ -24,14 +29,25 @@ export function CoursesPage() {
     enabled: !!selectedTerm,
   });
 
-  const createCourseMutation = useMutation({
-    mutationFn: (data: Partial<Course>) => api.post("/courses", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["courses"] }); setForm({ credits: 3 }); setShowAdd(false); },
+  const { data: instructors = [] } = useQuery({
+    queryKey: ["instructors"],
+    queryFn: () => api.get<Instructor[]>("/instructors"),
   });
 
-  const createSectionMutation = useMutation({
-    mutationFn: (data: Partial<Section>) => api.post("/sections", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["sections"] }); setSectionForm({ enrollment_cap: 30, modality: "in_person" }); },
+  const { data: rooms = [] } = useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => api.get<Room[]>("/rooms"),
+  });
+
+  const { data: timeBlocks = [] } = useQuery({
+    queryKey: ["timeblocks"],
+    queryFn: () => api.get<TimeBlock[]>("/timeblocks"),
+  });
+
+  const { data: meetings = [] } = useQuery({
+    queryKey: ["meetings", selectedTerm?.id],
+    queryFn: () => api.get<Meeting[]>(`/terms/${selectedTerm!.id}/meetings`),
+    enabled: !!selectedTerm,
   });
 
   const invalidateAll = () => {
@@ -40,6 +56,25 @@ export function CoursesPage() {
     queryClient.invalidateQueries({ queryKey: ["meetings"] });
     queryClient.invalidateQueries({ queryKey: ["validation"] });
   };
+
+  const createCourseMutation = useMutation({
+    mutationFn: (data: Partial<Course>) => api.post("/courses", data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["courses"] }); setForm({ credits: 3 }); setShowAdd(false); },
+  });
+
+  const createSectionMutation = useMutation({
+    mutationFn: (data: Partial<Section>) => api.post("/sections", data),
+    onSuccess: () => {
+      invalidateAll();
+      setSectionForm({ enrollment_cap: 30, modality: "in_person" });
+    },
+  });
+
+  const updateSectionMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Section> }) =>
+      api.put(`/sections/${id}`, data),
+    onSettled: invalidateAll,
+  });
 
   const deleteCourseMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/courses/${id}`),
@@ -73,6 +108,23 @@ export function CoursesPage() {
     if (selectedIds.size === courses.length) setSelectedIds(new Set());
     else setSelectedIds(new Set(courses.map((c) => c.id)));
   };
+
+  /** Get meetings for a section */
+  function sectionMeetings(sectionId: number): Meeting[] {
+    return meetings.filter((m) => m.section_id === sectionId);
+  }
+
+  /** Format meeting summary: "MWF 9:00–9:50 AM, NH 301" */
+  function meetingSummary(m: Meeting): string {
+    const days = parseDaysOfWeek(m.days_of_week).join("");
+    const time = `${formatTime(m.start_time)}–${formatTime(m.end_time)}`;
+    const room = m.room
+      ? `${m.room.building?.abbreviation} ${m.room.room_number}`
+      : "Online";
+    return `${days} ${time}, ${room}`;
+  }
+
+  const activeInstructors = instructors.filter((i) => i.is_active);
 
   return (
     <div className="space-y-4">
@@ -165,18 +217,82 @@ export function CoursesPage() {
                     <tr key={`${course.id}-sections`}>
                       <td colSpan={8} className="px-8 py-3 bg-muted/20">
                         <div className="space-y-2">
-                          {courseSections.map((s) => (
-                            <div key={s.id} className="flex items-center gap-4 text-xs">
-                              <span>Section {s.section_number}</span>
-                              <span>Cap: {s.enrollment_cap}</span>
-                              <span className="capitalize">{s.modality.replace("_", " ")}</span>
-                              <span className={s.status === "unscheduled" ? "text-yellow-600" : "text-green-600"}>
-                                {s.status}
-                              </span>
-                              <button onClick={() => { if (confirm("Delete section?")) deleteSectionMutation.mutate(s.id); }}
-                                className="text-destructive hover:underline">Delete</button>
-                            </div>
-                          ))}
+                          {courseSections.map((s) => {
+                            const sMeetings = sectionMeetings(s.id);
+                            return (
+                              <div key={s.id} className="flex items-center gap-3 text-xs py-1">
+                                <span className="font-medium w-20">Sec {s.section_number}</span>
+                                <span className="text-muted-foreground w-14">Cap: {s.enrollment_cap}</span>
+                                <span className="capitalize text-muted-foreground w-16">{s.modality.replace("_", " ")}</span>
+
+                                {/* Instructor dropdown */}
+                                <select
+                                  className="border border-border rounded px-1.5 py-0.5 text-xs w-40"
+                                  value={s.instructor_id ?? ""}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value) || null;
+                                    updateSectionMutation.mutate({ id: s.id, data: { instructor_id: val } });
+                                  }}
+                                >
+                                  <option value="">TBD</option>
+                                  {activeInstructors.map((i) => (
+                                    <option key={i.id} value={i.id}>{i.name}</option>
+                                  ))}
+                                </select>
+
+                                {/* Meeting info or schedule button */}
+                                {sMeetings.length > 0 ? (
+                                  <span className="text-green-700 flex-1 truncate">
+                                    {sMeetings.map((m) => meetingSummary(m)).join(" | ")}
+                                  </span>
+                                ) : (
+                                  <span className="text-yellow-600 flex-1">Unscheduled</span>
+                                )}
+
+                                {/* Action buttons */}
+                                <div className="flex gap-2 shrink-0">
+                                  {selectedTerm && sMeetings.length === 0 && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSchedulingSection(s);
+                                        setEditingMeeting(null);
+                                        setMeetingDialogOpen(true);
+                                      }}
+                                      className="text-primary hover:underline"
+                                    >
+                                      Schedule
+                                    </button>
+                                  )}
+                                  {selectedTerm && sMeetings.length > 0 && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSchedulingSection(s);
+                                        setEditingMeeting(sMeetings[0]);
+                                        setMeetingDialogOpen(true);
+                                      }}
+                                      className="text-primary hover:underline"
+                                    >
+                                      Edit
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm("Delete section?")) deleteSectionMutation.mutate(s.id);
+                                    }}
+                                    className="text-destructive hover:underline"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Add section form */}
                           {selectedTerm && (
                             <div className="flex gap-2 items-center mt-2 pt-2 border-t border-border">
                               <input placeholder="Section #" className="border rounded px-2 py-1 text-xs w-20"
@@ -191,6 +307,17 @@ export function CoursesPage() {
                                 <option value="in_person">In Person</option>
                                 <option value="online">Online</option>
                                 <option value="hybrid">Hybrid</option>
+                              </select>
+                              <select className="border rounded px-2 py-1 text-xs w-40"
+                                value={sectionForm.instructor_id ?? ""}
+                                onChange={(e) => setSectionForm({
+                                  ...sectionForm,
+                                  instructor_id: Number(e.target.value) || undefined,
+                                })}>
+                                <option value="">Instructor (TBD)</option>
+                                {activeInstructors.map((i) => (
+                                  <option key={i.id} value={i.id}>{i.name}</option>
+                                ))}
                               </select>
                               <button onClick={() => createSectionMutation.mutate({
                                 ...sectionForm, course_id: course.id, term_id: selectedTerm.id
@@ -207,6 +334,25 @@ export function CoursesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Meeting dialog for scheduling/editing */}
+      {meetingDialogOpen && selectedTerm && schedulingSection && (
+        <MeetingDialog
+          termId={selectedTerm.id}
+          meeting={editingMeeting}
+          sections={editingMeeting ? sections : [schedulingSection]}
+          rooms={rooms}
+          instructors={instructors}
+          timeBlocks={timeBlocks}
+          onClose={() => { setMeetingDialogOpen(false); setSchedulingSection(null); setEditingMeeting(null); }}
+          onSaved={() => {
+            setMeetingDialogOpen(false);
+            setSchedulingSection(null);
+            setEditingMeeting(null);
+            invalidateAll();
+          }}
+        />
+      )}
     </div>
   );
 }

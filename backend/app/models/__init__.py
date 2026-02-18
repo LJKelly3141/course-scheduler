@@ -9,6 +9,7 @@ from app.models.meeting import Meeting
 from app.models.time_block import TimeBlock
 from app.models.user import User
 from app.models.settings import AppSetting
+from app.models.dismissed_warning import DismissedWarning
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "TimeBlock",
     "User",
     "AppSetting",
+    "DismissedWarning",
 ]

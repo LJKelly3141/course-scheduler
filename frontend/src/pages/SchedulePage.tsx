@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Term, Meeting, Room, Instructor, TimeBlock, Section, ValidationResult } from "../api/types";
 import { ScheduleGrid } from "../components/schedule/ScheduleGrid";
-import { ConflictSidebar } from "../components/conflicts/ConflictSidebar";
+import { MeetingDetailDialog } from "../components/schedule/MeetingDetailDialog";
+import { ConflictSidebar, warningKey } from "../components/conflicts/ConflictSidebar";
 import { MeetingDialog } from "../components/meetings/MeetingDialog";
 import { cn, parseDaysOfWeek, buildColorMap, getLevelHexColor } from "../lib/utils";
 
@@ -20,6 +21,7 @@ export function SchedulePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
 
@@ -54,6 +56,25 @@ export function SchedulePage() {
     queryKey: ["validation", selectedTerm?.id],
     queryFn: () => api.get<ValidationResult>(`/terms/${selectedTerm!.id}/validate`),
     enabled: !!selectedTerm,
+  });
+
+  const { data: dismissedKeys = [] } = useQuery({
+    queryKey: ["dismissed-warnings", selectedTerm?.id],
+    queryFn: () => api.get<string[]>(`/terms/${selectedTerm!.id}/dismissed-warnings`),
+    enabled: !!selectedTerm,
+  });
+  const dismissedSet = new Set(dismissedKeys);
+
+  const dismissMutation = useMutation({
+    mutationFn: (key: string) =>
+      api.post(`/terms/${selectedTerm!.id}/dismissed-warnings`, { warning_key: key }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["dismissed-warnings"] }),
+  });
+
+  const undismissMutation = useMutation({
+    mutationFn: (key: string) =>
+      api.delete(`/terms/${selectedTerm!.id}/dismissed-warnings/${encodeURIComponent(key)}`),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["dismissed-warnings"] }),
   });
 
   const invalidateSchedule = () => {
@@ -142,12 +163,10 @@ export function SchedulePage() {
     return getLevelHexColor(courseNum);
   };
 
-  const allConflicts = [
-    ...(validation?.hard_conflicts ?? []),
-    ...(validation?.soft_warnings ?? []),
-  ];
-
-  const conflictMeetingIds = new Set(allConflicts.flatMap((c) => c.meeting_ids));
+  const hardConflicts = validation?.hard_conflicts ?? [];
+  const softWarnings = validation?.soft_warnings ?? [];
+  const activeWarningCount = softWarnings.filter((w) => !dismissedSet.has(warningKey(w))).length;
+  const issueCount = hardConflicts.length + activeWarningCount;
 
   return (
     <div className="space-y-4">
@@ -303,9 +322,9 @@ export function SchedulePage() {
           className="ml-auto text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
         >
           Conflicts
-          {allConflicts.length > 0 && (
+          {issueCount > 0 && (
             <span className="px-1.5 py-0.5 bg-red-100 text-destructive rounded-full text-xs font-medium">
-              {allConflicts.length}
+              {issueCount}
             </span>
           )}
         </button>
@@ -344,10 +363,9 @@ export function SchedulePage() {
           <ScheduleGrid
             meetings={filteredMeetings}
             timeBlocks={timeBlocks}
-            conflictMeetingIds={conflictMeetingIds}
             colorFn={colorFn}
+            onDetail={(m) => setDetailMeeting(m)}
             onEdit={(m) => { setEditingMeeting(m); setDialogOpen(true); }}
-            onDelete={(id) => { if (confirm("Delete this meeting?")) deleteMutation.mutate(id); }}
             onMove={(meetingId, targetBlock) => moveMutation.mutate({ meetingId, targetBlock })}
             isMoving={moveMutation.isPending}
           />
@@ -355,8 +373,11 @@ export function SchedulePage() {
 
         {sidebarOpen && (
           <ConflictSidebar
-            conflicts={validation?.hard_conflicts ?? []}
-            warnings={validation?.soft_warnings ?? []}
+            conflicts={hardConflicts}
+            warnings={softWarnings}
+            dismissedKeys={dismissedSet}
+            onDismiss={(key) => dismissMutation.mutate(key)}
+            onUndismiss={(key) => undismissMutation.mutate(key)}
             onClose={() => setSidebarOpen(false)}
           />
         )}
@@ -416,6 +437,22 @@ export function SchedulePage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {detailMeeting && (
+        <MeetingDetailDialog
+          meeting={detailMeeting}
+          onClose={() => setDetailMeeting(null)}
+          onEdit={(m) => {
+            setDetailMeeting(null);
+            setEditingMeeting(m);
+            setDialogOpen(true);
+          }}
+          onDelete={(id) => {
+            setDetailMeeting(null);
+            deleteMutation.mutate(id);
+          }}
+        />
       )}
 
       {dialogOpen && (
