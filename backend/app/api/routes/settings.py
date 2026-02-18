@@ -125,6 +125,34 @@ def browse_directories(path: str = Query(default="")):
     return DirectoryListing(path=path, parent=parent, entries=entries)
 
 
+class CreateDirectoryRequest(BaseModel):
+    parent: str
+    name: str
+
+
+@router.post("/create-directory", response_model=DirectoryEntry)
+def create_directory(payload: CreateDirectoryRequest):
+    """Create a new subdirectory inside the given parent."""
+    parent = os.path.expanduser(payload.parent)
+    if not os.path.isdir(parent):
+        raise HTTPException(status_code=400, detail=f"Parent is not a directory: {parent}")
+
+    name = payload.name.strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid folder name")
+
+    full = os.path.join(parent, name)
+    if os.path.exists(full):
+        raise HTTPException(status_code=400, detail=f"'{name}' already exists")
+
+    try:
+        os.makedirs(full)
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    return DirectoryEntry(name=name, path=full, is_dir=True)
+
+
 # --- GitHub setup ---
 
 class GitHubSetupRequest(BaseModel):
