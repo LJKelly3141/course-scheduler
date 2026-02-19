@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppLayout } from "./components/layout/AppLayout";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -16,10 +16,13 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
 });
 
+const isFileProtocol = window.location.protocol === "file:";
+const Router = isFileProtocol ? HashRouter : BrowserRouter;
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<AppLayout />}>
@@ -35,7 +38,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </Router>
     </QueryClientProvider>
   );
 }

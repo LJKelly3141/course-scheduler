@@ -7,7 +7,7 @@
   "scripts": {
     "electron:dev": "electron .",
     "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && pyinstaller course_scheduler.spec --noconfirm",
+    "build:backend": "cd backend && ./venv/bin/pyinstaller course_scheduler.spec --noconfirm",
     "build:app": "npm run build:frontend && npm run build:backend && electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },

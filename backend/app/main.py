@@ -31,6 +31,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:8000",
         "app://.",              # Electron custom protocol
+        "null",                 # file:// origin (Electron production)
     ],
     allow_origin_regex=r"^(file://.*|http://localhost:\d+)$",
     allow_credentials=True,
