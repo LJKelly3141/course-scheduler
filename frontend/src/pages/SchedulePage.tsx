@@ -21,6 +21,7 @@ export function SchedulePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
@@ -387,7 +388,6 @@ export function SchedulePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="py-2 pr-4 w-6"></th>
                 <th className="py-2 pr-4">Course</th>
                 <th className="py-2 pr-4">Section</th>
                 <th className="py-2 pr-4">Title</th>
@@ -412,13 +412,17 @@ export function SchedulePage() {
                 }
 
                 return (
-                  <tr key={s.id} className="border-b border-border/50">
-                    <td className="py-2 pr-4">
-                      <span
-                        className="inline-block w-3 h-3 rounded-sm"
-                        style={{ backgroundColor: `${rowColor}20`, borderLeft: `2px solid ${rowColor}` }}
-                      />
-                    </td>
+                  <tr
+                    key={s.id}
+                    className="border-b border-border/50 cursor-pointer hover:opacity-80"
+                    style={{ backgroundColor: `${rowColor}14`, borderLeft: `3px solid ${rowColor}` }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setEditingSection(s);
+                      setEditingMeeting(null);
+                      setDialogOpen(true);
+                    }}
+                  >
                     <td className="py-2 pr-4 font-medium">
                       {s.course?.department_code} {courseNum}
                     </td>
@@ -457,14 +461,17 @@ export function SchedulePage() {
         <MeetingDialog
           termId={selectedTerm.id}
           meeting={editingMeeting}
+          section={editingSection ?? (editingMeeting ? sections.find((s) => s.id === editingMeeting.section_id) ?? null : null)}
           sections={sections}
           rooms={rooms}
           instructors={instructors}
           timeBlocks={timeBlocks}
-          onClose={() => { setDialogOpen(false); setEditingMeeting(null); }}
+          termType={selectedTerm.type}
+          onClose={() => { setDialogOpen(false); setEditingMeeting(null); setEditingSection(null); }}
           onSaved={() => {
             setDialogOpen(false);
             setEditingMeeting(null);
+            setEditingSection(null);
             queryClient.invalidateQueries({ queryKey: ["meetings"] });
             queryClient.invalidateQueries({ queryKey: ["validation"] });
             queryClient.invalidateQueries({ queryKey: ["sections"] });

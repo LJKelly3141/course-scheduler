@@ -10,6 +10,7 @@ from app.models.time_block import TimeBlock
 from app.models.user import User
 from app.models.settings import AppSetting
 from app.models.dismissed_warning import DismissedWarning
+from app.models.enrollment_record import EnrollmentRecord
 
 __all__ = [
     "Base",
@@ -25,4 +26,5 @@ __all__ = [
     "User",
     "AppSetting",
     "DismissedWarning",
+    "EnrollmentRecord",
 ]

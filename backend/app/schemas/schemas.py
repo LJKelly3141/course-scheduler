@@ -257,6 +257,14 @@ class InstructorMatch(BaseModel):
 class ScheduleImportPreview(ImportPreview):
     suggested_term: Optional[dict] = None
     instructor_matches: list[InstructorMatch] = []
+    file_headers: list[str] = []
+    column_mapping: dict = {}
+
+class ColumnDetectResponse(BaseModel):
+    file_headers: list[str] = []
+    column_mapping: dict = {}
+    canonical_columns: list[str] = []
+    warnings: list[str] = []
 
 class ImportResult(BaseModel):
     created: int = 0

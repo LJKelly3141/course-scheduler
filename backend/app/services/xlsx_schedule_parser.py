@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import difflib
-import io
 import json
 import re
 from datetime import date, datetime, time
 from typing import List, Optional, Tuple
 
-import openpyxl
+from app.services.xlsx_reader import (
+    read_xlsx_to_rows,
+    read_xlsx_headers,
+    match_columns,
+    SCHEDULE_ALIASES,
+)
 
 # Mapping from XLSX day abbreviations to internal day codes
 DAY_TOKENS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
@@ -21,7 +25,8 @@ DAY_MAP = {
     "Su": "U",
 }
 
-REQUIRED_COLUMNS = ["Class", "Course", "Section", "Days & Times", "Room", "Instructor"]
+# Only Course and Section are truly required; others are optional
+SCHEDULE_REQUIRED = ["Course", "Section"]
 
 
 def parse_days(days_str: str) -> List[str]:
@@ -182,6 +187,10 @@ def parse_xlsx_row(row_dict: dict, row_num: int) -> Tuple[Optional[dict], List[s
         return None, errors
 
     dept_code, course_number, title = parse_course(course_val)
+    # Use separate Title column if available and parse_course didn't extract one
+    title_col = str(row_dict.get("Title") or "").strip()
+    if title_col and not title:
+        title = title_col
     section_number, session = parse_section(section_val)
 
     # Days & Times
@@ -337,50 +346,54 @@ def find_instructor_matches(
     return results
 
 
-def read_xlsx_schedule(contents: bytes) -> Tuple[List[dict], List[str], Optional[dict]]:
-    """Read an XLSX schedule file and return (valid_rows, errors, suggested_term)."""
-    try:
-        wb = openpyxl.load_workbook(io.BytesIO(contents), read_only=True, data_only=True)
-    except Exception as exc:
-        return [], [f"Could not read XLSX file: {exc}"], None
+def detect_schedule_columns(contents: bytes) -> Tuple[List[str], dict, List[str]]:
+    """Detect column mapping for a schedule XLSX file.
 
-    ws = wb.active
-    if ws is None:
-        return [], ["XLSX file has no active sheet"], None
+    Returns (file_headers, auto_mapping, warnings) where:
+      - file_headers: the actual column headers from the file
+      - auto_mapping: dict of { actual_header -> canonical_name }
+      - warnings: informational messages
+    """
+    headers, errors = read_xlsx_headers(contents)
+    if errors:
+        return [], {}, errors
+    mapping, warnings, match_errors = match_columns(headers, SCHEDULE_ALIASES)
+    return headers, mapping, warnings + match_errors
 
-    rows_iter = ws.iter_rows(values_only=True)
 
-    # Read header row
-    try:
-        header = next(rows_iter)
-    except StopIteration:
-        return [], ["XLSX file is empty"], None
+def read_xlsx_schedule(
+    contents: bytes,
+    column_mapping_override: Optional[dict] = None,
+) -> Tuple[List[dict], List[str], Optional[dict]]:
+    """Read an XLSX schedule file and return (valid_rows, errors, suggested_term).
 
-    columns = [str(c).strip() if c else "" for c in header]
+    Uses the generic XLSX reader with smart column detection, then applies
+    schedule-specific row parsing. If column_mapping_override is provided,
+    it is used instead of auto-detection.
+    """
+    raw_rows, file_messages = read_xlsx_to_rows(
+        contents, SCHEDULE_ALIASES, SCHEDULE_REQUIRED,
+        column_mapping_override=column_mapping_override,
+    )
 
-    # Validate required columns
-    missing = [col for col in REQUIRED_COLUMNS if col not in columns]
-    if missing:
-        return [], [f"Missing required columns: {', '.join(missing)}"], None
+    # If the reader returned blocking errors (missing columns), bail out
+    blocking = [m for m in file_messages if m.startswith("Missing required")]
+    if blocking:
+        return [], blocking, None
 
-    # Parse data rows
+    # Non-blocking messages (fuzzy match warnings, ignored columns)
+    non_blocking = [m for m in file_messages if not m.startswith("Missing required")]
+
+    # Parse each raw row through schedule-specific parsing
     valid_rows: List[dict] = []
     all_errors: List[str] = []
 
-    for row_num, row_values in enumerate(rows_iter, start=2):
-        # Skip entirely empty rows
-        if all(v is None or str(v).strip() == "" for v in row_values):
-            continue
-
-        row_dict = {columns[i]: row_values[i] for i in range(min(len(columns), len(row_values)))}
-
-        parsed, errors = parse_xlsx_row(row_dict, row_num)
+    for row_num, raw_row in enumerate(raw_rows, start=2):
+        parsed, errors = parse_xlsx_row(raw_row, row_num)
         if errors:
             all_errors.extend(errors)
         elif parsed:
             valid_rows.append(parsed)
-
-    wb.close()
 
     # Suggest term from meeting dates
     suggested_term = suggest_term_from_dates(valid_rows)
@@ -391,4 +404,4 @@ def read_xlsx_schedule(contents: bytes) -> Tuple[List[dict], List[str], Optional
         clean = {k: v for k, v in row.items() if not k.startswith("_")}
         clean_rows.append(clean)
 
-    return clean_rows, all_errors, suggested_term
+    return clean_rows, all_errors + non_blocking, suggested_term

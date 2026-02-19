@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import (
     terms, buildings, rooms, instructors, courses, sections,
     meetings, time_blocks, auth, import_export, suggestions,
-    settings, export_html,
+    settings, export_html, analytics,
 )
 from app.database import engine, SessionLocal
 from app.models import Base
@@ -51,6 +51,7 @@ app.include_router(import_export.router, prefix="/api", tags=["import-export"])
 app.include_router(suggestions.router, prefix="/api/suggestions", tags=["suggestions"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(export_html.router, prefix="/api", tags=["export-html"])
+app.include_router(analytics.router, prefix="/api", tags=["analytics"])
 
 
 @app.on_event("startup")

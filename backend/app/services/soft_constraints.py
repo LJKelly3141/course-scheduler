@@ -42,6 +42,47 @@ def _times_overlap(start_a: time, end_a: time, start_b: time, end_b: time) -> bo
     return start_a < end_b and start_b < end_a
 
 
+def _fmt_time(t: time) -> str:
+    """Format a time object as '9:00 AM'."""
+    hour = t.hour
+    minute = t.minute
+    ampm = "AM" if hour < 12 else "PM"
+    h12 = hour if hour <= 12 else hour - 12
+    if h12 == 0:
+        h12 = 12
+    return f"{h12}:{minute:02d} {ampm}"
+
+
+def _meeting_label(m: Meeting) -> str:
+    """Build a human-readable label for a meeting, e.g. 'ECON 201-01 (MWF 10:00-10:50 AM)'."""
+    parts: list[str] = []
+    section = m.section
+    if section and section.course:
+        parts.append(
+            f"{section.course.department_code} {section.course.course_number}"
+            f"-{section.section_number}"
+        )
+    else:
+        parts.append(f"Meeting {m.id}")
+
+    time_parts: list[str] = []
+    if m.days_of_week:
+        days = _parse_days(m.days_of_week)
+        if days:
+            time_parts.append("".join(sorted(days, key=lambda d: ["M","T","W","Th","F","S","U"].index(d) if d in ["M","T","W","Th","F","S","U"] else 99)))
+    if m.start_time and m.end_time:
+        time_parts.append(f"{_fmt_time(m.start_time)}\u2013{_fmt_time(m.end_time)}")
+    if time_parts:
+        parts.append(f"({' '.join(time_parts)})")
+
+    if m.room and m.room.building:
+        parts.append(f"in {m.room.building.abbreviation} {m.room.room_number}")
+    elif m.room:
+        parts.append(f"in room {m.room.room_number}")
+
+    return " ".join(parts)
+
+
 def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     """
     Detect soft constraint violations for a term.
@@ -113,7 +154,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
                 total_credits += section.course.credits
 
         instructor = instructor_objects.get(instructor_id)
-        if instructor and total_credits >= instructor.max_credits:
+        if instructor and total_credits > instructor.max_credits:
             warnings.append(ConflictItem(
                 type="credit_overload",
                 severity="soft",
@@ -154,8 +195,8 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
                         severity="soft",
                         description=(
                             f"Prefer-avoid time: {name} prefers to avoid "
-                            f"{block.day_of_week} {block.start_time}-{block.end_time}, "
-                            f"but meeting {m.id} is scheduled then."
+                            f"{block.day_of_week} {_fmt_time(block.start_time)}\u2013{_fmt_time(block.end_time)}, "
+                            f"but {_meeting_label(m)} is scheduled then."
                         ),
                         meeting_ids=[m.id],
                     ))
@@ -176,26 +217,13 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
                 type="room_capacity_waste",
                 severity="soft",
                 description=(
-                    f"Wasted room space: meeting {m.id} in room "
-                    f"{m.room.room_number} (capacity {room_cap}) for "
-                    f"section with enrollment cap {cap}. "
-                    f"Room is {room_cap - cap} seats over need."
+                    f"Wasted room space: {_meeting_label(m)} \u2014 "
+                    f"room capacity {room_cap} but enrollment cap is {cap} "
+                    f"({room_cap - cap} extra seats)."
                 ),
                 meeting_ids=[m.id],
             ))
 
-        # Tight fit: room capacity exactly equals enrollment cap (no buffer)
-        if room_cap == cap:
-            warnings.append(ConflictItem(
-                type="room_capacity_tight",
-                severity="soft",
-                description=(
-                    f"Tight room fit: meeting {m.id} in room "
-                    f"{m.room.room_number} (capacity {room_cap}) exactly "
-                    f"matches section enrollment cap {cap}. No buffer."
-                ),
-                meeting_ids=[m.id],
-            ))
 
     # --- TBD checks ---
     # Flag meetings where room, time, or instructor is TBD (null) but should
@@ -249,8 +277,8 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
                 type="non_standard_block",
                 severity="soft",
                 description=(
-                    f"Non-standard time block: meeting {m.id} uses a custom "
-                    f"time not linked to a standard time block."
+                    f"Non-standard time: {_meeting_label(m)} is not linked "
+                    f"to a standard time block."
                 ),
                 meeting_ids=[m.id],
             ))

@@ -263,7 +263,7 @@ export function ScheduleGrid({
                 }}
               >
                 {dayMeetings.map((m) => {
-                  const { topPx, heightPx } = meetingPosition(m.start_time, m.end_time);
+                  const { topPx, heightPx } = meetingPosition(m.start_time ?? "", m.end_time ?? "");
                   const overlap = overlapMap.get(m.id) ?? { column: 0, totalColumns: 1 };
                   const widthPct = 100 / overlap.totalColumns;
                   const leftPct = overlap.column * widthPct;

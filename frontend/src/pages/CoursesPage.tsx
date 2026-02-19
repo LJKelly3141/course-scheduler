@@ -4,6 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import { api } from "../api/client";
 import type { Course, Section, Meeting, Room, Instructor, TimeBlock, Term } from "../api/types";
 import { MeetingDialog } from "../components/meetings/MeetingDialog";
+import { CourseEditDialog } from "../components/courses/CourseEditDialog";
 import { formatTime, parseDaysOfWeek } from "../lib/utils";
 
 const MODALITY_LABELS: Record<string, string> = {
@@ -27,11 +28,6 @@ function formatSession(session: string): string {
   return SESSION_LABELS[session] ?? session.replace("_", " ");
 }
 
-/** Whether the term type supports Session A/B options */
-function termHasSessions(termType: string): boolean {
-  return termType === "fall" || termType === "spring";
-}
-
 export function CoursesPage() {
   const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
   const queryClient = useQueryClient();
@@ -40,9 +36,12 @@ export function CoursesPage() {
   const [form, setForm] = useState<Partial<Course>>({ credits: 3 });
   const [sectionForm, setSectionForm] = useState<Partial<Section>>({ enrollment_cap: 30, modality: "in_person", session: "regular" });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Dialog state
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [schedulingSection, setSchedulingSection] = useState<Section | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
   const { data: courses = [] } = useQuery({
     queryKey: ["courses"],
@@ -135,12 +134,10 @@ export function CoursesPage() {
     else setSelectedIds(new Set(courses.map((c) => c.id)));
   };
 
-  /** Get meetings for a section */
   function sectionMeetings(sectionId: number): Meeting[] {
     return meetings.filter((m) => m.section_id === sectionId);
   }
 
-  /** Format meeting summary: "MWF 9:00–9:50 AM, NH 301" */
   function meetingSummary(m: Meeting): string {
     const days = parseDaysOfWeek(m.days_of_week).join("");
     const time = m.start_time && m.end_time
@@ -150,6 +147,11 @@ export function CoursesPage() {
       ? `${m.room.building?.abbreviation} ${m.room.room_number}`
       : m.room_id === null ? "Room TBD" : "Online";
     return days ? `${days} ${time}, ${room}` : `${time}, ${room}`;
+  }
+
+  /** Whether the term type supports Session A/B options */
+  function termHasSessions(termType: string): boolean {
+    return termType === "fall" || termType === "spring";
   }
 
   const activeInstructors = instructors.filter((i) => i.is_active);
@@ -236,9 +238,13 @@ export function CoursesPage() {
                     <td className="px-4 py-2.5">{course.title}</td>
                     <td className="px-4 py-2.5">{course.credits}</td>
                     <td className="px-4 py-2.5">{courseSections.length}</td>
-                    <td className="px-4 py-2.5">
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete?")) deleteCourseMutation.mutate(course.id); }}
-                        className="text-destructive text-xs hover:underline">Delete</button>
+                    <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingCourse(course)}
+                          className="text-primary text-xs hover:underline">Edit</button>
+                        <button onClick={() => { if (confirm("Delete?")) deleteCourseMutation.mutate(course.id); }}
+                          className="text-destructive text-xs hover:underline">Delete</button>
+                      </div>
                     </td>
                   </tr>
                   {expanded && (
@@ -252,40 +258,10 @@ export function CoursesPage() {
                                 <span className="font-medium w-20">Sec {s.section_number}</span>
                                 <span className="text-muted-foreground w-14">Cap: {s.enrollment_cap}</span>
                                 <span className="text-muted-foreground w-24">{formatModality(s.modality)}</span>
-
-                                {/* Session dropdown */}
-                                {selectedTerm && termHasSessions(selectedTerm.type) ? (
-                                  <select
-                                    className="border border-border rounded px-1.5 py-0.5 text-xs w-24"
-                                    value={s.session ?? "regular"}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => {
-                                      updateSectionMutation.mutate({ id: s.id, data: { session: e.target.value } });
-                                    }}
-                                  >
-                                    <option value="regular">Regular</option>
-                                    <option value="session_a">Session A</option>
-                                    <option value="session_b">Session B</option>
-                                  </select>
-                                ) : (
-                                  <span className="text-muted-foreground w-24">{formatSession(s.session ?? "regular")}</span>
+                                {selectedTerm && termHasSessions(selectedTerm.type) && (
+                                  <span className="text-muted-foreground w-20">{formatSession(s.session ?? "regular")}</span>
                                 )}
-
-                                {/* Instructor dropdown */}
-                                <select
-                                  className="border border-border rounded px-1.5 py-0.5 text-xs w-40"
-                                  value={s.instructor_id ?? ""}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) => {
-                                    const val = Number(e.target.value) || null;
-                                    updateSectionMutation.mutate({ id: s.id, data: { instructor_id: val } });
-                                  }}
-                                >
-                                  <option value="">TBD</option>
-                                  {activeInstructors.map((i) => (
-                                    <option key={i.id} value={i.id}>{i.name}</option>
-                                  ))}
-                                </select>
+                                <span className="text-muted-foreground w-32 truncate">{s.instructor?.name ?? "Instructor TBD"}</span>
 
                                 {/* Meeting info or status */}
                                 {sMeetings.length > 0 ? (
@@ -300,7 +276,6 @@ export function CoursesPage() {
 
                                 {/* Action buttons */}
                                 <div className="flex gap-2 shrink-0">
-                                  {/* Async online: toggle status directly (no meeting needed) */}
                                   {selectedTerm && s.modality === "online_async" && s.status === "unscheduled" && (
                                     <button
                                       onClick={(e) => {
@@ -323,26 +298,12 @@ export function CoursesPage() {
                                       Unschedule
                                     </button>
                                   )}
-                                  {/* Sync modalities: open MeetingDialog */}
-                                  {selectedTerm && s.modality !== "online_async" && sMeetings.length === 0 && (
+                                  {selectedTerm && (
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setSchedulingSection(s);
-                                        setEditingMeeting(null);
-                                        setMeetingDialogOpen(true);
-                                      }}
-                                      className="text-primary hover:underline"
-                                    >
-                                      Schedule
-                                    </button>
-                                  )}
-                                  {selectedTerm && s.modality !== "online_async" && sMeetings.length > 0 && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSchedulingSection(s);
-                                        setEditingMeeting(sMeetings[0]);
+                                        setEditingMeeting(sMeetings.length > 0 ? sMeetings[0] : null);
                                         setMeetingDialogOpen(true);
                                       }}
                                       className="text-primary hover:underline"
@@ -417,15 +378,26 @@ export function CoursesPage() {
         </table>
       </div>
 
-      {/* Meeting dialog for scheduling/editing */}
+      {/* Course edit dialog */}
+      {editingCourse && (
+        <CourseEditDialog
+          course={editingCourse}
+          onClose={() => setEditingCourse(null)}
+          onSaved={() => { setEditingCourse(null); invalidateAll(); }}
+        />
+      )}
+
+      {/* Meeting/section edit dialog */}
       {meetingDialogOpen && selectedTerm && schedulingSection && (
         <MeetingDialog
           termId={selectedTerm.id}
           meeting={editingMeeting}
+          section={schedulingSection}
           sections={editingMeeting ? sections : [schedulingSection]}
           rooms={rooms}
           instructors={instructors}
           timeBlocks={timeBlocks}
+          termType={selectedTerm.type}
           onClose={() => { setMeetingDialogOpen(false); setSchedulingSection(null); setEditingMeeting(null); }}
           onSaved={() => {
             setMeetingDialogOpen(false);
