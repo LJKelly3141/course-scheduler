@@ -28,3 +28,4 @@ class Term(Base):
 
     sections = relationship("Section", back_populates="term", cascade="all, delete-orphan")
     instructor_availabilities = relationship("InstructorAvailability", back_populates="term", cascade="all, delete-orphan")
+    dismissed_warnings = relationship("DismissedWarning", cascade="all, delete-orphan", passive_deletes=True)

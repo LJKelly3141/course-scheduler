@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.dismissed_warning import DismissedWarning
+from app.models.instructor import InstructorAvailability
 from app.models.meeting import Meeting
 from app.models.section import Section as SectionModel, SectionStatus
 from app.models.term import Term
@@ -62,7 +63,16 @@ def update_term(term_id: int, payload: TermUpdate, db: Session = Depends(get_db)
 
 @router.post("/batch-delete", status_code=204)
 def batch_delete_terms(payload: BatchDeleteRequest, db: Session = Depends(get_db)):
-    terms = db.query(Term).filter(Term.id.in_(payload.ids)).all()
+    terms = (
+        db.query(Term)
+        .options(
+            joinedload(Term.sections).joinedload(SectionModel.meetings),
+            joinedload(Term.instructor_availabilities),
+            joinedload(Term.dismissed_warnings),
+        )
+        .filter(Term.id.in_(payload.ids))
+        .all()
+    )
     for term in terms:
         db.delete(term)
     db.commit()
@@ -70,7 +80,16 @@ def batch_delete_terms(payload: BatchDeleteRequest, db: Session = Depends(get_db
 
 @router.delete("/{term_id}", status_code=204)
 def delete_term(term_id: int, db: Session = Depends(get_db)):
-    term = db.query(Term).filter(Term.id == term_id).first()
+    term = (
+        db.query(Term)
+        .options(
+            joinedload(Term.sections).joinedload(SectionModel.meetings),
+            joinedload(Term.instructor_availabilities),
+            joinedload(Term.dismissed_warnings),
+        )
+        .filter(Term.id == term_id)
+        .first()
+    )
     if not term:
         raise HTTPException(status_code=404, detail="Term not found")
     db.delete(term)

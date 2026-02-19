@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Term } from "../api/types";
@@ -23,12 +23,14 @@ export function useTerm() {
   };
 
   // Auto-select first term, or clear stale selection
-  if (terms.length > 0 && !matchedTerm) {
-    selectTerm(terms[0].id);
-  } else if (terms.length === 0 && selectedTermId !== null) {
-    setSelectedTermId(null);
-    localStorage.removeItem("selectedTermId");
-  }
+  useEffect(() => {
+    if (terms.length > 0 && !matchedTerm) {
+      selectTerm(terms[0].id);
+    } else if (terms.length === 0 && selectedTermId !== null) {
+      setSelectedTermId(null);
+      localStorage.removeItem("selectedTermId");
+    }
+  }, [terms, matchedTerm, selectedTermId]);
 
   return { terms, selectedTerm, selectTerm };
 }
