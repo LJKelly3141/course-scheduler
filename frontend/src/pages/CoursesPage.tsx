@@ -143,11 +143,13 @@ export function CoursesPage() {
   /** Format meeting summary: "MWF 9:00–9:50 AM, NH 301" */
   function meetingSummary(m: Meeting): string {
     const days = parseDaysOfWeek(m.days_of_week).join("");
-    const time = `${formatTime(m.start_time)}–${formatTime(m.end_time)}`;
+    const time = m.start_time && m.end_time
+      ? `${formatTime(m.start_time)}–${formatTime(m.end_time)}`
+      : "Time TBD";
     const room = m.room
       ? `${m.room.building?.abbreviation} ${m.room.room_number}`
-      : "Online";
-    return `${days} ${time}, ${room}`;
+      : m.room_id === null ? "Room TBD" : "Online";
+    return days ? `${days} ${time}, ${room}` : `${time}, ${room}`;
   }
 
   const activeInstructors = instructors.filter((i) => i.is_active);

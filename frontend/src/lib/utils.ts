@@ -50,7 +50,8 @@ export function getLevelHexColor(courseNumber: string): string {
   return colors[level] || "#64748B";
 }
 
-export function formatTime(time: string): string {
+export function formatTime(time: string | null | undefined): string {
+  if (!time) return "TBD";
   const [h, m] = time.split(":");
   const hour = parseInt(h);
   const ampm = hour >= 12 ? "PM" : "AM";
@@ -58,7 +59,8 @@ export function formatTime(time: string): string {
   return `${h12}:${m} ${ampm}`;
 }
 
-export function parseDaysOfWeek(json: string): string[] {
+export function parseDaysOfWeek(json: string | null | undefined): string[] {
+  if (!json) return [];
   try {
     return JSON.parse(json);
   } catch {
@@ -75,7 +77,8 @@ export const TOTAL_SLOTS = (GRID_END_HOUR - GRID_START_HOUR) * (60 / SLOT_MINUTE
 export const GRID_START_MINUTES = GRID_START_HOUR * 60; // 480
 
 /** "09:30" → 570 */
-export function timeToMinutes(time: string): number {
+export function timeToMinutes(time: string | null | undefined): number {
+  if (!time) return 0;
   const [h, m] = time.split(":");
   return parseInt(h) * 60 + parseInt(m);
 }

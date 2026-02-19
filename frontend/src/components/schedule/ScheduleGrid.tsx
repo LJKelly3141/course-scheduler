@@ -129,9 +129,10 @@ export function ScheduleGrid({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Get meetings for a specific day
+  // Get meetings for a specific day (skip meetings with no time assigned)
   function getMeetingsForDay(day: string): Meeting[] {
     return meetings.filter((m) => {
+      if (!m.days_of_week || !m.start_time || !m.end_time) return false;
       const days = parseDaysOfWeek(m.days_of_week);
       return days.includes(day);
     });
