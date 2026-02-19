@@ -43,7 +43,7 @@ export function CoursesPage() {
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
-  const { data: courses = [] } = useQuery({
+  const { data: courses = [], isLoading: loadingCourses, isError: coursesError } = useQuery({
     queryKey: ["courses"],
     queryFn: () => api.get<Course[]>("/courses"),
   });
@@ -217,6 +217,30 @@ export function CoursesPage() {
             </tr>
           </thead>
           <tbody>
+            {loadingCourses && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center">
+                  <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                    <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading courses...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {coursesError && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center">
+                  <p className="text-sm text-destructive">Failed to load courses. Check that the backend is running.</p>
+                </td>
+              </tr>
+            )}
+            {!loadingCourses && !coursesError && courses.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  No courses yet. Click "+ Add Course" to create one, or import from an XLSX file.
+                </td>
+              </tr>
+            )}
             {courses.map((course) => {
               const courseSections = sections.filter((s) => s.course_id === course.id);
               const expanded = expandedCourse === course.id;

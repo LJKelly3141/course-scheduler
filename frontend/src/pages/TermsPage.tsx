@@ -28,7 +28,7 @@ export function TermsPage() {
     include_assignments: true,
   });
 
-  const { data: terms = [] } = useQuery({
+  const { data: terms = [], isLoading: loadingTerms } = useQuery({
     queryKey: ["terms"],
     queryFn: () => api.get<Term[]>("/terms"),
   });
@@ -279,7 +279,17 @@ export function TermsPage() {
                 </tr>
               )
             )}
-            {terms.length === 0 && !showAdd && (
+            {loadingTerms && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center">
+                  <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                    <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading terms...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {!loadingTerms && terms.length === 0 && !showAdd && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                   No terms yet. Click "+ Add Term" to create one.

@@ -108,14 +108,14 @@ export function AnalyticsPage() {
   const [semFilter, setSemFilter] = useState<SemesterFilter>("All");
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
 
-  const { data: summaryData } = useQuery({
+  const { data: summaryData, isLoading: loadingSummary } = useQuery({
     queryKey: ["analytics", "summary", selectedTerm?.id],
     queryFn: () =>
       api.get<Summary>(`/analytics/summary?term_id=${selectedTerm!.id}`),
     enabled: !!selectedTerm,
   });
 
-  const { data: trendsData } = useQuery({
+  const { data: trendsData, isLoading: loadingTrends, isError: trendsError } = useQuery({
     queryKey: ["analytics", "trends", selectedTerm?.id],
     queryFn: () =>
       api.get<{ courses: CourseTrend[] }>(
@@ -147,6 +147,33 @@ export function AnalyticsPage() {
       <p className="text-muted-foreground">
         Select a term to view analytics.
       </p>
+    );
+  }
+
+  const isLoading = loadingSummary || loadingTrends;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold">Enrollment Analytics</h2>
+        <div className="bg-white rounded-lg border border-border p-12 flex items-center justify-center">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Loading analytics...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (trendsError) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold">Enrollment Analytics</h2>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm text-destructive">Failed to load analytics data. Check that the backend is running.</p>
+        </div>
+      </div>
     );
   }
 

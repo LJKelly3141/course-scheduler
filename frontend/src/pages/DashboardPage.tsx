@@ -6,7 +6,7 @@ import type { Term, Section, Meeting, Instructor, Room } from "../api/types";
 export function DashboardPage() {
   const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
 
-  const { data: sections = [] } = useQuery({
+  const { data: sections = [], isLoading: loadingSections } = useQuery({
     queryKey: ["sections", selectedTerm?.id],
     queryFn: () => api.get<Section[]>(`/sections?term_id=${selectedTerm!.id}`),
     enabled: !!selectedTerm,
@@ -36,6 +36,20 @@ export function DashboardPage() {
 
   if (!selectedTerm) {
     return <p className="text-muted-foreground">Select a term to view the dashboard.</p>;
+  }
+
+  if (loadingSections) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold">{selectedTerm.name} Dashboard</h2>
+        <div className="bg-white rounded-lg border border-border p-12 flex items-center justify-center">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Loading dashboard...</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const scheduled = sections.filter((s) => s.status !== "unscheduled").length;

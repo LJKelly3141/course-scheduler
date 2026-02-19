@@ -11,7 +11,7 @@ export function InstructorsPage() {
   const [form, setForm] = useState<Partial<Instructor>>({});
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  const { data: instructors = [] } = useQuery({
+  const { data: instructors = [], isLoading: loadingInstructors, isError: instructorsError } = useQuery({
     queryKey: ["instructors"],
     queryFn: () => api.get<Instructor[]>("/instructors"),
   });
@@ -147,6 +147,30 @@ export function InstructorsPage() {
             </tr>
           </thead>
           <tbody>
+            {loadingInstructors && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center">
+                  <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                    <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading instructors...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {instructorsError && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center">
+                  <p className="text-sm text-destructive">Failed to load instructors.</p>
+                </td>
+              </tr>
+            )}
+            {!loadingInstructors && !instructorsError && instructors.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  No instructors yet. Click "+ Add Instructor" to create one.
+                </td>
+              </tr>
+            )}
             {instructors.map((inst) => (
               <tr key={inst.id} className="border-b border-border hover:bg-muted/30">
                 <td className="px-4 py-2.5">

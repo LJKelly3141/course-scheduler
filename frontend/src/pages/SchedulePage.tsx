@@ -26,7 +26,7 @@ export function SchedulePage() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
 
-  const { data: meetings = [] } = useQuery({
+  const { data: meetings = [], isLoading: loadingMeetings } = useQuery({
     queryKey: ["meetings", selectedTerm?.id],
     queryFn: () => api.get<Meeting[]>(`/terms/${selectedTerm!.id}/meetings`),
     enabled: !!selectedTerm,
@@ -357,7 +357,16 @@ export function SchedulePage() {
         })}
       </div>
 
-      <div className="flex gap-4">
+      {loadingMeetings && (
+        <div className="bg-white rounded-lg border border-border p-12 flex items-center justify-center">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Loading schedule...</span>
+          </div>
+        </div>
+      )}
+
+      <div className={`flex gap-4 ${loadingMeetings ? "hidden" : ""}`}>
         <div className="flex-1 min-w-0">
           <ScheduleGrid
             meetings={filteredMeetings}

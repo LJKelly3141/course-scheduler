@@ -11,7 +11,7 @@ export function RoomsPage() {
   const [editCap, setEditCap] = useState<number>(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  const { data: rooms = [] } = useQuery({
+  const { data: rooms = [], isLoading: loadingRooms, isError: roomsError } = useQuery({
     queryKey: ["rooms"],
     queryFn: () => api.get<Room[]>("/rooms"),
   });
@@ -133,6 +133,30 @@ export function RoomsPage() {
             </tr>
           </thead>
           <tbody>
+            {loadingRooms && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center">
+                  <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                    <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading rooms...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {roomsError && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center">
+                  <p className="text-sm text-destructive">Failed to load rooms.</p>
+                </td>
+              </tr>
+            )}
+            {!loadingRooms && !roomsError && rooms.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  No rooms yet. Click "+ Add Room" to create one.
+                </td>
+              </tr>
+            )}
             {rooms.map((room) => (
               <tr key={room.id} className="border-b border-border hover:bg-muted/30">
                 <td className="px-4 py-2.5">
