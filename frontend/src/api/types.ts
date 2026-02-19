@@ -56,6 +56,7 @@ export interface Section {
   section_number: string;
   enrollment_cap: number;
   modality: string;
+  session: string;
   status: string;
   instructor_id: number | null;
   course?: Course;
@@ -74,9 +75,9 @@ export interface TimeBlock {
 export interface Meeting {
   id: number;
   section_id: number;
-  days_of_week: string;
-  start_time: string;
-  end_time: string;
+  days_of_week: string | null;
+  start_time: string | null;
+  end_time: string | null;
   time_block_id: number | null;
   room_id: number | null;
   instructor_id: number | null;

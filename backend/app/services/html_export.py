@@ -117,6 +117,7 @@ def gather_export_data(db: Session, term_id: int) -> dict:
                 "section_number": section.section_number,
                 "enrollment_cap": section.enrollment_cap,
                 "modality": section.modality,
+                "session": section.session if hasattr(section, 'session') else "regular",
                 "status": section.status,
                 "instructor_id": section.instructor_id,
                 "course": {
@@ -141,11 +142,10 @@ def gather_export_data(db: Session, term_id: int) -> dict:
             } if instructor else None,
         })
 
-    # Online async sections: modality=online with no meetings that have time data
-    section_ids_with_meetings = set(m.section_id for m in meetings)
+    # Online async sections: modality=online_async
     online_sections = []
     for s in sections:
-        if s.modality == "online" and s.id not in section_ids_with_meetings:
+        if s.modality == "online_async":
             course = s.course
             instructor = s.instructor
             online_sections.append({
@@ -153,6 +153,7 @@ def gather_export_data(db: Session, term_id: int) -> dict:
                 "section_number": s.section_number,
                 "enrollment_cap": s.enrollment_cap,
                 "modality": s.modality,
+                "session": s.session if hasattr(s, 'session') else "regular",
                 "status": s.status,
                 "instructor_id": s.instructor_id,
                 "course": {

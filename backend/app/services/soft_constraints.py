@@ -128,6 +128,8 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     for m in meetings:
         if m.instructor_id is None:
             continue
+        if not m.days_of_week or not m.start_time or not m.end_time:
+            continue
 
         meeting_days = _parse_days(m.days_of_week)
 
@@ -162,7 +164,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     for m in meetings:
         if m.room_id is None or m.room is None or m.section is None:
             continue
-        if m.section.modality not in (Modality.in_person, Modality.hybrid):
+        if m.section.modality in (Modality.online_sync, Modality.online_async):
             continue
 
         cap = m.section.enrollment_cap
@@ -195,8 +197,53 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
                 meeting_ids=[m.id],
             ))
 
+    # --- TBD checks ---
+    # Flag meetings where room, time, or instructor is TBD (null) but should
+    # be assigned based on section modality.
+    for m in meetings:
+        section = m.section
+        if section is None:
+            continue
+        is_online = section.modality in (Modality.online_sync, Modality.online_async)
+        is_async = section.modality == Modality.online_async
+        course = section.course
+        course_label = (
+            f"{course.department_code} {course.course_number}-{section.section_number}"
+            if course else f"Section {section.id}"
+        )
+
+        # Instructor TBD — always a warning regardless of modality
+        if m.instructor_id is None:
+            warnings.append(ConflictItem(
+                type="instructor_tbd",
+                severity="soft",
+                description=f"Instructor TBD: {course_label} has no instructor assigned.",
+                meeting_ids=[m.id],
+            ))
+
+        # Room TBD — only warn for in-person sections (online needs no room)
+        if m.room_id is None and not is_online:
+            warnings.append(ConflictItem(
+                type="room_tbd",
+                severity="soft",
+                description=f"Room TBD: {course_label} has no room assigned.",
+                meeting_ids=[m.id],
+            ))
+
+        # Time TBD — warn unless async online (which has no meeting time)
+        if (not m.days_of_week or not m.start_time or not m.end_time) and not is_async:
+            warnings.append(ConflictItem(
+                type="time_tbd",
+                severity="soft",
+                description=f"Meeting time TBD: {course_label} has no time assigned.",
+                meeting_ids=[m.id],
+            ))
+
     # --- Non-standard block check ---
     for m in meetings:
+        # Skip meetings with no time (already flagged as TBD above)
+        if not m.days_of_week or not m.start_time or not m.end_time:
+            continue
         if m.time_block_id is None:
             warnings.append(ConflictItem(
                 type="non_standard_block",
@@ -215,6 +262,8 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
 
     for m in meetings:
         if m.instructor_id is None:
+            continue
+        if not m.days_of_week or not m.start_time or not m.end_time:
             continue
         meeting_days = _parse_days(m.days_of_week)
         for day in meeting_days:

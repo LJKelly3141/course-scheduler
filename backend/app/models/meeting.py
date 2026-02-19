@@ -9,9 +9,9 @@ class Meeting(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     section_id: Mapped[int] = mapped_column(ForeignKey("sections.id"))
-    days_of_week: Mapped[str] = mapped_column(String(20))  # JSON string e.g. '["M","W","F"]'
-    start_time: Mapped[str] = mapped_column(Time)
-    end_time: Mapped[str] = mapped_column(Time)
+    days_of_week: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # JSON string e.g. '["M","W","F"]'
+    start_time: Mapped[Optional[str]] = mapped_column(Time, nullable=True)
+    end_time: Mapped[Optional[str]] = mapped_column(Time, nullable=True)
     time_block_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("time_blocks.id"), nullable=True
     )

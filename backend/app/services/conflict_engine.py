@@ -49,6 +49,13 @@ def _times_overlap(start_a: time, end_a: time, start_b: time, end_b: time) -> bo
 
 def _meetings_overlap(meeting_a: Meeting, meeting_b: Meeting) -> bool:
     """Return True if two meetings share at least one day and overlap in time."""
+    # Meetings with TBD times cannot overlap
+    if not meeting_a.days_of_week or not meeting_b.days_of_week:
+        return False
+    if not meeting_a.start_time or not meeting_a.end_time:
+        return False
+    if not meeting_b.start_time or not meeting_b.end_time:
+        return False
     days_a = _parse_days(meeting_a.days_of_week)
     days_b = _parse_days(meeting_b.days_of_week)
     shared_days = days_a & days_b
@@ -84,6 +91,9 @@ def detect_hard_conflicts(db: Session, term_id: int) -> list[ConflictItem]:
 
     # --- Time validity checks ---
     for m in meetings:
+        # Skip TBD meetings (no time/days assigned)
+        if not m.days_of_week or not m.start_time or not m.end_time:
+            continue
         if m.end_time <= m.start_time:
             conflicts.append(ConflictItem(
                 type="time_validity",
@@ -166,7 +176,7 @@ def detect_hard_conflicts(db: Session, term_id: int) -> list[ConflictItem]:
     for m in meetings:
         if m.room_id is not None and m.room is not None and m.section is not None:
             section_modality = m.section.modality
-            if section_modality in (Modality.in_person, Modality.hybrid):
+            if section_modality not in (Modality.online_sync, Modality.online_async):
                 if m.section.enrollment_cap > m.room.capacity:
                     conflicts.append(ConflictItem(
                         type="room_capacity",
@@ -193,7 +203,7 @@ def detect_hard_conflicts(db: Session, term_id: int) -> list[ConflictItem]:
 
         # online_only instructor assigned to in-person or hybrid section
         if constraint == ModalityConstraint.online_only:
-            if section_modality in (Modality.in_person, Modality.hybrid):
+            if section_modality not in (Modality.online_sync, Modality.online_async):
                 conflicts.append(ConflictItem(
                     type="instructor_modality_mismatch",
                     severity="hard",
@@ -296,6 +306,10 @@ def check_meeting_conflicts(
     conflicts: list[ConflictItem] = []
     meeting_id = meeting.id if meeting.id else 0
 
+    # TBD meetings (no time/days) cannot have time-based conflicts
+    if not meeting.days_of_week or not meeting.start_time or not meeting.end_time:
+        return conflicts
+
     # --- Time validity ---
     if meeting.end_time <= meeting.start_time:
         conflicts.append(ConflictItem(
@@ -393,7 +407,7 @@ def check_meeting_conflicts(
         room = db.query(Room).filter(Room.id == meeting.room_id).first()
         section = db.query(Section).filter(Section.id == meeting.section_id).first()
         if room and section:
-            if section.modality in (Modality.in_person, Modality.hybrid):
+            if section.modality not in (Modality.online_sync, Modality.online_async):
                 if section.enrollment_cap > room.capacity:
                     conflicts.append(ConflictItem(
                         type="room_capacity",
@@ -419,7 +433,7 @@ def check_meeting_conflicts(
             constraint = instructor.modality_constraint
 
             if constraint == ModalityConstraint.online_only:
-                if section.modality in (Modality.in_person, Modality.hybrid):
+                if section.modality not in (Modality.online_sync, Modality.online_async):
                     conflicts.append(ConflictItem(
                         type="instructor_modality_mismatch",
                         severity="hard",

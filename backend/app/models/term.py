@@ -5,8 +5,10 @@ from app.models.base import Base
 
 
 class TermType(str, enum.Enum):
-    semester = "semester"
-    quarter = "quarter"
+    fall = "fall"
+    spring = "spring"
+    summer = "summer"
+    winter = "winter"
 
 
 class TermStatus(str, enum.Enum):

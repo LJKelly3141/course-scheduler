@@ -58,36 +58,79 @@
     font-size: 11px;
     line-height: 1.3;
     overflow: hidden;
-    cursor: default;
+    cursor: pointer;
     border-left-width: 3px;
     border-left-style: solid;
     transition: box-shadow .15s;
   }
   .meeting-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 15 !important; }
   .meeting-card .course-code { font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meeting-card .time-days { color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meeting-card .instructor { color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meeting-card .room-label { color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meeting-card .session-tag { color: #4f46e5; font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Tooltip */
-  .tooltip {
+  /* Detail modal */
+  .detail-overlay {
     display: none;
-    position: absolute;
-    left: 0; top: 100%;
-    margin-top: 4px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
-    padding: 10px 12px;
-    width: 220px;
+    position: fixed;
+    inset: 0;
     z-index: 100;
-    font-size: 12px;
-    color: #1e293b;
+    align-items: center;
+    justify-content: center;
   }
-  .meeting-card:hover .tooltip { display: block; }
-  .tooltip p { margin: 2px 0; }
-  .tooltip .title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-  .tooltip .sub { color: #64748b; }
+  .detail-overlay.open { display: flex; }
+  .detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+  }
+  .detail-modal {
+    position: relative;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+    width: 100%;
+    max-width: 480px;
+    margin: 16px;
+    overflow: hidden;
+  }
+  .detail-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .detail-header h2 { font-size: 18px; font-weight: 700; color: #0f172a; }
+  .detail-header .subtitle { font-size: 13px; color: #64748b; margin-top: 2px; }
+  .detail-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+  }
+  .detail-close:hover { color: #475569; }
+  .detail-body { padding: 16px 24px; }
+  .detail-row {
+    display: flex;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .detail-row .label {
+    width: 128px;
+    flex-shrink: 0;
+    color: #64748b;
+    font-weight: 500;
+  }
+  .detail-row .value {
+    color: #0f172a;
+    text-transform: capitalize;
+  }
 
   /* Online sections table */
   .online-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 16px; }
@@ -96,12 +139,15 @@
   .online-table th { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 500; }
   .online-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
   .online-table .color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+  .online-table tr { cursor: pointer; }
+  .online-table tr:hover { background: #f8fafc; }
 
   @media print {
     .controls, .legend { display: none !important; }
     body { background: #fff; }
     .grid-wrap { border: none; border-radius: 0; }
     .container { padding: 0; max-width: 100%; }
+    .detail-overlay { display: none !important; }
   }
 </style>
 </head>
@@ -138,10 +184,10 @@
           <th>Course</th>
           <th>Section</th>
           <th>Title</th>
-          <th>Level</th>
+          <th>Session</th>
           <th>Instructor</th>
           <th>Credits</th>
-          <th>Enrollment Cap</th>
+          <th>Cap</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -150,8 +196,25 @@
   </div>
 </div>
 
+<!-- Detail modal -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-backdrop" id="detail-backdrop"></div>
+  <div class="detail-modal">
+    <div class="detail-header">
+      <div>
+        <h2 id="detail-title"></h2>
+        <div class="subtitle" id="detail-subtitle"></div>
+      </div>
+      <button class="detail-close" id="detail-close">&times;</button>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+</div>
+
 <script>
 const DATA = {{ schedule_data }};
+
+const SESSION_LABELS = { regular: "Regular", session_a: "Session A", session_b: "Session B" };
 
 // --- Constants (matching frontend) ---
 const GRID_START_HOUR = 8;
@@ -162,6 +225,7 @@ const TOTAL_SLOTS = (GRID_END_HOUR - GRID_START_HOUR) * (60 / SLOT_MINUTES);
 const GRID_START_MINUTES = GRID_START_HOUR * 60;
 const DAY_LABELS = ["M", "T", "W", "Th", "F"];
 const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAY_NAMES = { M: "Monday", T: "Tuesday", W: "Wednesday", Th: "Thursday", F: "Friday", S: "Saturday", U: "Sunday" };
 
 // --- Color palette (matching frontend utils.ts) ---
 const ENTITY_COLORS = [
@@ -310,31 +374,119 @@ function filterOnlineSections(sections) {
   return filtered;
 }
 
+// --- Detail modal ---
+function showDetail(m) {
+  const overlay = document.getElementById("detail-overlay");
+  const course = m.section?.course;
+  const deptCode = course?.department_code || "";
+  const courseNum = course?.course_number || "";
+  const secNum = m.section?.section_number || "";
+  const instrName = m.instructor?.name || "TBD";
+  const roomLabel = m.room ? (m.room.building?.abbreviation || "") + " " + m.room.room_number + " (cap: " + (m.room.capacity || "—") + ")" : "Online";
+  const days = parseDays(m.days_of_week).map(d => DAY_NAMES[d] || d).join(", ");
+  const timeStr = m.start_time && m.end_time ? formatTime(m.start_time) + " – " + formatTime(m.end_time) : "—";
+  const level = courseNum ? Math.floor(parseInt(courseNum) / 100) * 100 + "-level" : "—";
+  const session = SESSION_LABELS[m.section?.session] || "Regular";
+  const modality = (m.section?.modality || "").replace(/_/g, " ");
+
+  document.getElementById("detail-title").textContent = deptCode + " " + courseNum + "-" + secNum;
+  document.getElementById("detail-subtitle").textContent = course?.title || "Untitled Course";
+
+  const body = document.getElementById("detail-body");
+  body.innerHTML = "";
+  const rows = [
+    ["Instructor", instrName],
+    ["Room", roomLabel],
+    ["Days", days || "—"],
+    ["Time", timeStr],
+    ["Credits", course?.credits != null ? String(course.credits) : "—"],
+    ["Level", level],
+    ["Enrollment Cap", m.section?.enrollment_cap != null ? String(m.section.enrollment_cap) : "—"],
+    ["Session", session],
+    ["Modality", modality || "—"],
+    ["Status", m.section?.status || "—"],
+  ];
+  rows.forEach(function(r) {
+    const row = document.createElement("div");
+    row.className = "detail-row";
+    row.innerHTML = '<span class="label">' + r[0] + '</span><span class="value">' + r[1] + '</span>';
+    body.appendChild(row);
+  });
+
+  overlay.classList.add("open");
+}
+
+function showOnlineDetail(s) {
+  const overlay = document.getElementById("detail-overlay");
+  const course = s.course;
+  const deptCode = course?.department_code || "";
+  const courseNum = course?.course_number || "";
+  const secNum = s.section_number || "";
+  const instrName = s.instructor?.name || "TBD";
+  const level = courseNum ? Math.floor(parseInt(courseNum) / 100) * 100 + "-level" : "—";
+  const session = SESSION_LABELS[s.session] || "Regular";
+  const modality = (s.modality || "").replace(/_/g, " ");
+
+  document.getElementById("detail-title").textContent = deptCode + " " + courseNum + "-" + secNum;
+  document.getElementById("detail-subtitle").textContent = course?.title || "Untitled Course";
+
+  const body = document.getElementById("detail-body");
+  body.innerHTML = "";
+  const rows = [
+    ["Instructor", instrName],
+    ["Room", "Online"],
+    ["Days", "—"],
+    ["Time", "—"],
+    ["Credits", course?.credits != null ? String(course.credits) : "—"],
+    ["Level", level],
+    ["Enrollment Cap", s.enrollment_cap != null ? String(s.enrollment_cap) : "—"],
+    ["Session", session],
+    ["Modality", modality || "—"],
+    ["Status", s.status || "—"],
+  ];
+  rows.forEach(function(r) {
+    const row = document.createElement("div");
+    row.className = "detail-row";
+    row.innerHTML = '<span class="label">' + r[0] + '</span><span class="value">' + r[1] + '</span>';
+    body.appendChild(row);
+  });
+
+  overlay.classList.add("open");
+}
+
+function closeDetail() {
+  document.getElementById("detail-overlay").classList.remove("open");
+}
+
+document.getElementById("detail-backdrop").addEventListener("click", closeDetail);
+document.getElementById("detail-close").addEventListener("click", closeDetail);
+document.addEventListener("keydown", function(e) { if (e.key === "Escape") closeDetail(); });
+
 // --- Render functions ---
 function renderGrid() {
   const grid = document.getElementById("grid");
   const meetings = filterMeetings(DATA.meetings);
 
   // Build grid-template-rows dynamically
-  grid.style.gridTemplateRows = `auto repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT_PX}px)`;
+  grid.style.gridTemplateRows = "auto repeat(" + TOTAL_SLOTS + ", " + SLOT_HEIGHT_PX + "px)";
   grid.innerHTML = "";
 
   // Header row
   const timeHeader = el("div", "grid-header", "Time");
   timeHeader.style.gridColumn = "1"; timeHeader.style.gridRow = "1"; timeHeader.style.textAlign = "left";
   grid.appendChild(timeHeader);
-  DAY_FULL.forEach((day, i) => {
+  DAY_FULL.forEach(function(day, i) {
     const h = el("div", "grid-header", day);
     h.style.gridColumn = String(i + 2); h.style.gridRow = "1";
     grid.appendChild(h);
   });
 
   // Hour labels
-  for (let hour = GRID_START_HOUR; hour < GRID_END_HOUR; hour++) {
-    const slotIndex = (hour - GRID_START_HOUR) * 4;
-    const lbl = el("div", "hour-label", formatHourLabel(hour));
+  for (var hour = GRID_START_HOUR; hour < GRID_END_HOUR; hour++) {
+    var slotIndex = (hour - GRID_START_HOUR) * 4;
+    var lbl = el("div", "hour-label", formatHourLabel(hour));
     lbl.style.gridColumn = "1";
-    lbl.style.gridRow = `${slotIndex + 2} / span 4`;
+    lbl.style.gridRow = (slotIndex + 2) + " / span 4";
     lbl.style.display = "flex";
     lbl.style.alignItems = "flex-start";
     lbl.style.justifyContent = "flex-end";
@@ -342,9 +494,9 @@ function renderGrid() {
   }
 
   // Background slot cells
-  for (let s = 0; s < TOTAL_SLOTS; s++) {
-    for (let d = 0; d < 5; d++) {
-      const cell = el("div", "slot-cell");
+  for (var s = 0; s < TOTAL_SLOTS; s++) {
+    for (var d = 0; d < 5; d++) {
+      var cell = el("div", "slot-cell");
       if (s % 4 === 0) cell.classList.add("hour-top");
       cell.style.gridColumn = String(d + 2);
       cell.style.gridRow = String(s + 2);
@@ -353,25 +505,25 @@ function renderGrid() {
   }
 
   // Day column overlays with meeting cards
-  DAY_LABELS.forEach((day, dayIdx) => {
-    const dayMeetings = meetings.filter(m => parseDays(m.days_of_week).includes(day));
-    const overlapMap = computeOverlapColumns(dayMeetings);
+  DAY_LABELS.forEach(function(day, dayIdx) {
+    var dayMeetings = meetings.filter(function(m) { return parseDays(m.days_of_week).includes(day); });
+    var overlapMap = computeOverlapColumns(dayMeetings);
 
-    const col = el("div", "day-column");
+    var col = el("div", "day-column");
     col.style.gridColumn = String(dayIdx + 2);
-    col.style.gridRow = `2 / span ${TOTAL_SLOTS}`;
+    col.style.gridRow = "2 / span " + TOTAL_SLOTS;
 
-    dayMeetings.forEach(m => {
-      const startMin = timeToMinutes(m.start_time);
-      const endMin = timeToMinutes(m.end_time);
-      const topPx = ((startMin - GRID_START_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT_PX;
-      const heightPx = ((endMin - startMin) / SLOT_MINUTES) * SLOT_HEIGHT_PX;
-      const overlap = overlapMap.get(m.id) || { column: 0, totalColumns: 1 };
-      const widthPct = 100 / overlap.totalColumns;
-      const leftPct = overlap.column * widthPct;
+    dayMeetings.forEach(function(m) {
+      var startMin = timeToMinutes(m.start_time);
+      var endMin = timeToMinutes(m.end_time);
+      var topPx = ((startMin - GRID_START_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT_PX;
+      var heightPx = ((endMin - startMin) / SLOT_MINUTES) * SLOT_HEIGHT_PX;
+      var overlap = overlapMap.get(m.id) || { column: 0, totalColumns: 1 };
+      var widthPct = 100 / overlap.totalColumns;
+      var leftPct = overlap.column * widthPct;
 
-      const color = getColor(m);
-      const card = el("div", "meeting-card");
+      var color = getColor(m);
+      var card = el("div", "meeting-card");
       card.style.top = topPx + "px";
       card.style.height = heightPx + "px";
       card.style.left = leftPct + "%";
@@ -379,28 +531,33 @@ function renderGrid() {
       card.style.backgroundColor = color + "14";
       card.style.borderLeftColor = color;
 
-      const course = m.section?.course;
-      const deptCode = course?.department_code || "";
-      const courseNum = course?.course_number || "";
-      const secNum = m.section?.section_number || "";
-      const instrName = m.instructor?.name || "TBD";
-      const lastName = instrName.split(" ").pop();
-      const roomLabel = m.room ? `${m.room.building?.abbreviation || ""} ${m.room.room_number}` : "Online";
-      const durationMin = endMin - startMin;
+      var course = m.section?.course;
+      var deptCode = course?.department_code || "";
+      var courseNum = course?.course_number || "";
+      var secNum = m.section?.section_number || "";
+      var instrName = m.instructor?.name || "TBD";
+      var lastName = instrName.split(" ").pop();
+      var roomLabel = m.room ? (m.room.building?.abbreviation || "") + " " + m.room.room_number : "Online";
+      var durationMin = endMin - startMin;
+      var daysStr = parseDays(m.days_of_week).join("");
+      var timeRange = formatTime(m.start_time) + "\u2013" + formatTime(m.end_time);
+      var sessionKey = m.section?.session || "regular";
+      var sessionTag = sessionKey !== "regular" ? (SESSION_LABELS[sessionKey] || "") : "";
 
-      card.innerHTML = `<div class="course-code">${deptCode} ${courseNum}-${secNum}</div>` +
-        `<div class="instructor">${lastName}</div>` +
-        (durationMin > 50 ? `<div class="room-label">${roomLabel}</div>` : "") +
-        `<div class="tooltip">` +
-          `<p class="title">${deptCode} ${courseNum}-${secNum}</p>` +
-          `<p class="sub">${course?.title || ""}</p>` +
-          `<p>Instructor: ${instrName}</p>` +
-          `<p>Room: ${roomLabel}</p>` +
-          `<p>Time: ${formatTime(m.start_time)} – ${formatTime(m.end_time)}</p>` +
-          `<p>Days: ${parseDays(m.days_of_week).join(", ")}</p>` +
-          `<p>Credits: ${course?.credits || "—"}</p>` +
-          `<p>Enrollment Cap: ${m.section?.enrollment_cap || "—"}</p>` +
-        `</div>`;
+      var html = '<div class="course-code">' + deptCode + " " + courseNum + "-" + secNum + "</div>" +
+        '<div class="time-days">' + daysStr + " " + timeRange + "</div>";
+      if (durationMin > 50) {
+        html += '<div class="instructor">' + lastName + "</div>" +
+          '<div class="room-label">' + roomLabel + "</div>";
+        if (sessionTag) {
+          html += '<div class="session-tag">' + sessionTag + "</div>";
+        }
+      }
+      card.innerHTML = html;
+
+      card.addEventListener("click", (function(meeting) {
+        return function(e) { e.stopPropagation(); showDetail(meeting); };
+      })(m));
 
       col.appendChild(card);
     });
@@ -410,50 +567,50 @@ function renderGrid() {
 }
 
 function renderLegend() {
-  const legend = document.getElementById("legend");
+  var legend = document.getElementById("legend");
   legend.innerHTML = "";
 
   if (viewMode === "room") {
-    DATA.rooms.forEach(r => {
-      const c = roomColorMap.get(r.id) || "#9ca3af";
-      const label = (r.building?.abbreviation || "") + " " + r.room_number;
+    DATA.rooms.forEach(function(r) {
+      var c = roomColorMap.get(r.id) || "#9ca3af";
+      var label = (r.building?.abbreviation || "") + " " + r.room_number;
       legend.appendChild(pill(label, c));
     });
   } else if (viewMode === "instructor") {
-    DATA.instructors.forEach(i => {
-      const c = instructorColorMap.get(i.id) || "#9ca3af";
+    DATA.instructors.forEach(function(i) {
+      var c = instructorColorMap.get(i.id) || "#9ca3af";
       legend.appendChild(pill(i.name, c));
     });
   } else {
-    ["100","200","300","400","600","700"].forEach(l => {
-      const c = getLevelHexColor(l);
+    ["100","200","300","400","600","700"].forEach(function(l) {
+      var c = getLevelHexColor(l);
       legend.appendChild(pill(l + "-level", c));
     });
   }
 }
 
 function renderFilter() {
-  const sel = document.getElementById("filter-select");
-  const val = sel.value;
+  var sel = document.getElementById("filter-select");
+  var val = sel.value;
   sel.innerHTML = '<option value="all">All</option>';
 
   if (viewMode === "room") {
-    DATA.rooms.forEach(r => {
-      const opt = document.createElement("option");
+    DATA.rooms.forEach(function(r) {
+      var opt = document.createElement("option");
       opt.value = String(r.id);
       opt.textContent = (r.building?.abbreviation || "") + " " + r.room_number + " (cap: " + r.capacity + ")";
       sel.appendChild(opt);
     });
   } else if (viewMode === "instructor") {
-    DATA.instructors.forEach(i => {
-      const opt = document.createElement("option");
+    DATA.instructors.forEach(function(i) {
+      var opt = document.createElement("option");
       opt.value = String(i.id);
       opt.textContent = i.name;
       sel.appendChild(opt);
     });
   } else {
-    ["100","200","300","400","600","700"].forEach(l => {
-      const opt = document.createElement("option");
+    ["100","200","300","400","600","700"].forEach(function(l) {
+      var opt = document.createElement("option");
       opt.value = l;
       opt.textContent = l + "-level";
       sel.appendChild(opt);
@@ -461,39 +618,46 @@ function renderFilter() {
   }
 
   // Restore selection if still valid
-  if (sel.querySelector(`option[value="${val}"]`)) sel.value = val;
+  if (sel.querySelector('option[value="' + val + '"]')) sel.value = val;
   else sel.value = "all";
 }
 
 function renderOnline() {
-  const sections = filterOnlineSections(DATA.online_sections);
-  const wrap = document.getElementById("online-wrap");
-  const body = document.getElementById("online-body");
+  var sections = filterOnlineSections(DATA.online_sections);
+  var wrap = document.getElementById("online-wrap");
+  var body = document.getElementById("online-body");
   body.innerHTML = "";
 
   if (sections.length === 0) { wrap.style.display = "none"; return; }
   wrap.style.display = "";
 
-  sections.forEach(s => {
-    const course = s.course;
-    const courseNum = course?.course_number || "";
-    const level = Math.floor(parseInt(courseNum) / 100) * 100;
-    let rowColor = "#9ca3af";
+  sections.forEach(function(s) {
+    var course = s.course;
+    var courseNum = course?.course_number || "";
+    var level = Math.floor(parseInt(courseNum) / 100) * 100;
+    var rowColor = "#9ca3af";
     if (viewMode === "instructor" && s.instructor_id) rowColor = instructorColorMap.get(s.instructor_id) || "#9ca3af";
     else if (viewMode === "level") rowColor = getLevelHexColor(courseNum);
     else rowColor = getLevelHexColor(courseNum);
 
-    const tr = document.createElement("tr");
+    var session = SESSION_LABELS[s.session] || "Regular";
+
+    var tr = document.createElement("tr");
     tr.innerHTML =
-      `<td><span class="color-dot" style="background:${rowColor}20;border-left:2px solid ${rowColor}"></span></td>` +
-      `<td style="font-weight:500">${course?.department_code || ""} ${courseNum}</td>` +
-      `<td>${s.section_number}</td>` +
-      `<td>${course?.title || ""}</td>` +
-      `<td>${level || "—"}-level</td>` +
-      `<td>${s.instructor?.name || "TBD"}</td>` +
-      `<td>${course?.credits || ""}</td>` +
-      `<td>${s.enrollment_cap || "—"}</td>` +
-      `<td style="text-transform:capitalize">${s.status}</td>`;
+      '<td><span class="color-dot" style="background:' + rowColor + '20;border-left:2px solid ' + rowColor + '"></span></td>' +
+      '<td style="font-weight:500">' + (course?.department_code || "") + " " + courseNum + "</td>" +
+      "<td>" + s.section_number + "</td>" +
+      "<td>" + (course?.title || "") + "</td>" +
+      "<td>" + session + "</td>" +
+      "<td>" + (s.instructor?.name || "TBD") + "</td>" +
+      "<td>" + (course?.credits || "") + "</td>" +
+      "<td>" + (s.enrollment_cap || "—") + "</td>" +
+      '<td style="text-transform:capitalize">' + s.status + "</td>";
+
+    tr.addEventListener("click", (function(section) {
+      return function() { showOnlineDetail(section); };
+    })(s));
+
     body.appendChild(tr);
   });
 }
@@ -507,30 +671,30 @@ function renderAll() {
 
 // --- Helpers ---
 function el(tag, cls, text) {
-  const e = document.createElement(tag);
+  var e = document.createElement(tag);
   if (cls) e.className = cls;
   if (text) e.textContent = text;
   return e;
 }
 
 function pill(label, color) {
-  const span = el("span", "legend-pill", label);
+  var span = el("span", "legend-pill", label);
   span.style.backgroundColor = color + "14";
   span.style.borderLeft = "3px solid " + color;
   return span;
 }
 
 // --- Event listeners ---
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+document.querySelectorAll(".tab-btn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
     btn.classList.add("active");
     viewMode = btn.dataset.mode;
     renderAll();
   });
 });
 
-document.getElementById("filter-select").addEventListener("change", () => {
+document.getElementById("filter-select").addEventListener("change", function() {
   renderGrid();
   renderOnline();
 });

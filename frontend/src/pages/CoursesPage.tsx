@@ -6,13 +6,39 @@ import type { Course, Section, Meeting, Room, Instructor, TimeBlock, Term } from
 import { MeetingDialog } from "../components/meetings/MeetingDialog";
 import { formatTime, parseDaysOfWeek } from "../lib/utils";
 
+const MODALITY_LABELS: Record<string, string> = {
+  in_person: "In Person",
+  online_sync: "Online Sync",
+  online_async: "Online Async",
+  hybrid: "Hybrid",
+};
+
+const SESSION_LABELS: Record<string, string> = {
+  regular: "Regular",
+  session_a: "Session A",
+  session_b: "Session B",
+};
+
+function formatModality(modality: string): string {
+  return MODALITY_LABELS[modality] ?? modality.replace("_", " ");
+}
+
+function formatSession(session: string): string {
+  return SESSION_LABELS[session] ?? session.replace("_", " ");
+}
+
+/** Whether the term type supports Session A/B options */
+function termHasSessions(termType: string): boolean {
+  return termType === "fall" || termType === "spring";
+}
+
 export function CoursesPage() {
   const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
   const queryClient = useQueryClient();
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<Partial<Course>>({ credits: 3 });
-  const [sectionForm, setSectionForm] = useState<Partial<Section>>({ enrollment_cap: 30, modality: "in_person" });
+  const [sectionForm, setSectionForm] = useState<Partial<Section>>({ enrollment_cap: 30, modality: "in_person", session: "regular" });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [schedulingSection, setSchedulingSection] = useState<Section | null>(null);
@@ -66,7 +92,7 @@ export function CoursesPage() {
     mutationFn: (data: Partial<Section>) => api.post("/sections", data),
     onSuccess: () => {
       invalidateAll();
-      setSectionForm({ enrollment_cap: 30, modality: "in_person" });
+      setSectionForm({ enrollment_cap: 30, modality: "in_person", session: "regular" });
     },
   });
 
@@ -223,7 +249,25 @@ export function CoursesPage() {
                               <div key={s.id} className="flex items-center gap-3 text-xs py-1">
                                 <span className="font-medium w-20">Sec {s.section_number}</span>
                                 <span className="text-muted-foreground w-14">Cap: {s.enrollment_cap}</span>
-                                <span className="capitalize text-muted-foreground w-16">{s.modality.replace("_", " ")}</span>
+                                <span className="text-muted-foreground w-24">{formatModality(s.modality)}</span>
+
+                                {/* Session dropdown */}
+                                {selectedTerm && termHasSessions(selectedTerm.type) ? (
+                                  <select
+                                    className="border border-border rounded px-1.5 py-0.5 text-xs w-24"
+                                    value={s.session ?? "regular"}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                      updateSectionMutation.mutate({ id: s.id, data: { session: e.target.value } });
+                                    }}
+                                  >
+                                    <option value="regular">Regular</option>
+                                    <option value="session_a">Session A</option>
+                                    <option value="session_b">Session B</option>
+                                  </select>
+                                ) : (
+                                  <span className="text-muted-foreground w-24">{formatSession(s.session ?? "regular")}</span>
+                                )}
 
                                 {/* Instructor dropdown */}
                                 <select
@@ -241,18 +285,44 @@ export function CoursesPage() {
                                   ))}
                                 </select>
 
-                                {/* Meeting info or schedule button */}
+                                {/* Meeting info or status */}
                                 {sMeetings.length > 0 ? (
                                   <span className="text-green-700 flex-1 truncate">
                                     {sMeetings.map((m) => meetingSummary(m)).join(" | ")}
                                   </span>
+                                ) : s.modality === "online_async" && s.status !== "unscheduled" ? (
+                                  <span className="text-green-600 flex-1 capitalize">{s.status}</span>
                                 ) : (
                                   <span className="text-yellow-600 flex-1">Unscheduled</span>
                                 )}
 
                                 {/* Action buttons */}
                                 <div className="flex gap-2 shrink-0">
-                                  {selectedTerm && sMeetings.length === 0 && (
+                                  {/* Async online: toggle status directly (no meeting needed) */}
+                                  {selectedTerm && s.modality === "online_async" && s.status === "unscheduled" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateSectionMutation.mutate({ id: s.id, data: { status: "scheduled" } });
+                                      }}
+                                      className="text-primary hover:underline"
+                                    >
+                                      Mark Scheduled
+                                    </button>
+                                  )}
+                                  {selectedTerm && s.modality === "online_async" && s.status !== "unscheduled" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateSectionMutation.mutate({ id: s.id, data: { status: "unscheduled" } });
+                                      }}
+                                      className="text-yellow-600 hover:underline"
+                                    >
+                                      Unschedule
+                                    </button>
+                                  )}
+                                  {/* Sync modalities: open MeetingDialog */}
+                                  {selectedTerm && s.modality !== "online_async" && sMeetings.length === 0 && (
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -265,7 +335,7 @@ export function CoursesPage() {
                                       Schedule
                                     </button>
                                   )}
-                                  {selectedTerm && sMeetings.length > 0 && (
+                                  {selectedTerm && s.modality !== "online_async" && sMeetings.length > 0 && (
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -305,9 +375,19 @@ export function CoursesPage() {
                                 value={sectionForm.modality ?? "in_person"}
                                 onChange={(e) => setSectionForm({ ...sectionForm, modality: e.target.value })}>
                                 <option value="in_person">In Person</option>
-                                <option value="online">Online</option>
+                                <option value="online_sync">Online Sync</option>
+                                <option value="online_async">Online Async</option>
                                 <option value="hybrid">Hybrid</option>
                               </select>
+                              {selectedTerm && termHasSessions(selectedTerm.type) && (
+                                <select className="border rounded px-2 py-1 text-xs"
+                                  value={sectionForm.session ?? "regular"}
+                                  onChange={(e) => setSectionForm({ ...sectionForm, session: e.target.value })}>
+                                  <option value="regular">Regular</option>
+                                  <option value="session_a">Session A</option>
+                                  <option value="session_b">Session B</option>
+                                </select>
+                              )}
                               <select className="border rounded px-2 py-1 text-xs w-40"
                                 value={sectionForm.instructor_id ?? ""}
                                 onChange={(e) => setSectionForm({

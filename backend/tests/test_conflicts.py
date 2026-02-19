@@ -62,7 +62,7 @@ def seed_data(db: Session):
     - 1 standard TTh time block (9:30-10:45)
     """
     term = Term(
-        id=1, name="Fall 2025", type=TermType.semester,
+        id=1, name="Fall 2025", type=TermType.fall,
         start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
         status=TermStatus.draft,
     )
@@ -610,7 +610,7 @@ class TestNoFalsePositives:
         # Create an online section
         online_sec = Section(
             id=10, course_id=1, term_id=1, section_number="099",
-            enrollment_cap=100, modality=Modality.online,
+            enrollment_cap=100, modality=Modality.online_sync,
             status=SectionStatus.scheduled,
         )
         db.add(online_sec)

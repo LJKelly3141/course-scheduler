@@ -10,7 +10,11 @@ interface TermForm {
   end_date: string;
 }
 
-const emptyForm: TermForm = { name: "", type: "semester", start_date: "", end_date: "" };
+interface CopyForm extends TermForm {
+  include_assignments: boolean;
+}
+
+const emptyForm: TermForm = { name: "", type: "fall", start_date: "", end_date: "" };
 
 export function TermsPage() {
   const queryClient = useQueryClient();
@@ -18,6 +22,11 @@ export function TermsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<TermForm>(emptyForm);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [copyingTerm, setCopyingTerm] = useState<Term | null>(null);
+  const [copyForm, setCopyForm] = useState<CopyForm>({
+    ...emptyForm,
+    include_assignments: true,
+  });
 
   const { data: terms = [] } = useQuery({
     queryKey: ["terms"],
@@ -63,6 +72,15 @@ export function TermsPage() {
     },
   });
 
+  const copyMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CopyForm }) =>
+      api.post(`/terms/${id}/copy`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["terms"] });
+      setCopyingTerm(null);
+    },
+  });
+
   const startEdit = (term: Term) => {
     setEditingId(term.id);
     setForm({
@@ -72,6 +90,17 @@ export function TermsPage() {
       end_date: term.end_date,
     });
     setShowAdd(false);
+  };
+
+  const startCopy = (term: Term) => {
+    setCopyingTerm(term);
+    setCopyForm({
+      name: `${term.name} (Copy)`,
+      type: term.type,
+      start_date: "",
+      end_date: "",
+      include_assignments: true,
+    });
   };
 
   const handleSave = () => {
@@ -119,8 +148,10 @@ export function TermsPage() {
           value={form.type}
           onChange={(e) => setForm({ ...form, type: e.target.value })}
         >
-          <option value="semester">Semester</option>
-          <option value="quarter">Quarter</option>
+          <option value="fall">Fall</option>
+          <option value="spring">Spring</option>
+          <option value="summer">Summer</option>
+          <option value="winter">Winter</option>
         </select>
       </td>
       <td className="px-4 py-2">
@@ -139,7 +170,6 @@ export function TermsPage() {
           onChange={(e) => setForm({ ...form, end_date: e.target.value })}
         />
       </td>
-      <td className="px-4 py-2">-</td>
       <td className="px-4 py-2">
         <div className="flex gap-2">
           <button
@@ -200,7 +230,6 @@ export function TermsPage() {
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Start Date</th>
               <th className="px-4 py-3">End Date</th>
-              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -223,18 +252,13 @@ export function TermsPage() {
                   <td className="px-4 py-2.5">{term.start_date}</td>
                   <td className="px-4 py-2.5">{term.end_date}</td>
                   <td className="px-4 py-2.5">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        term.status === "final"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {term.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
                     <div className="flex gap-3">
+                      <button
+                        onClick={() => startCopy(term)}
+                        className="text-primary text-xs hover:underline"
+                      >
+                        Copy
+                      </button>
                       <button
                         onClick={() => startEdit(term)}
                         className="text-primary text-xs hover:underline"
@@ -257,7 +281,7 @@ export function TermsPage() {
             )}
             {terms.length === 0 && !showAdd && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                   No terms yet. Click "+ Add Term" to create one.
                 </td>
               </tr>
@@ -271,6 +295,113 @@ export function TermsPage() {
           <p className="text-sm text-destructive">
             {((deleteMutation.error || batchDeleteMutation.error) as Error)?.message || "Failed to delete term(s)"}
           </p>
+        </div>
+      )}
+
+      {/* Copy Term Dialog */}
+      {copyingTerm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCopyingTerm(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-slate-50 border-b border-border px-6 py-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Copy Term</h2>
+                  <p className="text-sm text-slate-600 mt-0.5">
+                    Copying from <span className="font-medium">{copyingTerm.name}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCopyingTerm(null)}
+                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-1"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <input
+                  className="border border-border rounded px-3 py-2 text-sm w-full"
+                  value={copyForm.name}
+                  onChange={(e) => setCopyForm({ ...copyForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                <select
+                  className="border border-border rounded px-3 py-2 text-sm w-full"
+                  value={copyForm.type}
+                  onChange={(e) => setCopyForm({ ...copyForm, type: e.target.value })}
+                >
+                  <option value="fall">Fall</option>
+                  <option value="spring">Spring</option>
+                  <option value="summer">Summer</option>
+                  <option value="winter">Winter</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    className="border border-border rounded px-3 py-2 text-sm w-full"
+                    value={copyForm.start_date}
+                    onChange={(e) => setCopyForm({ ...copyForm, start_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    className="border border-border rounded px-3 py-2 text-sm w-full"
+                    value={copyForm.end_date}
+                    onChange={(e) => setCopyForm({ ...copyForm, end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={copyForm.include_assignments}
+                  onChange={(e) =>
+                    setCopyForm({ ...copyForm, include_assignments: e.target.checked })
+                  }
+                />
+                <span className="text-sm text-slate-700">Include instructor & room assignments</span>
+              </label>
+            </div>
+
+            <div className="border-t border-border px-6 py-3 flex justify-end gap-2 bg-slate-50">
+              <button
+                onClick={() => setCopyingTerm(null)}
+                className="px-4 py-1.5 text-sm border border-border rounded-md hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  copyMutation.mutate({ id: copyingTerm.id, data: copyForm })
+                }
+                disabled={
+                  !copyForm.name || !copyForm.start_date || !copyForm.end_date || copyMutation.isPending
+                }
+                className="px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 font-medium disabled:opacity-50"
+              >
+                {copyMutation.isPending ? "Copying..." : "Copy Term"}
+              </button>
+            </div>
+
+            {copyMutation.isError && (
+              <div className="px-6 pb-3">
+                <p className="text-sm text-destructive">
+                  {(copyMutation.error as Error)?.message || "Failed to copy term"}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

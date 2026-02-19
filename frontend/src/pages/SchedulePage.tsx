@@ -123,11 +123,9 @@ export function SchedulePage() {
     (m) => m.start_time && m.days_of_week && m.days_of_week.length > 0
   );
 
-  // Online async sections: modality is "online" and no meetings with time data
-  const sectionIdsWithMeetings = new Set(meetings.map((m) => m.section_id));
-
+  // Online async sections: modality is "online_async" (no meetings needed)
   let onlineAsyncSections = sections.filter(
-    (s) => s.modality === "online" && !sectionIdsWithMeetings.has(s.id)
+    (s) => s.modality === "online_async"
   );
 
   // Apply the same view-mode filter to the online table

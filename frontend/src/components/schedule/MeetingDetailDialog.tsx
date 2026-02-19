@@ -77,7 +77,8 @@ export function MeetingDetailDialog({ meeting, onClose, onEdit, onDelete }: Prop
           <DetailRow label="Credits" value={course?.credits != null ? String(course.credits) : "—"} />
           <DetailRow label="Level" value={level} />
           <DetailRow label="Enrollment Cap" value={section?.enrollment_cap != null ? String(section.enrollment_cap) : "—"} />
-          <DetailRow label="Modality" value={section?.modality ?? "—"} />
+          <DetailRow label="Session" value={section?.session?.replace("_", " ") ?? "Regular"} />
+          <DetailRow label="Modality" value={section?.modality?.replace("_", " ") ?? "—"} />
           <DetailRow label="Status" value={section?.status ?? "—"} />
         </div>
 

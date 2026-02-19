@@ -99,9 +99,24 @@ def parse_course(course_str: str) -> Tuple[str, str, str]:
     return code_part, "", title
 
 
-def parse_section(section_str: str) -> str:
-    """Parse '01-LEC Regular' into section number '01'."""
-    return section_str.strip().split("-", 1)[0]
+def parse_section(section_str: str) -> Tuple[str, str]:
+    """Parse '01-LEC Regular' into ('01', 'regular').
+
+    Returns (section_number, session) where session is one of:
+    'regular', 'session_a', 'session_b'.
+    """
+    stripped = section_str.strip()
+    section_number = stripped.split("-", 1)[0]
+
+    lower = stripped.lower()
+    if "session a" in lower:
+        session = "session_a"
+    elif "session b" in lower:
+        session = "session_b"
+    else:
+        session = "regular"
+
+    return section_number, session
 
 
 def parse_room(room_str: str) -> Tuple[Optional[str], Optional[str]]:
@@ -123,11 +138,11 @@ def parse_room(room_str: str) -> Tuple[Optional[str], Optional[str]]:
     return building_name, room_number
 
 
-def detect_modality(room_str: str) -> str:
+def detect_modality(room_str: str, has_time: bool = True) -> str:
     """Detect modality from room string."""
     stripped = room_str.strip().lower()
     if stripped == "on-line":
-        return "online"
+        return "online_sync" if has_time else "online_async"
     return "in_person"
 
 
@@ -167,7 +182,7 @@ def parse_xlsx_row(row_dict: dict, row_num: int) -> Tuple[Optional[dict], List[s
         return None, errors
 
     dept_code, course_number, title = parse_course(course_val)
-    section_number = parse_section(section_val)
+    section_number, session = parse_section(section_val)
 
     # Days & Times
     days_times_val = str(row_dict.get("Days & Times") or "").strip()
@@ -176,7 +191,7 @@ def parse_xlsx_row(row_dict: dict, row_num: int) -> Tuple[Optional[dict], List[s
     # Room
     room_val = str(row_dict.get("Room") or "").strip()
     building_name, room_number = parse_room(room_val)
-    modality = detect_modality(room_val)
+    modality = detect_modality(room_val, has_time=days is not None)
 
     # Instructor
     instructor_name = str(row_dict.get("Instructor") or "").strip()
@@ -199,6 +214,7 @@ def parse_xlsx_row(row_dict: dict, row_num: int) -> Tuple[Optional[dict], List[s
         "course_number": course_number,
         "title": title,
         "section_number": section_number,
+        "session": session,
         "days": days,
         "start_time": start_time.isoformat() if start_time else None,
         "end_time": end_time.isoformat() if end_time else None,
@@ -251,25 +267,31 @@ def suggest_term_from_dates(rows: List[dict]) -> Optional[dict]:
     min_start = min(start_dates)
     max_end = max(end_dates)
 
-    # Infer term name from start month
+    # Infer term name and type from start month
     month = min_start.month
     year = min_start.year
     if month in (8, 9):
         name = f"Fall {year}"
+        term_type = "fall"
     elif month in (1, 2):
         name = f"Spring {year}"
+        term_type = "spring"
     elif month in (5, 6, 7):
         name = f"Summer {year}"
+        term_type = "summer"
     elif month in (3, 4):
         name = f"Spring {year}"
+        term_type = "spring"
     elif month in (10, 11, 12):
         name = f"Fall {year}"
+        term_type = "fall"
     else:
-        name = f"Term {year}"
+        name = f"Fall {year}"
+        term_type = "fall"
 
     return {
         "name": name,
-        "type": "semester",
+        "type": term_type,
         "start_date": min_start.isoformat(),
         "end_date": max_end.isoformat(),
     }

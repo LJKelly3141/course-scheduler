@@ -140,6 +140,7 @@ class SectionBase(BaseModel):
     section_number: str
     enrollment_cap: int = 30
     modality: str = "in_person"
+    session: str = "regular"
     instructor_id: Optional[int] = None
 
 class SectionCreate(SectionBase):
@@ -149,12 +150,14 @@ class SectionUpdate(BaseModel):
     section_number: Optional[str] = None
     enrollment_cap: Optional[int] = None
     modality: Optional[str] = None
+    session: Optional[str] = None
     status: Optional[str] = None
     instructor_id: Optional[int] = None
 
 class SectionRead(SectionBase):
     id: int
     status: str
+    session: str = "regular"
     instructor_id: Optional[int] = None
     instructor: Optional[InstructorRead] = None
     model_config = {"from_attributes": True}
@@ -177,9 +180,9 @@ class TimeBlockRead(BaseModel):
 # --- Meeting ---
 class MeetingBase(BaseModel):
     section_id: int
-    days_of_week: str
-    start_time: time
-    end_time: time
+    days_of_week: Optional[str] = None
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
     time_block_id: Optional[int] = None
     room_id: Optional[int] = None
     instructor_id: Optional[int] = None

@@ -134,7 +134,7 @@ def seed_sample_data(db: Session):
     # Term
     term = Term(
         name="Fall 2025",
-        type="semester",
+        type="fall",
         start_date=date(2025, 9, 2),
         end_date=date(2025, 12, 19),
         status="draft",
@@ -172,12 +172,12 @@ def seed_sections_and_meetings(db: Session):
     # Create sections
     section_data = [
         ("101", "01", 30, "in_person"), ("101", "02", 30, "in_person"),
-        ("101", "03", 30, "online"),
+        ("101", "03", 30, "online_sync"),
         ("110", "01", 35, "in_person"), ("110", "02", 35, "in_person"),
         ("120", "01", 30, "in_person"),
         ("200", "01", 30, "in_person"), ("200", "02", 30, "in_person"),
         ("210", "01", 25, "in_person"),
-        ("255", "01", 30, "in_person"), ("255", "02", 30, "online"),
+        ("255", "01", 30, "in_person"), ("255", "02", 30, "online_sync"),
         ("300", "01", 25, "in_person"),
         ("310", "01", 25, "in_person"),
         ("320", "01", 30, "in_person"),
@@ -194,10 +194,10 @@ def seed_sections_and_meetings(db: Session):
         ("710", "01", 20, "in_person"),
         # Extra sections for scheduling
         ("300", "02", 25, "in_person"),
-        ("320", "02", 25, "online"),
+        ("320", "02", 25, "online_async"),
         ("360", "02", 30, "in_person"),
         ("120", "02", 30, "hybrid"),
-        ("450", "02", 20, "online"),
+        ("450", "02", 20, "online_async"),
     ]
 
     sections = {}

@@ -1,6 +1,11 @@
 import { useDraggable } from "@dnd-kit/core";
 import type { Meeting } from "../../api/types";
-import { cn, getLevelHexColor, timeToMinutes } from "../../lib/utils";
+import { cn, getLevelHexColor, timeToMinutes, formatTime, parseDaysOfWeek } from "../../lib/utils";
+
+const SESSION_SHORT: Record<string, string> = {
+  session_a: "Sess A",
+  session_b: "Sess B",
+};
 
 interface Props {
   meeting: Meeting;
@@ -35,6 +40,11 @@ export function DraggableMeetingCard({
   const isCompact = durationMin <= 50;
 
   const accentColor = bgColor || getLevelHexColor(courseNum);
+
+  const days = parseDaysOfWeek(meeting.days_of_week).join("");
+  const timeRange = `${formatTime(meeting.start_time)}\u2013${formatTime(meeting.end_time)}`;
+  const session = meeting.section?.session;
+  const sessionLabel = session ? SESSION_SHORT[session] : undefined;
 
   const baseStyle: React.CSSProperties = {
     ...style,
@@ -71,14 +81,16 @@ export function DraggableMeetingCard({
       <div className="font-semibold truncate text-slate-800">
         {meeting.section?.course?.department_code} {courseNum}-{meeting.section?.section_number}
       </div>
-      {isCompact ? (
-        <div className="truncate text-slate-500">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
-      ) : (
+      <div className="truncate text-slate-500">{days} {timeRange}</div>
+      {!isCompact && (
         <>
           <div className="truncate text-slate-500">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
           <div className="truncate text-slate-400">
             {meeting.room ? `${meeting.room.building?.abbreviation} ${meeting.room.room_number}` : "Online"}
           </div>
+          {sessionLabel && (
+            <div className="truncate text-[10px] text-indigo-600 font-medium">{sessionLabel}</div>
+          )}
         </>
       )}
     </div>

@@ -129,19 +129,23 @@ def test_parse_course_short():
 # parse_section
 # ---------------------------------------------------------------------------
 def test_parse_section_regular():
-    assert parse_section("01-LEC Regular") == "01"
+    assert parse_section("01-LEC Regular") == ("01", "regular")
 
 
-def test_parse_section_session():
-    assert parse_section("90-LEC Session A") == "90"
+def test_parse_section_session_a():
+    assert parse_section("90-LEC Session A") == ("90", "session_a")
+
+
+def test_parse_section_session_b():
+    assert parse_section("91-LEC Session B") == ("91", "session_b")
 
 
 def test_parse_section_field():
-    assert parse_section("01-FLD Regular") == "01"
+    assert parse_section("01-FLD Regular") == ("01", "regular")
 
 
 def test_parse_section_independent():
-    assert parse_section("01-IND Regular") == "01"
+    assert parse_section("01-IND Regular") == ("01", "regular")
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +185,8 @@ def test_parse_room_empty():
 # detect_modality
 # ---------------------------------------------------------------------------
 def test_detect_modality_online():
-    assert detect_modality("On-Line") == "online"
+    assert detect_modality("On-Line") == "online_sync"
+    assert detect_modality("On-Line", has_time=False) == "online_async"
 
 
 def test_detect_modality_room():
@@ -234,6 +239,7 @@ def test_full_row_parse():
     assert parsed["course_number"] == "201"
     assert parsed["title"] == "Principles of Microeconomics"
     assert parsed["section_number"] == "01"
+    assert parsed["session"] == "regular"
     assert parsed["days"] == ["M", "W", "F"]
     assert parsed["start_time"] == "09:00:00"
     assert parsed["end_time"] == "09:50:00"
@@ -259,8 +265,9 @@ def test_tba_row_parse():
     assert parsed["end_time"] is None
     assert parsed["building_name"] is None
     assert parsed["room_number"] is None
-    assert parsed["modality"] == "online"
+    assert parsed["modality"] == "online_async"
     assert parsed["section_number"] == "90"
+    assert parsed["session"] == "session_a"
 
 
 def test_missing_course_error():
@@ -316,7 +323,7 @@ def test_suggest_term_fall():
     result = suggest_term_from_dates(rows)
     assert result is not None
     assert result["name"] == "Fall 2026"
-    assert result["type"] == "semester"
+    assert result["type"] == "fall"
     assert result["start_date"] == "2026-09-02"
     assert result["end_date"] == "2026-12-15"
 

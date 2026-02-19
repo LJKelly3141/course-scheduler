@@ -412,6 +412,7 @@ async def import_schedule(
     time_blocks = db.query(TimeBlock).all()
 
     created = 0
+    updated = 0
     import_errors: list[str] = []
 
     for row in valid_rows:
@@ -508,7 +509,26 @@ async def import_schedule(
                     db.add(room)
                     db.flush()
 
-            # --- Section: skip if duplicate ---
+            # --- Modality ---
+            has_schedule = row.get("days") is not None
+            modality_raw = row["modality"]
+            if modality_raw in ("online_sync", "online_async"):
+                modality_val = Modality(modality_raw)
+            elif modality_raw == "online":
+                modality_val = Modality.online_sync if has_schedule else Modality.online_async
+            else:
+                modality_val = Modality.in_person
+            is_online = modality_val in (Modality.online_sync, Modality.online_async)
+
+            # --- Session ---
+            from app.models.section import Session as SessionEnum
+            session_raw = row.get("session", "regular")
+            try:
+                session_val = SessionEnum(session_raw)
+            except ValueError:
+                session_val = SessionEnum.regular
+
+            # --- Section: find or create, update if exists ---
             existing_section = (
                 db.query(Section)
                 .filter(
@@ -518,48 +538,69 @@ async def import_schedule(
                 )
                 .first()
             )
+            is_update = False
             if existing_section:
-                import_errors.append(
-                    f"{row['department_code']} {row['course_number']}-{row['section_number']} "
-                    f"already exists in this term (skipped)"
+                # Update existing section with latest import data
+                existing_section.modality = modality_val
+                existing_section.session = session_val
+                existing_section.instructor_id = instructor.id if instructor else existing_section.instructor_id
+                if has_schedule or is_online:
+                    existing_section.status = SectionStatus.scheduled
+                section = existing_section
+                is_update = True
+            else:
+                section = Section(
+                    course_id=course.id,
+                    term_id=term_id,
+                    section_number=row["section_number"],
+                    enrollment_cap=30,
+                    modality=modality_val,
+                    session=session_val,
+                    status=SectionStatus.scheduled if (has_schedule or is_online) else SectionStatus.unscheduled,
+                    instructor_id=instructor.id if instructor else None,
                 )
-                continue
-
-            modality_val = Modality.online if row["modality"] == "online" else Modality.in_person
-            has_schedule = row.get("days") is not None
-            is_online = modality_val == Modality.online
-
-            section = Section(
-                course_id=course.id,
-                term_id=term_id,
-                section_number=row["section_number"],
-                enrollment_cap=30,
-                modality=modality_val,
-                status=SectionStatus.scheduled if (has_schedule or is_online) else SectionStatus.unscheduled,
-                instructor_id=instructor.id if instructor else None,
-            )
-            db.add(section)
+                db.add(section)
             db.flush()
 
-            # --- Meeting: create if days/times exist ---
+            # --- Meeting: create if days/times exist (update if duplicate) ---
             if has_schedule and row.get("start_time") and row.get("end_time"):
                 days_json = json.dumps(row["days"])
                 start = dt_time.fromisoformat(row["start_time"])
                 end = dt_time.fromisoformat(row["end_time"])
                 tb_id = match_time_block(row["days"], start, end, time_blocks)
 
-                meeting = Meeting(
-                    section_id=section.id,
-                    days_of_week=days_json,
-                    start_time=start,
-                    end_time=end,
-                    time_block_id=tb_id,
-                    room_id=room.id if room else None,
-                    instructor_id=instructor.id if instructor else None,
+                # Check for existing meeting with same time/days
+                existing_meeting = (
+                    db.query(Meeting)
+                    .filter(
+                        Meeting.section_id == section.id,
+                        Meeting.days_of_week == days_json,
+                        Meeting.start_time == start,
+                        Meeting.end_time == end,
+                    )
+                    .first()
                 )
-                db.add(meeting)
+                if existing_meeting:
+                    # Update existing meeting
+                    existing_meeting.time_block_id = tb_id
+                    existing_meeting.room_id = room.id if room else existing_meeting.room_id
+                    existing_meeting.instructor_id = instructor.id if instructor else existing_meeting.instructor_id
+                else:
+                    meeting = Meeting(
+                        section_id=section.id,
+                        days_of_week=days_json,
+                        start_time=start,
+                        end_time=end,
+                        time_block_id=tb_id,
+                        room_id=room.id if room else None,
+                        instructor_id=instructor.id if instructor else None,
+                    )
+                    db.add(meeting)
 
-            created += 1
+            if is_update:
+                updated += 1
+            else:
+                created += 1
         except Exception as exc:
             import_errors.append(
                 f"Error importing {row.get('department_code', '?')} "
@@ -567,7 +608,7 @@ async def import_schedule(
             )
 
     db.commit()
-    return ImportResult(created=created, errors=import_errors)
+    return ImportResult(created=created, updated=updated, errors=import_errors)
 
 
 # ---------------------------------------------------------------------------

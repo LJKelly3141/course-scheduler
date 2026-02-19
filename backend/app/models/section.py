@@ -7,8 +7,15 @@ from app.models.base import Base
 
 class Modality(str, enum.Enum):
     in_person = "in_person"
-    online = "online"
+    online_sync = "online_sync"
+    online_async = "online_async"
     hybrid = "hybrid"
+
+
+class Session(str, enum.Enum):
+    regular = "regular"
+    session_a = "session_a"
+    session_b = "session_b"
 
 
 class SectionStatus(str, enum.Enum):
@@ -26,6 +33,7 @@ class Section(Base):
     section_number: Mapped[str] = mapped_column(String(10))
     enrollment_cap: Mapped[int] = mapped_column(Integer, default=30)
     modality: Mapped[Modality] = mapped_column(Enum(Modality), default=Modality.in_person)
+    session: Mapped[Session] = mapped_column(Enum(Session), default=Session.regular)
     status: Mapped[SectionStatus] = mapped_column(
         Enum(SectionStatus), default=SectionStatus.unscheduled
     )

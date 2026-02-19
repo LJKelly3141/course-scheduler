@@ -26,6 +26,9 @@ export function MeetingDialog({ termId, meeting, sections, rooms, instructors, t
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const selectedSection = sections.find((s) => s.id === sectionId);
+  const isOnline = selectedSection?.modality === "online_sync" || selectedSection?.modality === "online_async";
+
   // When a time block is selected, populate days and times
   useEffect(() => {
     if (timeBlockId && !customTime) {
@@ -38,17 +41,35 @@ export function MeetingDialog({ termId, meeting, sections, rooms, instructors, t
     }
   }, [timeBlockId, customTime, timeBlocks]);
 
+  // When time block is cleared, clear days and times
+  useEffect(() => {
+    if (!timeBlockId && !customTime) {
+      setDaysOfWeek([]);
+      setStartTime("");
+      setEndTime("");
+    }
+  }, [timeBlockId, customTime]);
+
   const handleSave = async () => {
     setErrors([]);
     if (!sectionId) { setErrors(["Section is required"]); return; }
-    if (daysOfWeek.length === 0) { setErrors(["Days are required"]); return; }
-    if (!startTime || !endTime) { setErrors(["Start and end time are required"]); return; }
 
+    // If custom time is set, validate that all time fields are filled or all empty
+    if (customTime && daysOfWeek.length > 0 && (!startTime || !endTime)) {
+      setErrors(["If days are selected, start and end time are required"]);
+      return;
+    }
+    if (customTime && (startTime || endTime) && daysOfWeek.length === 0) {
+      setErrors(["If times are set, at least one day must be selected"]);
+      return;
+    }
+
+    const hasDays = daysOfWeek.length > 0;
     const body = {
       section_id: sectionId,
-      days_of_week: JSON.stringify(daysOfWeek),
-      start_time: startTime,
-      end_time: endTime,
+      days_of_week: hasDays ? JSON.stringify(daysOfWeek) : null,
+      start_time: startTime || null,
+      end_time: endTime || null,
       time_block_id: customTime ? null : timeBlockId,
       room_id: roomId,
       instructor_id: instructorId,
@@ -91,7 +112,7 @@ export function MeetingDialog({ termId, meeting, sections, rooms, instructors, t
               <option value={0}>Select section...</option>
               {(meeting ? sections : unscheduledSections).map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.course?.department_code} {s.course?.course_number}-{s.section_number} ({s.modality})
+                  {s.course?.department_code} {s.course?.course_number}-{s.section_number} ({s.modality.replace("_", " ")})
                 </option>
               ))}
             </select>
@@ -107,7 +128,7 @@ export function MeetingDialog({ termId, meeting, sections, rooms, instructors, t
               <label className="block text-sm font-medium mb-1">Time Block</label>
               <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
                 value={timeBlockId ?? ""} onChange={(e) => setTimeBlockId(Number(e.target.value) || null)}>
-                <option value="">Select time block...</option>
+                <option value="">TBD</option>
                 <optgroup label="MWF">
                   {timeBlocks.filter((b) => b.pattern === "mwf").map((b) => (
                     <option key={b.id} value={b.id}>{b.label}</option>
@@ -122,6 +143,9 @@ export function MeetingDialog({ termId, meeting, sections, rooms, instructors, t
                   {timeBlocks.filter((b) => b.pattern === "evening").map((b) => (
                     <option key={b.id} value={b.id}>{b.label}</option>
                   ))}
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="none">No meeting time</option>
                 </optgroup>
               </select>
             </div>
@@ -158,7 +182,8 @@ export function MeetingDialog({ termId, meeting, sections, rooms, instructors, t
             <label className="block text-sm font-medium mb-1">Room</label>
             <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
               value={roomId ?? ""} onChange={(e) => setRoomId(Number(e.target.value) || null)}>
-              <option value="">No room (online)</option>
+              <option value="">TBD</option>
+              <option value="none">No room (online)</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.building?.abbreviation} {r.room_number} (cap: {r.capacity})
