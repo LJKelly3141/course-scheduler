@@ -1,10 +1,14 @@
 import { useDraggable } from "@dnd-kit/core";
 import type { Meeting } from "../../api/types";
-import { cn, getLevelHexColor, timeToMinutes, formatTime, parseDaysOfWeek } from "../../lib/utils";
+import { cn, getLevelHexColor, timeToMinutes, formatTime, parseDaysOfWeek, entityBgAlpha } from "../../lib/utils";
+import { useTheme } from "../../hooks/useTheme";
 
+// Legacy fallback for old enum values
 const SESSION_SHORT: Record<string, string> = {
   session_a: "Sess A",
   session_b: "Sess B",
+  session_c: "Sess C",
+  session_d: "Sess D",
 };
 
 interface Props {
@@ -13,7 +17,7 @@ interface Props {
   bgColor?: string;
   activeDragMeetingId: number | null;
   onDetail: (meeting: Meeting) => void;
-  onEdit: (meeting: Meeting) => void;
+  onEdit?: (meeting: Meeting) => void;
   style: React.CSSProperties;
 }
 
@@ -26,6 +30,7 @@ export function DraggableMeetingCard({
   onEdit,
   style,
 }: Props) {
+  const { resolvedTheme } = useTheme();
   const isDraggable = meeting.time_block_id != null;
   const isBeingDragged = activeDragMeetingId === meeting.id;
 
@@ -43,12 +48,12 @@ export function DraggableMeetingCard({
 
   const days = parseDaysOfWeek(meeting.days_of_week).join("");
   const timeRange = `${formatTime(meeting.start_time)}\u2013${formatTime(meeting.end_time)}`;
-  const session = meeting.section?.session;
-  const sessionLabel = session ? SESSION_SHORT[session] : undefined;
+  const sessionLabel = meeting.section?.term_session?.name
+    ?? (meeting.section?.session ? SESSION_SHORT[meeting.section.session] : undefined);
 
   const baseStyle: React.CSSProperties = {
     ...style,
-    backgroundColor: `${accentColor}14`,
+    backgroundColor: `${accentColor}${entityBgAlpha(resolvedTheme === "dark")}`,
     borderLeft: `3px solid ${accentColor}`,
     pointerEvents: "auto",
   };
@@ -70,7 +75,7 @@ export function DraggableMeetingCard({
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onEdit(meeting);
+        onEdit?.(meeting);
       }}
       className={cn(
         "absolute rounded-md px-1.5 py-0.5 text-[11px] leading-tight overflow-hidden",
@@ -78,18 +83,18 @@ export function DraggableMeetingCard({
         isBeingDragged && "opacity-40"
       )}
     >
-      <div className="font-semibold truncate text-slate-800">
+      <div className="font-semibold truncate text-slate-800 dark:text-slate-200">
         {meeting.section?.course?.department_code} {courseNum}-{meeting.section?.section_number}
       </div>
-      <div className="truncate text-slate-500">{days} {timeRange}</div>
+      <div className="truncate text-slate-500 dark:text-slate-400">{days} {timeRange}</div>
       {!isCompact && (
         <>
-          <div className="truncate text-slate-500">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
-          <div className="truncate text-slate-400">
+          <div className="truncate text-slate-500 dark:text-slate-400">{meeting.instructor?.name?.split(" ").pop() ?? "TBD"}</div>
+          <div className="truncate text-slate-400 dark:text-slate-500">
             {meeting.room ? `${meeting.room.building?.abbreviation} ${meeting.room.room_number}` : "Online"}
           </div>
           {sessionLabel && (
-            <div className="truncate text-[10px] text-indigo-600 font-medium">{sessionLabel}</div>
+            <div className="truncate text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">{sessionLabel}</div>
           )}
         </>
       )}

@@ -1,7 +1,7 @@
 {
-  "name": "uwrf-course-scheduler",
+  "name": "course-scheduler",
   "version": "1.0.0",
-  "description": "UWRF Course Scheduler - Desktop Application",
+  "description": "Course Scheduler - Desktop Application",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
@@ -12,8 +12,8 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "appId": "edu.uwrf.coursescheduler",
-    "productName": "UWRF Course Scheduler",
+    "appId": "app.coursescheduler",
+    "productName": "Course Scheduler",
     "directories": {
       "output": "dist-electron"
     },
@@ -35,7 +35,7 @@
       "category": "public.app-category.education"
     },
     "dmg": {
-      "title": "UWRF Course Scheduler",
+      "title": "Course Scheduler",
       "contents": [
         { "x": 130, "y": 220 },
         { "x": 410, "y": 220, "type": "link", "path": "/Applications" }

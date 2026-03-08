@@ -216,6 +216,24 @@ const DATA = {{ schedule_data }};
 
 const SESSION_LABELS = { regular: "Regular", session_a: "Session A", session_b: "Session B" };
 
+function getSessionLabel(item) {
+  // Prefer term_session (new flexible sessions) over legacy enum
+  var ts = item.term_session || item.section?.term_session;
+  if (ts && ts.name) {
+    var label = ts.name;
+    if (ts.start_date || ts.end_date) {
+      label += " (";
+      if (ts.start_date) label += ts.start_date;
+      if (ts.start_date && ts.end_date) label += " – ";
+      if (ts.end_date) label += ts.end_date;
+      label += ")";
+    }
+    return label;
+  }
+  var sessionKey = item.session || item.section?.session || "regular";
+  return SESSION_LABELS[sessionKey] || "Regular";
+}
+
 // --- Constants (matching frontend) ---
 const GRID_START_HOUR = 8;
 const GRID_END_HOUR = 21;
@@ -386,7 +404,7 @@ function showDetail(m) {
   const days = parseDays(m.days_of_week).map(d => DAY_NAMES[d] || d).join(", ");
   const timeStr = m.start_time && m.end_time ? formatTime(m.start_time) + " – " + formatTime(m.end_time) : "—";
   const level = courseNum ? Math.floor(parseInt(courseNum) / 100) * 100 + "-level" : "—";
-  const session = SESSION_LABELS[m.section?.session] || "Regular";
+  const session = getSessionLabel(m);
   const modality = (m.section?.modality || "").replace(/_/g, " ");
 
   document.getElementById("detail-title").textContent = deptCode + " " + courseNum + "-" + secNum;
@@ -424,7 +442,7 @@ function showOnlineDetail(s) {
   const secNum = s.section_number || "";
   const instrName = s.instructor?.name || "TBD";
   const level = courseNum ? Math.floor(parseInt(courseNum) / 100) * 100 + "-level" : "—";
-  const session = SESSION_LABELS[s.session] || "Regular";
+  const session = getSessionLabel(s);
   const modality = (s.modality || "").replace(/_/g, " ");
 
   document.getElementById("detail-title").textContent = deptCode + " " + courseNum + "-" + secNum;
@@ -541,8 +559,12 @@ function renderGrid() {
       var durationMin = endMin - startMin;
       var daysStr = parseDays(m.days_of_week).join("");
       var timeRange = formatTime(m.start_time) + "\u2013" + formatTime(m.end_time);
-      var sessionKey = m.section?.session || "regular";
-      var sessionTag = sessionKey !== "regular" ? (SESSION_LABELS[sessionKey] || "") : "";
+      var ts = m.section?.term_session;
+      var sessionTag = ts && ts.name ? ts.name : "";
+      if (!sessionTag) {
+        var sessionKey = m.section?.session || "regular";
+        sessionTag = sessionKey !== "regular" ? (SESSION_LABELS[sessionKey] || "") : "";
+      }
 
       var html = '<div class="course-code">' + deptCode + " " + courseNum + "-" + secNum + "</div>" +
         '<div class="time-days">' + daysStr + " " + timeRange + "</div>";
@@ -640,7 +662,7 @@ function renderOnline() {
     else if (viewMode === "level") rowColor = getLevelHexColor(courseNum);
     else rowColor = getLevelHexColor(courseNum);
 
-    var session = SESSION_LABELS[s.session] || "Regular";
+    var session = getSessionLabel(s);
 
     var tr = document.createElement("tr");
     tr.innerHTML =

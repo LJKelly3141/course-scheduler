@@ -81,18 +81,18 @@ npm run build        # production build (runs tsc -b first, which is stricter)
 npm run build:frontend && npm run build:backend && electron-builder
 ```
 
+## Data Safety Rules
+
+- **NEVER auto-seed sample/fake data on startup.** Only seed infrastructure (time blocks) when the table is empty. The user's database contains real scheduling data imported from XLSX files — treat it as irreplaceable.
+- **NEVER drop, truncate, or overwrite database tables** without explicit user confirmation.
+- Before changing startup, migration, or seed logic: verify it cannot destroy existing user data.
+
 ## Key Conventions
 
 - **Day codes**: Use `"M"`, `"T"`, `"W"`, `"Th"`, `"F"` (NOT `"R"` for Thursday). Days stored as JSON arrays: `["T","Th"]`.
 - **Python 3.9 compat**: Use `from __future__ import annotations` in all files. Use `Union[]` for runtime-evaluated type hints (e.g., FastAPI `response_model`). The `X | Y` syntax only works in annotations, not runtime expressions.
-- **bcrypt pinning**: Must use `bcrypt==4.0.1` for passlib compatibility.
 - **API prefix**: All backend routes are under `/api/`. The frontend Vite dev server proxies `/api` to `localhost:8000`.
-- **Auth**: JWT tokens via `python-jose`, stored in localStorage. Default admin: `admin@uwrf.edu` / `admin123`.
+- **No auth**: The app has no authentication — it's a single-user desktop app for a department chair.
 - **Conflict engine**: Hard conflicts block finalization; soft warnings are advisory. Both returned by `GET /api/terms/:id/validate`.
 - **CORS**: Configured for `localhost:5173`, `app://.` (Electron), and `file://` (production Electron builds).
 - **Tests**: Use in-memory SQLite with `seed_data` fixture that creates a complete test dataset.
-
-## Default Login Credentials (Seed Data)
-
-- Admin: `admin@uwrf.edu` / `admin123`
-- Instructor: `alice.johnson@uwrf.edu` / `password`

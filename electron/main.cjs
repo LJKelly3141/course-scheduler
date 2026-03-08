@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, Menu } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const http = require("http");
@@ -101,7 +101,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: "UWRF Course Scheduler",
+    title: "Course Scheduler",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -138,6 +138,77 @@ function stopBackend() {
   }
 }
 
+function navigateToHelp() {
+  if (!mainWindow) return;
+  if (isDev) {
+    mainWindow.webContents.executeJavaScript(
+      "window.location.href = '/help'"
+    );
+  } else {
+    mainWindow.webContents.executeJavaScript(
+      "window.location.hash = '#/help'"
+    );
+  }
+}
+
+function setupMenu() {
+  const template = [
+    ...(process.platform === "darwin"
+      ? [
+          {
+            label: app.getName(),
+            submenu: [
+              { role: "about" },
+              { type: "separator" },
+              { role: "hide" },
+              { role: "hideOthers" },
+              { role: "unhide" },
+              { type: "separator" },
+              { role: "quit" },
+            ],
+          },
+        ]
+      : []),
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "User Guide",
+          accelerator: "CmdOrCtrl+Shift+/",
+          click: () => navigateToHelp(),
+        },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(async () => {
   startBackend();
 
@@ -153,6 +224,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  setupMenu();
 
   app.on("activate", () => {
     // macOS: re-create window if dock icon clicked and no windows open

@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Term } from "../api/types";
+import { Button } from "@/components/ui/button";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 type ImportType = "rooms" | "instructors" | "courses" | "schedule" | "enrollment";
 
@@ -47,7 +49,7 @@ function rowsToCsvBlob(rows: Record<string, string>[]): Blob {
 }
 
 export function ImportPage() {
-  const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
+  const { selectedTerm, isReadOnly } = useOutletContext<{ selectedTerm: Term | null; isReadOnly: boolean }>();
   const queryClient = useQueryClient();
   const [importType, setImportType] = useState<ImportType>("rooms");
   const [file, setFile] = useState<File | null>(null);
@@ -243,7 +245,7 @@ export function ImportPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Data Import</h2>
 
-      <div className="bg-white rounded-lg border border-border p-6 space-y-4">
+      <div className="bg-card rounded-lg border border-border p-6 space-y-4">
         <div className="flex gap-4 items-center flex-wrap">
           <select className="border border-border rounded-md px-3 py-2 text-sm"
             value={importType} onChange={(e) => { setImportType(e.target.value as ImportType); resetState(); }}>
@@ -253,6 +255,7 @@ export function ImportPage() {
             <option value="schedule">Schedule</option>
             <option value="enrollment">Enrollment History</option>
           </select>
+          <HelpTooltip content="Import rooms, instructors, and courses first, then schedule data. Enrollment history powers analytics." side="right" />
 
           <input
             type="file"
@@ -262,10 +265,9 @@ export function ImportPage() {
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setEditableRows([]); setResult(null); }}
           />
 
-          <button onClick={handleUpload} disabled={!file || loading}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
+          <Button onClick={handleUpload} disabled={!file || loading}>
             {loading ? "Processing..." : "Preview"}
-          </button>
+          </Button>
         </div>
 
         <div className="text-xs text-muted-foreground bg-muted/30 rounded-md p-3 space-y-2">
@@ -365,7 +367,7 @@ export function ImportPage() {
 
         {/* Column mapping for schedule import — shown after file detection */}
         {isSchedule && showColumnMapping && columnDetect && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded p-4 space-y-3">
+          <div className="bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 rounded p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Column Mapping</p>
               <p className="text-xs text-muted-foreground">
@@ -373,21 +375,21 @@ export function ImportPage() {
               </p>
             </div>
             {columnDetect.warnings.length > 0 && (
-              <div className="text-xs text-amber-700 space-y-0.5">
+              <div className="text-xs text-amber-700 dark:text-amber-400 space-y-0.5">
                 {columnDetect.warnings.map((w, i) => <p key={i}>{w}</p>)}
               </div>
             )}
             <div className="grid gap-2">
               {columnDetect.file_headers.filter((h) => h.trim()).map((header) => (
                 <div key={header} className="flex items-center gap-3 text-sm">
-                  <span className="w-48 font-medium truncate font-mono text-xs bg-white border border-border rounded px-2 py-1" title={header}>
+                  <span className="w-48 font-medium truncate font-mono text-xs bg-background border border-border rounded px-2 py-1" title={header}>
                     {header}
                   </span>
                   <span className="text-muted-foreground">&rarr;</span>
                   <select
                     className={`border rounded px-2 py-1.5 text-sm flex-1 max-w-xs ${
                       columnMapping[header]
-                        ? "border-indigo-300 bg-white"
+                        ? "border-indigo-300 dark:border-indigo-700 bg-background"
                         : "border-border bg-muted/30 text-muted-foreground"
                     }`}
                     value={columnMapping[header] ?? ""}
@@ -410,25 +412,24 @@ export function ImportPage() {
                     ))}
                   </select>
                   {columnMapping[header] && (
-                    <span className="text-xs text-indigo-600 font-medium">Mapped</span>
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Mapped</span>
                   )}
                 </div>
               ))}
             </div>
             <div className="flex gap-3 pt-2">
-              <button
+              <Button
                 onClick={handleUpload}
                 disabled={loading || !Object.values(columnMapping).includes("Course")}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? "Processing..." : "Continue with Preview"}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => { setShowColumnMapping(false); setColumnDetect(null); setColumnMapping({}); }}
-                className="border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted"
               >
                 Cancel
-              </button>
+              </Button>
               {!Object.values(columnMapping).includes("Course") && (
                 <span className="text-xs text-destructive self-center">
                   "Course" column is required
@@ -440,7 +441,7 @@ export function ImportPage() {
 
         {/* Term selection for schedule import - shown after preview */}
         {isSchedule && preview && editableRows.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded p-4 space-y-3">
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-4 space-y-3">
             <p className="text-sm font-medium">Select Term for Import</p>
             <div className="flex gap-4 items-center">
               <label className="flex items-center gap-2 text-sm">
@@ -510,7 +511,7 @@ export function ImportPage() {
             )}
 
             {preview.suggested_term && (
-              <p className="text-xs text-blue-600">
+              <p className="text-xs text-blue-600 dark:text-blue-400">
                 Detected from file dates: <strong>{preview.suggested_term.name}</strong> ({preview.suggested_term.start_date} to {preview.suggested_term.end_date}).
                 {termMode === "existing" && (
                   <>
@@ -530,7 +531,7 @@ export function ImportPage() {
 
         {/* Instructor matching section */}
         {isSchedule && preview && preview.instructor_matches && preview.instructor_matches.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded p-4 space-y-3">
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded p-4 space-y-3">
             <p className="text-sm font-medium">Instructor Matching</p>
             <p className="text-xs text-muted-foreground">
               Review how imported instructors map to existing records. Adjust as needed before confirming.
@@ -559,10 +560,10 @@ export function ImportPage() {
                     ))}
                   </select>
                   {instructorMappings[match.name] === null && (
-                    <span className="text-xs text-amber-600 font-medium">New</span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">New</span>
                   )}
                   {instructorMappings[match.name] !== null && instructorMappings[match.name] !== undefined && (
-                    <span className="text-xs text-green-600 font-medium">Linked</span>
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Linked</span>
                   )}
                 </div>
               ))}
@@ -575,7 +576,7 @@ export function ImportPage() {
           <div className="space-y-3">
             <p className="text-sm font-medium">Enrollment Data Summary</p>
             {preview.errors.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded p-3">
+              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-3">
                 <p className="text-sm font-medium text-destructive mb-1">Errors:</p>
                 {preview.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
               </div>
@@ -592,16 +593,12 @@ export function ImportPage() {
             </table>
             {preview.valid_count > 0 && (
               <div className="flex gap-3">
-                <button onClick={handleConfirm}
-                  disabled={loading}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                <Button onClick={handleConfirm} disabled={loading} className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
                   Import {preview.valid_count} Records
-                </button>
-                <button onClick={resetState}
-                  disabled={loading}
-                  className="border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50">
+                </Button>
+                <Button variant="outline" onClick={resetState} disabled={loading}>
                   Cancel
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -619,7 +616,7 @@ export function ImportPage() {
               )}
             </div>
             {preview.errors.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded p-3">
+              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-3">
                 <p className="text-sm font-medium text-destructive mb-1">Errors:</p>
                 {preview.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
               </div>
@@ -650,7 +647,7 @@ export function ImportPage() {
                         {columnKeys.map((k) => (
                           <td key={k} className="px-1 py-0.5">
                             <input
-                              className="w-full border border-transparent hover:border-border focus:border-primary rounded px-1.5 py-0.5 text-xs bg-transparent focus:bg-white"
+                              className="w-full border border-transparent hover:border-border focus:border-primary rounded px-1.5 py-0.5 text-xs bg-transparent focus:bg-background"
                               value={row[k] ?? ""}
                               onChange={(e) => updateCell(i, k, e.target.value)}
                             />
@@ -664,23 +661,21 @@ export function ImportPage() {
             )}
             {editableRows.length > 0 && (
               <div className="flex gap-3">
-                <button onClick={handleConfirm}
+                <Button onClick={handleConfirm}
                   disabled={loading || (isSchedule && termMode === "existing" && !effectiveTermId && terms.length === 0) || (isSchedule && termMode === "new" && !newTerm.name)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                  className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
                   Confirm Import ({editableRows.length} rows)
-                </button>
-                <button onClick={resetState}
-                  disabled={loading}
-                  className="border border-border text-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50">
+                </Button>
+                <Button variant="outline" onClick={resetState} disabled={loading}>
                   Cancel
-                </button>
+                </Button>
               </div>
             )}
           </div>
         )}
 
         {result && (
-          <div className={`p-3 rounded ${result.errors.length > 0 ? "bg-yellow-50" : "bg-green-50"}`}>
+          <div className={`p-3 rounded ${result.errors.length > 0 ? "bg-yellow-50 dark:bg-yellow-950" : "bg-green-50 dark:bg-green-950"}`}>
             <p className="text-sm font-medium">Import complete: {result.created} records created</p>
             {result.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
           </div>

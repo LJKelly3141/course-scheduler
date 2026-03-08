@@ -1,15 +1,26 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Instructor, InstructorAvailability, Term } from "../api/types";
+import { ConfirmDialog } from "../components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, Trash2 } from "lucide-react";
+import { useUndoRedo } from "../hooks/useUndoRedo";
+import { useSort } from "../hooks/useSort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 
 export function InstructorsPage() {
   const { selectedTerm } = useOutletContext<{ selectedTerm: Term | null }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { pushUndo } = useUndoRedo();
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<Partial<Instructor>>({});
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "single"; id: number } | { type: "batch" } | null>(null);
 
   const { data: instructors = [], isLoading: loadingInstructors, isError: instructorsError } = useQuery({
     queryKey: ["instructors"],
@@ -26,10 +37,20 @@ export function InstructorsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Partial<Instructor>) => api.post("/instructors", data),
-    onSuccess: () => {
+    mutationFn: (data: Partial<Instructor>) => api.post<Instructor>("/instructors", data),
+    onSuccess: (created, data) => {
       queryClient.invalidateQueries({ queryKey: ["instructors"] });
       setForm({});
+      let currentId = created.id;
+      pushUndo({
+        label: `Create instructor ${created.name}`,
+        undoFn: async () => { await api.delete(`/instructors/${currentId}`); },
+        redoFn: async () => {
+          const re = await api.post<Instructor>("/instructors", data);
+          currentId = re.id;
+        },
+        invalidateKeys: [["instructors"], ["meetings"], ["validation"]],
+      });
     },
   });
 
@@ -49,8 +70,29 @@ export function InstructorsPage() {
   };
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => api.delete(`/instructors/${id}`),
-    onSettled: invalidateAll,
+    mutationFn: (inst: Instructor) => api.delete(`/instructors/${inst.id}`),
+    onSuccess: (_data, inst) => {
+      invalidateAll();
+      let currentId = inst.id;
+      pushUndo({
+        label: `Delete instructor ${inst.name}`,
+        undoFn: async () => {
+          const re = await api.post<Instructor>("/instructors", {
+            name: inst.name,
+            email: inst.email,
+            department: inst.department,
+            modality_constraint: inst.modality_constraint,
+            max_credits: inst.max_credits,
+            is_active: inst.is_active,
+            instructor_type: inst.instructor_type,
+          });
+          currentId = re.id;
+        },
+        redoFn: async () => { await api.delete(`/instructors/${currentId}`); },
+        invalidateKeys: [["instructors"], ["meetings"], ["validation"]],
+      });
+    },
+    onError: () => invalidateAll(),
   });
 
   const batchDeleteMutation = useMutation({
@@ -77,33 +119,58 @@ export function InstructorsPage() {
     else setSelectedIds(new Set(instructors.map((i) => i.id)));
   };
 
+  const filteredInstructors = search
+    ? instructors.filter((i) => {
+        const q = search.toLowerCase();
+        return (
+          i.name.toLowerCase().includes(q) ||
+          (i.email && i.email.toLowerCase().includes(q)) ||
+          (i.department && i.department.toLowerCase().includes(q))
+        );
+      })
+    : instructors;
+
+  const { sortState, toggleSort, sortItems } = useSort<"name" | "email" | "department" | "instructor_type" | "modality_constraint" | "max_credits" | "is_active">("name");
+
+  const sortedInstructors = sortItems(filteredInstructors, (i) => {
+    switch (sortState.key) {
+      case "name": return i.name;
+      case "email": return i.email;
+      case "department": return i.department;
+      case "instructor_type": return i.instructor_type;
+      case "modality_constraint": return i.modality_constraint;
+      case "max_credits": return i.max_credits;
+      case "is_active": return i.is_active;
+      default: return i.name;
+    }
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Instructors</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Input
+            placeholder="Search instructors..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-56"
+          />
           {selectedIds.size > 0 && (
-            <button
-              onClick={() => {
-                if (confirm(`Delete ${selectedIds.size} instructor(s)?`))
-                  batchDeleteMutation.mutate([...selectedIds]);
-              }}
-              className="bg-destructive text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-            >
+            <Button variant="destructive" onClick={() => setDeleteTarget({ type: "batch" })}>
+              <Trash2 className="h-4 w-4" />
               Delete Selected ({selectedIds.size})
-            </button>
+            </Button>
           )}
-          <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-          >
-            + Add Instructor
-          </button>
+          <Button onClick={() => setShowAdd(!showAdd)}>
+            <Plus className="h-4 w-4" />
+            Add Instructor
+          </Button>
         </div>
       </div>
 
       {showAdd && (
-        <div className="bg-white rounded-lg border border-border p-4 space-y-3">
+        <div className="bg-card rounded-lg border border-border p-4 space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <input placeholder="Name" className="border border-border rounded px-2 py-1.5 text-sm"
               value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -118,15 +185,22 @@ export function InstructorsPage() {
               <option value="mwf_only">MWF Only</option>
               <option value="tth_only">TTh Only</option>
             </select>
+            <select className="border border-border rounded px-2 py-1.5 text-sm"
+              value={form.instructor_type ?? ""} onChange={(e) => setForm({ ...form, instructor_type: e.target.value || null })}>
+              <option value="">Type (optional)</option>
+              <option value="faculty">Faculty</option>
+              <option value="ias">IAS</option>
+              <option value="adjunct">Adjunct</option>
+              <option value="nias">NIAS</option>
+            </select>
           </div>
-          <button onClick={() => createMutation.mutate(form)}
-            className="bg-primary text-primary-foreground px-4 py-1.5 rounded text-sm">
+          <Button size="sm" onClick={() => createMutation.mutate(form)}>
             Save
-          </button>
+          </Button>
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left">
@@ -137,19 +211,20 @@ export function InstructorsPage() {
                   onChange={toggleAll}
                 />
               </th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Department</th>
-              <th className="px-4 py-3">Modality</th>
-              <th className="px-4 py-3">Max Credits</th>
-              <th className="px-4 py-3">Active</th>
+              <SortableHeader label="Name" sortKey="name" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
+              <SortableHeader label="Email" sortKey="email" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
+              <SortableHeader label="Department" sortKey="department" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
+              <SortableHeader label="Type" sortKey="instructor_type" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
+              <SortableHeader label="Modality" sortKey="modality_constraint" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
+              <SortableHeader label="Max Credits" sortKey="max_credits" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
+              <SortableHeader label="Active" sortKey="is_active" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loadingInstructors && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center">
+                <td colSpan={9} className="px-4 py-8 text-center">
                   <div className="flex items-center justify-center gap-3 text-muted-foreground">
                     <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     <span className="text-sm">Loading instructors...</span>
@@ -159,19 +234,19 @@ export function InstructorsPage() {
             )}
             {instructorsError && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center">
+                <td colSpan={9} className="px-4 py-8 text-center">
                   <p className="text-sm text-destructive">Failed to load instructors.</p>
                 </td>
               </tr>
             )}
             {!loadingInstructors && !instructorsError && instructors.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                   No instructors yet. Click "+ Add Instructor" to create one.
                 </td>
               </tr>
             )}
-            {instructors.map((inst) => (
+            {sortedInstructors.map((inst) => (
               <tr key={inst.id} className="border-b border-border hover:bg-muted/30">
                 <td className="px-4 py-2.5">
                   <input
@@ -180,19 +255,30 @@ export function InstructorsPage() {
                     onChange={() => toggleSelect(inst.id)}
                   />
                 </td>
-                <td className="px-4 py-2.5">{inst.name}</td>
+                <td className="px-4 py-2.5">
+                  <button
+                    className="text-primary hover:underline font-medium text-left"
+                    onClick={() => navigate(`/instructors/${inst.id}`)}
+                  >
+                    {inst.name}
+                  </button>
+                </td>
                 <td className="px-4 py-2.5">{inst.email}</td>
                 <td className="px-4 py-2.5">{inst.department}</td>
+                <td className="px-4 py-2.5 uppercase text-xs">{inst.instructor_type || "—"}</td>
                 <td className="px-4 py-2.5 capitalize">{inst.modality_constraint.replace("_", " ")}</td>
                 <td className="px-4 py-2.5">{inst.max_credits}</td>
                 <td className="px-4 py-2.5">{inst.is_active ? "Yes" : "No"}</td>
                 <td className="px-4 py-2.5 space-x-2">
-                  <button onClick={() => setEditingId(editingId === inst.id ? null : inst.id)}
-                    className="text-primary text-xs hover:underline">
+                  <Button variant="link" size="sm" className="h-auto px-0" onClick={() => navigate(`/instructors/${inst.id}`)}>
+                    Detail
+                  </Button>
+                  <Button variant="link" size="sm" className="h-auto px-0" onClick={() => setEditingId(editingId === inst.id ? null : inst.id)}>
                     {editingId === inst.id ? "Close" : "Availability"}
-                  </button>
-                  <button onClick={() => { if (confirm("Delete?")) deleteMutation.mutate(inst.id); }}
-                    className="text-destructive text-xs hover:underline">Delete</button>
+                  </Button>
+                  <Button variant="link" size="sm" className="h-auto px-0 text-destructive" onClick={() => setDeleteTarget({ type: "single", id: inst.id })}>
+                    Delete
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -207,6 +293,24 @@ export function InstructorsPage() {
           availability={availability}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={deleteTarget?.type === "batch" ? `Delete ${selectedIds.size} instructor(s)?` : "Delete instructor?"}
+        description="This will permanently remove the selected instructor(s) and unassign them from any sections."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteTarget?.type === "batch") {
+            batchDeleteMutation.mutate([...selectedIds]);
+          } else if (deleteTarget?.type === "single") {
+            const inst = instructors.find((i) => i.id === deleteTarget.id);
+            if (inst) deleteMutation.mutate(inst);
+          }
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
@@ -264,7 +368,7 @@ function AvailabilityEditor({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-border p-4">
+    <div className="bg-card rounded-lg border border-border p-4">
       <h3 className="font-semibold mb-3">Availability Grid</h3>
       <p className="text-xs text-muted-foreground mb-3">
         Click to cycle: Available → Unavailable (red) → Prefer Avoid (yellow) → Available
@@ -291,10 +395,10 @@ function AvailabilityEditor({
                         onClick={() => toggleBlock(d, h)}
                         className={`w-10 h-6 rounded border ${
                           type === "unavailable"
-                            ? "bg-red-200 border-red-300"
+                            ? "bg-red-200 dark:bg-red-900 border-red-300 dark:border-red-700"
                             : type === "prefer_avoid"
-                            ? "bg-yellow-200 border-yellow-300"
-                            : "bg-green-50 border-green-200"
+                            ? "bg-yellow-200 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700"
+                            : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
                         }`}
                       />
                     </td>

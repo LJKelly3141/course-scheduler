@@ -5,6 +5,8 @@ import io
 import json
 from datetime import time
 
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.meeting import Meeting
@@ -14,6 +16,7 @@ from app.models.building import Building
 from app.models.instructor import Instructor
 from app.models.course import Course
 from app.models.term import Term
+from app.models.term_session import TermSession
 
 
 def _format_time(t) -> str:
@@ -36,6 +39,26 @@ def _parse_days(days_json: str) -> str:
     return days_json or ""
 
 
+def _parse_days_list(days_json: str) -> list:
+    """Parse days JSON into a list of day codes."""
+    try:
+        days = json.loads(days_json)
+        if isinstance(days, list):
+            return days
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return []
+
+
+def _format_time_range(start, end) -> str:
+    """Format start and end times as a single range string."""
+    s = _format_time(start)
+    e = _format_time(end)
+    if s and e:
+        return f"{s} - {e}"
+    return s or e or ""
+
+
 # ---------------------------------------------------------------------------
 # CSV Export
 # ---------------------------------------------------------------------------
@@ -51,6 +74,7 @@ def export_term_csv(db: Session, term_id: int) -> str:
         .filter(Section.term_id == term_id)
         .options(
             joinedload(Meeting.section).joinedload(Section.course),
+            joinedload(Meeting.section).joinedload(Section.term_session),
             joinedload(Meeting.room).joinedload(Room.building),
             joinedload(Meeting.instructor),
         )
@@ -64,6 +88,9 @@ def export_term_csv(db: Session, term_id: int) -> str:
         "Section",
         "Title",
         "Credits",
+        "Session",
+        "Start Date",
+        "End Date",
         "Days",
         "Start Time",
         "End Time",
@@ -80,6 +107,7 @@ def export_term_csv(db: Session, term_id: int) -> str:
         room = m.room
         building = room.building if room else None
         instructor = m.instructor
+        ts = section.term_session if section else None
 
         course_code = (
             f"{course.department_code} {course.course_number}" if course else ""
@@ -89,6 +117,9 @@ def export_term_csv(db: Session, term_id: int) -> str:
             section.section_number if section else "",
             course.title if course else "",
             course.credits if course else "",
+            ts.name if ts else "",
+            str(ts.start_date) if ts and ts.start_date else "",
+            str(ts.end_date) if ts and ts.end_date else "",
             _parse_days(m.days_of_week),
             _format_time(m.start_time),
             _format_time(m.end_time),
@@ -100,6 +131,152 @@ def export_term_csv(db: Session, term_id: int) -> str:
         ])
 
     return output.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# XLSX Export (Dean's Office Schedule Table)
+# ---------------------------------------------------------------------------
+def export_term_xlsx(db: Session, term_id: int) -> bytes:
+    """Generate an XLSX workbook containing all sections for the given term."""
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if not term:
+        raise ValueError(f"Term {term_id} not found")
+
+    meetings = (
+        db.query(Meeting)
+        .join(Section, Meeting.section_id == Section.id)
+        .filter(Section.term_id == term_id)
+        .options(
+            joinedload(Meeting.section).joinedload(Section.course),
+            joinedload(Meeting.section).joinedload(Section.term_session),
+            joinedload(Meeting.room).joinedload(Room.building),
+            joinedload(Meeting.instructor),
+        )
+        .all()
+    )
+
+    # Also get sections with no meetings (online/unscheduled)
+    sections_with_meetings = {m.section_id for m in meetings}
+    all_sections = (
+        db.query(Section)
+        .filter(Section.term_id == term_id)
+        .options(
+            joinedload(Section.course),
+            joinedload(Section.instructor),
+            joinedload(Section.term_session),
+        )
+        .all()
+    )
+    unscheduled_sections = [
+        s for s in all_sections if s.id not in sections_with_meetings
+    ]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = term.name
+
+    # UWRF "Schedule Changes, Additions, Deletions" form columns
+    headers = [
+        "Action", "Dept Abbreviation", "Catalog Number", "Section",
+        "Course Title", "Credits", "Session", "Start Date", "End Date",
+        "Time Begin-End",
+        "M", "T", "W", "R", "F", "S",
+        "Instructor", "Building", "Room Number",
+        "Lecture Hours", "Special Course Fee",
+        "Maximum Class Size", "Instruction Mode", "Class Notes",
+    ]
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+
+    # Map internal day codes to UWRF form day columns
+    # Our model uses "Th" for Thursday; UWRF form uses "R"
+    _DAY_COLS = ["M", "T", "W", "Th", "F", "S"]
+
+    def _day_markers(days_json: str) -> tuple:
+        """Return a tuple of 6 values (M, T, W, R, F, S) with 'X' or ''."""
+        days = _parse_days_list(days_json)
+        return tuple("X" if d in days else "" for d in _DAY_COLS)
+
+    # Build rows: one per meeting, plus one per unscheduled section
+    rows = []
+    for m in meetings:
+        section = m.section
+        course = section.course if section else None
+        room = m.room
+        building = room.building if room else None
+        instructor = m.instructor
+        ts = section.term_session if section else None
+        day_m, day_t, day_w, day_r, day_f, day_s = _day_markers(m.days_of_week)
+        rows.append((
+            "ADD",
+            course.department_code if course else "",
+            course.course_number if course else "",
+            section.section_number if section else "",
+            course.title if course else "",
+            course.credits if course else "",
+            ts.name if ts else "",
+            str(ts.start_date) if ts and ts.start_date else "",
+            str(ts.end_date) if ts and ts.end_date else "",
+            _format_time_range(m.start_time, m.end_time),
+            day_m, day_t, day_w, day_r, day_f, day_s,
+            instructor.name if instructor else "",
+            building.abbreviation if building else "",
+            room.room_number if room else "",
+            section.lecture_hours if section else "",
+            section.special_course_fee if section else "",
+            section.enrollment_cap if section else "",
+            section.modality if section else "",
+            section.notes if section and section.notes else ""
+        ))
+
+    for s in unscheduled_sections:
+        course = s.course
+        ts = s.term_session
+        rows.append((
+            "ADD",
+            course.department_code if course else "",
+            course.course_number if course else "",
+            s.section_number,
+            course.title if course else "",
+            course.credits if course else "",
+            ts.name if ts else "",
+            str(ts.start_date) if ts and ts.start_date else "",
+            str(ts.end_date) if ts and ts.end_date else "",
+            "TBA",
+            "", "", "", "", "", "",
+            s.instructor.name if s.instructor else "",
+            "On-Line" if s.modality and "online" in str(s.modality).lower() else "",
+            "",
+            s.lecture_hours if s.lecture_hours else "",
+            s.special_course_fee if s.special_course_fee else "",
+            s.enrollment_cap,
+            s.modality if s.modality else "",
+            s.notes if s.notes else ""
+        ))
+
+    # Sort by Dept Abbreviation, Catalog Number, then Section
+    rows.sort(key=lambda r: (r[1], r[2], r[3]))
+
+    for row_data in rows:
+        ws.append(list(row_data))
+
+    # Auto-fit column widths
+    for col_idx, header in enumerate(headers, 1):
+        max_len = len(header)
+        for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+            for cell in row:
+                if cell.value is not None:
+                    max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max_len + 2
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
 
 
 # ---------------------------------------------------------------------------

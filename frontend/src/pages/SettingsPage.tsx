@@ -2,6 +2,15 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { AppSetting } from "../api/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface DirectoryEntry {
   name: string;
@@ -18,6 +27,13 @@ interface DirectoryListing {
 interface GitHubStatus {
   configured: boolean;
   repo_url: string;
+  pages_url: string;
+}
+
+interface DatabaseInfo {
+  path: string;
+  size_bytes: number;
+  size_display: string;
 }
 
 // --- Directory Picker Dialog ---
@@ -65,14 +81,14 @@ function DirectoryPickerDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg shadow-xl w-[520px] max-h-[80vh] flex flex-col">
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="text-base font-semibold">Choose Export Directory</h3>
-          <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+    <Dialog open onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <DialogContent className="sm:max-w-[520px] max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-5 py-4 border-b">
+          <DialogTitle>Choose Export Directory</DialogTitle>
+          <DialogDescription className="font-mono truncate">
             {listing?.path ?? browsePath}
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex-1 overflow-y-auto min-h-0 px-2 py-2">
           {listing?.parent && (
@@ -134,23 +150,24 @@ function DirectoryPickerDialog({
                     }
                   }}
                 />
-                <button
+                <Button
+                  size="sm"
                   onClick={handleCreateFolder}
                   disabled={!newFolderName.trim() || createFolderMutation.isPending}
-                  className="px-2 py-1 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   Create
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     setShowNewFolder(false);
                     setNewFolderName("");
                     setNewFolderError(null);
                   }}
-                  className="px-2 py-1 text-xs rounded-md border border-border hover:bg-accent"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
               {newFolderError && (
                 <p className="text-xs text-destructive">{newFolderError}</p>
@@ -159,36 +176,26 @@ function DirectoryPickerDialog({
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-border flex items-center gap-2">
-          <button
+        <DialogFooter className="px-5 py-3 border-t flex items-center gap-2 sm:justify-between">
+          <Button
+            variant="outline"
             onClick={() => {
               setShowNewFolder(true);
               setNewFolderName("");
               setNewFolderError(null);
             }}
-            className="px-3 py-2 text-sm rounded-md border border-border hover:bg-accent flex items-center gap-1.5"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
             New Folder
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-md border border-border hover:bg-accent"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSelect(listing?.path ?? browsePath)}
-            className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
-          >
-            Select This Folder
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onCancel}>Cancel</Button>
+            <Button onClick={() => onSelect(listing?.path ?? browsePath)}>
+              Select This Folder
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -235,16 +242,16 @@ function GitHubSetupDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg shadow-xl w-[480px]">
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="text-base font-semibold">GitHub Pages Setup</h3>
-          <p className="text-xs text-muted-foreground mt-1">
+    <Dialog open onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>GitHub Pages Setup</DialogTitle>
+          <DialogDescription>
             Connect a GitHub repo for publishing schedules as static pages.
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="px-5 py-4 space-y-4">
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">
               Repository URL
@@ -288,23 +295,14 @@ function GitHubSetupDialog({
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-md border border-border hover:bg-accent"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={setupMutation.isPending || success}
-            className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={setupMutation.isPending || success}>
             {setupMutation.isPending ? "Saving..." : "Save & Connect"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -314,6 +312,8 @@ export function SettingsPage() {
   const [form, setForm] = useState<Record<string, string>>({
     department_name: "",
     export_directory: "",
+    github_pages_url: "",
+    academic_year_start_month: "7",
   });
   const [toast, setToast] = useState<string | null>(null);
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
@@ -327,6 +327,11 @@ export function SettingsPage() {
   const { data: githubStatus, refetch: refetchGithub } = useQuery({
     queryKey: ["github-status"],
     queryFn: () => api.get<GitHubStatus>("/settings/github-status"),
+  });
+
+  const { data: dbInfo } = useQuery({
+    queryKey: ["database-info"],
+    queryFn: () => api.get<DatabaseInfo>("/settings/database-info"),
   });
 
   useEffect(() => {
@@ -362,7 +367,7 @@ export function SettingsPage() {
       <h2 className="text-xl font-bold">Settings</h2>
 
       {/* General */}
-      <section className="bg-white rounded-lg border border-border p-6 space-y-4">
+      <section className="bg-card rounded-lg border border-border p-6 space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           General
         </h3>
@@ -386,13 +391,9 @@ export function SettingsPage() {
         </div>
 
         <div className="flex items-center gap-3 pt-1">
-          <button
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          >
+          <Button onClick={handleSave} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? "Saving..." : "Save"}
-          </button>
+          </Button>
           {toast && (
             <span className="text-sm text-emerald-600 font-medium">
               {toast}
@@ -401,8 +402,43 @@ export function SettingsPage() {
         </div>
       </section>
 
+      {/* Academic Year */}
+      <section className="bg-card rounded-lg border border-border p-6 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Academic Year
+        </h3>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Academic Year Start Month
+          </label>
+          <select
+            className="w-48 border border-border rounded-md px-3 py-2 text-sm"
+            value={form.academic_year_start_month}
+            onChange={(e) =>
+              setForm({ ...form, academic_year_start_month: e.target.value })
+            }
+          >
+            {[
+              "January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December",
+            ].map((name, i) => (
+              <option key={i + 1} value={String(i + 1)}>{name}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            The month the academic year begins. Default is July (Jul 1 – Jun 30).
+            Terms are automatically assigned to academic years based on their start date and this setting.
+          </p>
+        </div>
+
+        <Button onClick={handleSave} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? "Saving..." : "Save"}
+        </Button>
+      </section>
+
       {/* Export Directory */}
-      <section className="bg-white rounded-lg border border-border p-6 space-y-4">
+      <section className="bg-card rounded-lg border border-border p-6 space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Local Export
         </h3>
@@ -421,29 +457,64 @@ export function SettingsPage() {
                 setForm({ ...form, export_directory: e.target.value })
               }
             />
-            <button
-              onClick={() => setDirPickerOpen(true)}
-              className="px-3 py-2 text-sm rounded-md border border-border hover:bg-accent whitespace-nowrap"
-            >
+            <Button variant="outline" onClick={() => setDirPickerOpen(true)}>
               Browse...
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Directory where "Save to Local Directory" writes HTML files.
           </p>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saveMutation.isPending}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
-        </button>
+        </Button>
+      </section>
+
+      {/* Database */}
+      <section className="bg-card rounded-lg border border-border p-6 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Database
+        </h3>
+
+        {dbInfo && (
+          <div className="space-y-3">
+            <div className="text-sm">
+              <span className="text-muted-foreground">File path: </span>
+              <span className="font-mono text-xs break-all">{dbInfo.path}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Size: </span>
+              <span className="font-medium">{dbInfo.size_display}</span>
+            </div>
+            <Button
+              onClick={() => {
+                const isFileProtocol = window.location.protocol === "file:";
+                const base = isFileProtocol ? "http://127.0.0.1:8000/api" : "/api";
+                const url = `${base}/settings/database-backup`;
+                const a = document.createElement("a");
+                fetch(url)
+                  .then((res) => res.blob())
+                  .then((blob) => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    a.href = blobUrl;
+                    a.download = "scheduler-backup.db";
+                    a.click();
+                    URL.revokeObjectURL(blobUrl);
+                  });
+              }}
+            >
+              Download Backup
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Downloads a portable copy of the database file. Keep this as a backup or transfer to another machine.
+            </p>
+          </div>
+        )}
       </section>
 
       {/* GitHub Pages */}
-      <section className="bg-white rounded-lg border border-border p-6 space-y-4">
+      <section className="bg-card rounded-lg border border-border p-6 space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           GitHub Pages
         </h3>
@@ -464,12 +535,33 @@ export function SettingsPage() {
                 {"*".repeat(20)}
               </span>
             </div>
-            <button
-              onClick={() => setGithubDialogOpen(true)}
-              className="px-4 py-2 text-sm rounded-md border border-border hover:bg-accent"
-            >
-              Reconfigure
-            </button>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                GitHub Pages URL
+              </label>
+              <input
+                type="text"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm font-mono"
+                placeholder="https://username.github.io/schedules"
+                value={form.github_pages_url}
+                onChange={(e) =>
+                  setForm({ ...form, github_pages_url: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Base URL for published schedules. Leave blank to auto-derive from the repository URL.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+              <Button variant="outline" onClick={() => setGithubDialogOpen(true)}>
+                Reconfigure
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -483,12 +575,9 @@ export function SettingsPage() {
               Connect a GitHub repository to publish schedules as static pages
               with a shareable URL.
             </p>
-            <button
-              onClick={() => setGithubDialogOpen(true)}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-            >
+            <Button onClick={() => setGithubDialogOpen(true)}>
               Set Up GitHub
-            </button>
+            </Button>
           </div>
         )}
       </section>

@@ -17,11 +17,9 @@ import {
   GRID_START_HOUR,
   GRID_END_HOUR,
   SLOT_HEIGHT_PX,
-  TOTAL_SLOTS,
-  GRID_START_MINUTES,
   SLOT_MINUTES,
 } from "../../lib/utils";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DraggableMeetingCard } from "./DraggableMeetingCard";
 import { DroppableCell } from "./DroppableCell";
 import { MeetingDragOverlay } from "./MeetingDragOverlay";
@@ -31,7 +29,7 @@ interface Props {
   timeBlocks: TimeBlock[];
   colorFn?: (meeting: Meeting) => string;
   onDetail: (meeting: Meeting) => void;
-  onEdit: (meeting: Meeting) => void;
+  onEdit?: (meeting: Meeting) => void;
   onMove?: (meetingId: number, targetBlock: TimeBlock) => void;
   isMoving?: boolean;
 }
@@ -152,7 +150,7 @@ export function ScheduleGrid({
     const { meeting } = active.data.current as { meeting: Meeting };
     const { day, slotIndex } = over.data.current as { day: string; slotIndex: number };
 
-    const dropMinute = GRID_START_MINUTES + slotIndex * SLOT_MINUTES;
+    const dropMinute = dynStartMinutes + slotIndex * SLOT_MINUTES;
     const targetBlock = findNearestBlock(day, dropMinute, timeBlocks);
 
     if (!targetBlock) return;
@@ -165,13 +163,48 @@ export function ScheduleGrid({
     setActiveDragMeeting(null);
   }
 
+  // Compute dynamic time range from meetings (1-hour buffer on each side)
+  const { dynStartHour, dynEndHour, dynTotalSlots, dynStartMinutes } = useMemo(() => {
+    if (meetings.length === 0) {
+      return {
+        dynStartHour: GRID_START_HOUR,
+        dynEndHour: GRID_END_HOUR,
+        dynTotalSlots: (GRID_END_HOUR - GRID_START_HOUR) * (60 / SLOT_MINUTES),
+        dynStartMinutes: GRID_START_HOUR * 60,
+      };
+    }
+    let minStart = Infinity;
+    let maxEnd = -Infinity;
+    for (const m of meetings) {
+      if (!m.start_time || !m.end_time) continue;
+      minStart = Math.min(minStart, timeToMinutes(m.start_time));
+      maxEnd = Math.max(maxEnd, timeToMinutes(m.end_time));
+    }
+    if (minStart === Infinity) {
+      return {
+        dynStartHour: GRID_START_HOUR,
+        dynEndHour: GRID_END_HOUR,
+        dynTotalSlots: (GRID_END_HOUR - GRID_START_HOUR) * (60 / SLOT_MINUTES),
+        dynStartMinutes: GRID_START_HOUR * 60,
+      };
+    }
+    // Round down to hour, add 1-hour buffer before
+    const startH = Math.max(0, Math.floor(minStart / 60) - 1);
+    // Round up to hour, add 1-hour buffer after
+    const endH = Math.min(24, Math.ceil(maxEnd / 60) + 1);
+    return {
+      dynStartHour: startH,
+      dynEndHour: endH,
+      dynTotalSlots: (endH - startH) * (60 / SLOT_MINUTES),
+      dynStartMinutes: startH * 60,
+    };
+  }, [meetings]);
+
   // Hours for labels
   const hours: number[] = [];
-  for (let h = GRID_START_HOUR; h < GRID_END_HOUR; h++) {
+  for (let h = dynStartHour; h < dynEndHour; h++) {
     hours.push(h);
   }
-
-  const gridHeight = TOTAL_SLOTS * SLOT_HEIGHT_PX;
 
   return (
     <DndContext
@@ -180,7 +213,7 @@ export function ScheduleGrid({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="bg-white rounded-lg border border-border overflow-x-auto">
+      <div className="bg-card rounded-lg border border-border overflow-x-auto">
         {isMoving && (
           <div className="px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium border-b border-border">
             Moving meeting...
@@ -191,7 +224,7 @@ export function ScheduleGrid({
           style={{
             display: "grid",
             gridTemplateColumns: "60px repeat(5, 1fr)",
-            gridTemplateRows: `auto repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT_PX}px)`,
+            gridTemplateRows: `auto repeat(${dynTotalSlots}, ${SLOT_HEIGHT_PX}px)`,
           }}
         >
           {/* Header row */}
@@ -212,11 +245,11 @@ export function ScheduleGrid({
 
           {/* Hour labels in column 1 */}
           {hours.map((hour) => {
-            const slotIndex = (hour - GRID_START_HOUR) * 4;
+            const slotIndex = (hour - dynStartHour) * 4;
             return (
               <div
                 key={hour}
-                className="text-[11px] text-muted-foreground text-right pr-2 sticky left-0 bg-white z-10 border-t border-t-border"
+                className="text-[11px] text-muted-foreground text-right pr-2 sticky left-0 bg-card z-10 border-t border-t-border"
                 style={{
                   gridColumn: 1,
                   gridRow: `${slotIndex + 2} / span 4`,
@@ -231,8 +264,8 @@ export function ScheduleGrid({
             );
           })}
 
-          {/* Droppable background cells: 52 slots × 5 days = 260 cells */}
-          {Array.from({ length: TOTAL_SLOTS }, (_, slotIdx) =>
+          {/* Droppable background cells */}
+          {Array.from({ length: dynTotalSlots }, (_, slotIdx) =>
             DAY_LABELS.map((day, dayIdx) => (
               <DroppableCell
                 key={`${day}-${slotIdx}`}
@@ -257,13 +290,13 @@ export function ScheduleGrid({
                 key={`overlay-${day}`}
                 style={{
                   gridColumn: dayIdx + 2,
-                  gridRow: `2 / span ${TOTAL_SLOTS}`,
+                  gridRow: `2 / span ${dynTotalSlots}`,
                   position: "relative",
                   pointerEvents: "none",
                 }}
               >
                 {dayMeetings.map((m) => {
-                  const { topPx, heightPx } = meetingPosition(m.start_time ?? "", m.end_time ?? "");
+                  const { topPx, heightPx } = meetingPosition(m.start_time ?? "", m.end_time ?? "", SLOT_HEIGHT_PX, dynStartMinutes);
                   const overlap = overlapMap.get(m.id) ?? { column: 0, totalColumns: 1 };
                   const widthPct = 100 / overlap.totalColumns;
                   const leftPct = overlap.column * widthPct;

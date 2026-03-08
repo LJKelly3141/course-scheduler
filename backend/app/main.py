@@ -14,9 +14,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
-    terms, buildings, rooms, instructors, courses, sections,
-    meetings, time_blocks, auth, import_export, suggestions,
-    settings, export_html, analytics,
+    academic_years, terms, buildings, rooms, instructors, courses, sections,
+    meetings, time_blocks, import_export, suggestions,
+    settings, export_html, analytics, load_adjustments, prerequisites, rotation,
 )
 from app.database import engine, SessionLocal
 from app.models import Base
@@ -39,7 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(academic_years.router, prefix="/api/academic-years", tags=["academic-years"])
 app.include_router(terms.router, prefix="/api/terms", tags=["terms"])
 app.include_router(buildings.router, prefix="/api/buildings", tags=["buildings"])
 app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
@@ -53,6 +53,169 @@ app.include_router(suggestions.router, prefix="/api/suggestions", tags=["suggest
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(export_html.router, prefix="/api", tags=["export-html"])
 app.include_router(analytics.router, prefix="/api", tags=["analytics"])
+app.include_router(load_adjustments.router, prefix="/api/load-adjustments", tags=["load-adjustments"])
+app.include_router(prerequisites.router, prefix="/api", tags=["prerequisites"])
+app.include_router(rotation.router, prefix="/api/rotation", tags=["rotation"])
+
+
+def _ensure_schema_current():
+    """Add missing columns to existing tables.
+
+    Base.metadata.create_all() creates NEW tables but never ALTERs existing
+    ones.  This function bridges the gap for databases created before certain
+    columns/tables were added to the models.
+    """
+    import sqlalchemy as sa
+
+    try:
+        with engine.connect() as conn:
+            # ── sections table patches ──
+            result = conn.execute(sa.text("PRAGMA table_info(sections)"))
+            section_cols = {row[1] for row in result}
+
+            for col, col_type in [
+                ("instructor_id", "INTEGER REFERENCES instructors(id)"),
+                ("session", "VARCHAR(10) NOT NULL DEFAULT 'regular'"),
+                ("duration_weeks", "INTEGER"),
+                ("start_date", "DATE"),
+                ("end_date", "DATE"),
+            ]:
+                if col not in section_cols:
+                    conn.execute(
+                        sa.text(f"ALTER TABLE sections ADD COLUMN {col} {col_type}")
+                    )
+                    logger.info("Added missing column sections.%s", col)
+
+            for col, col_type in [
+                ("equivalent_credits", "INTEGER"),
+                ("lecture_hours", "REAL"),
+                ("special_course_fee", "REAL"),
+                ("notes", "TEXT"),
+            ]:
+                if col not in section_cols:
+                    conn.execute(
+                        sa.text(f"ALTER TABLE sections ADD COLUMN {col} {col_type}")
+                    )
+                    logger.info("Added missing column sections.%s", col)
+
+            # ── instructors table patches ──
+            result = conn.execute(sa.text("PRAGMA table_info(instructors)"))
+            instructor_cols = {row[1] for row in result}
+
+            for col, col_type in [
+                ("instructor_type", "VARCHAR(20)"),
+                ("first_name", "VARCHAR(50)"),
+                ("last_name", "VARCHAR(50)"),
+                ("phone", "VARCHAR(30)"),
+                ("office_location", "VARCHAR(100)"),
+                ("rank", "VARCHAR(30)"),
+                ("tenure_status", "VARCHAR(20)"),
+                ("hire_date", "DATE"),
+            ]:
+                if col not in instructor_cols:
+                    conn.execute(
+                        sa.text(f"ALTER TABLE instructors ADD COLUMN {col} {col_type}")
+                    )
+                    logger.info("Added missing column instructors.%s", col)
+
+            # Data migration: split existing name into first_name/last_name
+            if "first_name" not in instructor_cols:
+                rows = conn.execute(sa.text(
+                    "SELECT id, name FROM instructors WHERE first_name IS NULL AND name IS NOT NULL"
+                )).fetchall()
+                for row in rows:
+                    parts = row[1].rsplit(" ", 1)
+                    if len(parts) == 2:
+                        first, last = parts
+                    else:
+                        first, last = row[1], ""
+                    conn.execute(sa.text(
+                        "UPDATE instructors SET first_name = :first, last_name = :last WHERE id = :id"
+                    ), {"first": first, "last": last, "id": row[0]})
+                if rows:
+                    logger.info("Migrated %d instructor names to first_name/last_name", len(rows))
+
+            # ── courses table patches ──
+            result = conn.execute(sa.text("PRAGMA table_info(courses)"))
+            course_cols = {row[1] for row in result}
+
+            if "counts_toward_load" not in course_cols:
+                conn.execute(
+                    sa.text("ALTER TABLE courses ADD COLUMN counts_toward_load BOOLEAN NOT NULL DEFAULT 1")
+                )
+                logger.info("Added missing column courses.counts_toward_load")
+
+            # ── terms table patches ──
+            result = conn.execute(sa.text("PRAGMA table_info(terms)"))
+            term_cols = {row[1] for row in result}
+
+            if "academic_year_id" not in term_cols:
+                conn.execute(
+                    sa.text("ALTER TABLE terms ADD COLUMN academic_year_id INTEGER REFERENCES academic_years(id)")
+                )
+                logger.info("Added missing column terms.academic_year_id")
+
+            # ── term_sessions table patches ──
+            result = conn.execute(sa.text("PRAGMA table_info(term_sessions)"))
+            ts_cols = {row[1] for row in result}
+
+            for col, col_type in [
+                ("end_date", "DATE"),
+                ("head_count_days", "INTEGER"),
+                ("head_count_date", "DATE"),
+            ]:
+                if col not in ts_cols:
+                    conn.execute(
+                        sa.text(f"ALTER TABLE term_sessions ADD COLUMN {col} {col_type}")
+                    )
+                    logger.info("Added missing column term_sessions.%s", col)
+
+            # sections.term_session_id
+            if "term_session_id" not in section_cols:
+                conn.execute(
+                    sa.text("ALTER TABLE sections ADD COLUMN term_session_id INTEGER REFERENCES term_sessions(id) ON DELETE SET NULL")
+                )
+                logger.info("Added missing column sections.term_session_id")
+
+                # Data migration: map old session enum to term_session_id
+                session_map = {
+                    "session_a": "A", "session_b": "B",
+                    "session_c": "C", "session_d": "D",
+                }
+                for enum_val, name in session_map.items():
+                    conn.execute(sa.text("""
+                        UPDATE sections
+                        SET term_session_id = (
+                            SELECT ts.id FROM term_sessions ts
+                            WHERE ts.term_id = sections.term_id AND ts.name = :name
+                        )
+                        WHERE sections.session = :enum_val
+                          AND sections.term_session_id IS NULL
+                    """), {"name": name, "enum_val": enum_val})
+                logger.info("Migrated session enum values to term_session_id")
+
+            # ── course_rotations table patches ──
+            try:
+                result = conn.execute(sa.text("PRAGMA table_info(course_rotations)"))
+                rotation_cols = {row[1] for row in result}
+
+                for col, col_type in [
+                    ("time_block_id", "INTEGER REFERENCES time_blocks(id) ON DELETE SET NULL"),
+                    ("days_of_week", "VARCHAR(50)"),
+                    ("start_time", "TIME"),
+                    ("end_time", "TIME"),
+                ]:
+                    if col not in rotation_cols:
+                        conn.execute(
+                            sa.text(f"ALTER TABLE course_rotations ADD COLUMN {col} {col_type}")
+                        )
+                        logger.info("Added missing column course_rotations.%s", col)
+            except Exception:
+                pass  # Table may not exist yet
+
+            conn.commit()
+    except Exception:
+        logger.exception("Schema patch failed (non-fatal)")
 
 
 @app.on_event("startup")
@@ -65,12 +228,15 @@ def on_startup():
         logger.exception("Failed to create database tables")
         return
 
-    # Run Alembic stamp so future migrations know the current state
+    # Patch any missing columns on existing tables (create_all doesn't ALTER)
+    _ensure_schema_current()
+
+    # Alembic: stamp or upgrade
     try:
         from alembic.config import Config
         from alembic import command
+        import sqlalchemy as sa
 
-        alembic_cfg = Config()
         alembic_dir = os.path.join(os.path.dirname(__file__), "..", "alembic")
         alembic_ini = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
 
@@ -79,26 +245,43 @@ def on_startup():
             alembic_cfg.set_main_option(
                 "sqlalchemy.url", str(engine.url)
             )
-            command.upgrade(alembic_cfg, "head")
+
+            # Check if this DB has an Alembic version stamp
+            has_stamp = False
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(
+                        sa.text("SELECT version_num FROM alembic_version LIMIT 1")
+                    )
+                    has_stamp = result.fetchone() is not None
+            except Exception:
+                pass
+
+            if has_stamp:
+                command.upgrade(alembic_cfg, "head")
+            else:
+                # DB was created by create_all (no migration history).
+                # Schema is current, just stamp at head.
+                command.stamp(alembic_cfg, "head")
+
             logger.info("Alembic migrations applied.")
     except Exception:
         logger.exception("Alembic migration failed (non-fatal)")
 
-    # Seed data if database is empty
+    # Seed standard time blocks if missing (required infrastructure).
+    # Never auto-seed sample data (buildings, rooms, instructors, courses)
+    # — that would overwrite user-imported data.
     try:
-        from app.models.user import User
+        from app.models.time_block import TimeBlock
         db = SessionLocal()
         try:
-            if db.query(User).count() == 0:
-                logger.info("Empty database detected, seeding data...")
-                from app.seed import seed_time_blocks, seed_sample_data, seed_sections_and_meetings, seed_users
+            if db.query(TimeBlock).count() == 0:
+                logger.info("No time blocks found, seeding standard time blocks...")
+                from app.seed import seed_time_blocks
                 seed_time_blocks(db)
-                seed_sample_data(db)
-                seed_sections_and_meetings(db)
-                seed_users(db)
-                logger.info("Seed complete.")
+                logger.info("Time blocks seeded.")
             else:
-                logger.info("Database already has data, skipping seed.")
+                logger.info("Time blocks present, skipping seed.")
         finally:
             db.close()
     except Exception:

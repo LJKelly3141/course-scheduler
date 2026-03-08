@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import re
 from datetime import time, date, datetime
 from typing import Any
@@ -17,6 +18,7 @@ from app.models.building import Building
 from app.models.instructor import Instructor
 from app.models.course import Course
 from app.models.term import Term
+from app.models.term_session import TermSession
 from app.models.settings import AppSetting
 
 
@@ -50,6 +52,19 @@ def _json_serial(obj: Any) -> Any:
     raise TypeError(f"Type {type(obj)} not serializable")
 
 
+def _read_env_value(key: str) -> str:
+    """Read a value from the backend .env file."""
+    env_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+    if not os.path.isfile(env_path):
+        return ""
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith(f"{key}="):
+                return line[len(key) + 1:].strip().strip("'\"")
+    return ""
+
+
 def _get_setting(db: Session, key: str) -> str:
     setting = db.query(AppSetting).filter(AppSetting.key == key).first()
     return setting.value if setting else ""
@@ -67,6 +82,7 @@ def gather_export_data(db: Session, term_id: int) -> dict:
         .filter(Section.term_id == term_id)
         .options(
             joinedload(Meeting.section).joinedload(Section.course),
+            joinedload(Meeting.section).joinedload(Section.term_session),
             joinedload(Meeting.room).joinedload(Room.building),
             joinedload(Meeting.instructor),
         )
@@ -79,6 +95,7 @@ def gather_export_data(db: Session, term_id: int) -> dict:
         .options(
             joinedload(Section.course),
             joinedload(Section.instructor),
+            joinedload(Section.term_session),
         )
         .all()
     )
@@ -104,6 +121,7 @@ def gather_export_data(db: Session, term_id: int) -> dict:
         building = room.building if room else None
         instructor = m.instructor
 
+        ts = section.term_session if section else None
         meeting_data.append({
             "id": m.id,
             "section_id": m.section_id,
@@ -120,6 +138,11 @@ def gather_export_data(db: Session, term_id: int) -> dict:
                 "session": section.session if hasattr(section, 'session') else "regular",
                 "status": section.status,
                 "instructor_id": section.instructor_id,
+                "term_session": {
+                    "name": ts.name,
+                    "start_date": ts.start_date,
+                    "end_date": ts.end_date,
+                } if ts else None,
                 "course": {
                     "department_code": course.department_code,
                     "course_number": course.course_number,
@@ -148,6 +171,7 @@ def gather_export_data(db: Session, term_id: int) -> dict:
         if s.modality == "online_async":
             course = s.course
             instructor = s.instructor
+            ts = s.term_session
             online_sections.append({
                 "id": s.id,
                 "section_number": s.section_number,
@@ -156,6 +180,11 @@ def gather_export_data(db: Session, term_id: int) -> dict:
                 "session": s.session if hasattr(s, 'session') else "regular",
                 "status": s.status,
                 "instructor_id": s.instructor_id,
+                "term_session": {
+                    "name": ts.name,
+                    "start_date": ts.start_date,
+                    "end_date": ts.end_date,
+                } if ts else None,
                 "course": {
                     "department_code": course.department_code,
                     "course_number": course.course_number,
@@ -202,7 +231,10 @@ def render_export_html(db: Session, term_id: int) -> str:
     """Render the static HTML export for a term."""
     data = gather_export_data(db, term_id)
 
-    templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
+    if getattr(sys, "frozen", False):
+        templates_dir = os.path.join(sys._MEIPASS, "app", "templates")
+    else:
+        templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
     env = Environment(loader=FileSystemLoader(templates_dir), autoescape=False)
     template = env.get_template("schedule_export.html")
 
@@ -240,7 +272,7 @@ def save_to_directory(db: Session, term_id: int) -> str:
 def push_to_github(db: Session, term_id: int) -> dict:
     """Push HTML export to a GitHub repo via the Contents API. Returns pages_url + filename."""
     repo_url = _get_setting(db, "github_repo_url")
-    token = os.environ.get("GITHUB_TOKEN", "")
+    token = _read_env_value("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
 
     if not repo_url or not token:
         raise ValueError("GitHub not configured. Use the GitHub Setup wizard in Settings.")
@@ -308,8 +340,129 @@ def push_to_github(db: Session, term_id: int) -> dict:
             timeout=15,
         )
 
-    pages_base = f"https://{owner}.github.io/{repo}"
+    # Use configured pages URL if set, otherwise derive from repo
+    custom_pages_url = _get_setting(db, "github_pages_url").rstrip("/")
+    if custom_pages_url:
+        pages_base = custom_pages_url
+    else:
+        pages_base = f"https://{owner}.github.io/{repo}"
+
     return {
         "pages_url": f"{pages_base}/{filename}",
         "filename": filename,
     }
+
+
+def _format_time_12h(t: Any) -> str:
+    """time(9,0) -> '9:00 AM'"""
+    if isinstance(t, time):
+        hour = t.hour
+        minute = t.minute
+        ampm = "AM" if hour < 12 else "PM"
+        if hour == 0:
+            hour = 12
+        elif hour > 12:
+            hour -= 12
+        return f"{hour}:{minute:02d} {ampm}"
+    return str(t) if t else ""
+
+
+def generate_instructor_schedules(
+    db: Session, term_id: int, instructor_ids: list
+) -> list:
+    """Generate plain-text schedules for selected instructors in a term."""
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if not term:
+        raise ValueError(f"Term {term_id} not found")
+
+    instructors = (
+        db.query(Instructor)
+        .filter(Instructor.id.in_(instructor_ids))
+        .all()
+    )
+
+    meetings = (
+        db.query(Meeting)
+        .join(Section, Meeting.section_id == Section.id)
+        .filter(Section.term_id == term_id)
+        .options(
+            joinedload(Meeting.section).joinedload(Section.course),
+            joinedload(Meeting.room).joinedload(Room.building),
+            joinedload(Meeting.instructor),
+        )
+        .all()
+    )
+
+    sections = (
+        db.query(Section)
+        .filter(Section.term_id == term_id)
+        .options(
+            joinedload(Section.course),
+            joinedload(Section.instructor),
+        )
+        .all()
+    )
+
+    results = []
+    for inst in instructors:
+        inst_meetings = [m for m in meetings if m.instructor_id == inst.id]
+        inst_online = [
+            s for s in sections
+            if s.instructor_id == inst.id and s.modality == "online_async"
+        ]
+
+        lines = [f"Schedule for {inst.name} \u2014 {term.name}", ""]
+
+        if inst_meetings:
+            for m in sorted(inst_meetings, key=lambda x: (x.start_time or time(0, 0))):
+                section = m.section
+                course = section.course if section else None
+                room = m.room
+                building = room.building if room else None
+
+                course_label = ""
+                if course:
+                    course_label = f"{course.department_code} {course.course_number}-{section.section_number}  {course.title}"
+
+                days = _parse_days(m.days_of_week) if isinstance(m.days_of_week, str) else (m.days_of_week or [])
+                day_str = "".join(days)
+                time_str = f"{_format_time_12h(m.start_time)} \u2013 {_format_time_12h(m.end_time)}"
+
+                room_str = ""
+                if building and room:
+                    room_str = f"{building.abbreviation} {room.room_number}"
+
+                lines.append(course_label)
+                location_time = f"  {day_str} {time_str}"
+                if room_str:
+                    location_time += f", {room_str}"
+                lines.append(location_time)
+
+                if section and section.enrollment_cap:
+                    lines.append(f"  Enrollment Cap: {section.enrollment_cap}")
+                lines.append("")
+
+        if inst_online:
+            lines.append("Online Courses:")
+            for s in inst_online:
+                course = s.course
+                if course:
+                    lines.append(
+                        f"  {course.department_code} {course.course_number}-{s.section_number}  {course.title} (Online Async)"
+                    )
+                    if s.enrollment_cap:
+                        lines.append(f"  Enrollment Cap: {s.enrollment_cap}")
+            lines.append("")
+
+        if not inst_meetings and not inst_online:
+            lines.append("No sections assigned this term.")
+            lines.append("")
+
+        results.append({
+            "instructor_id": inst.id,
+            "instructor_name": inst.name,
+            "instructor_email": inst.email if hasattr(inst, "email") else "",
+            "schedule_text": "\n".join(lines),
+        })
+
+    return results

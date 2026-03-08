@@ -105,6 +105,13 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
         .all()
     )
 
+    # Filter out meetings for non-load courses from warnings
+    load_meetings = [
+        m for m in meetings
+        if not (m.section and m.section.course
+                and not getattr(m.section.course, "counts_toward_load", True))
+    ]
+
     # --- Credit overload check ---
     # Group meetings by instructor, sum credits from their sections' courses.
     # Also include online async sections assigned directly to instructors
@@ -112,7 +119,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     instructor_meeting_ids: dict[int, list[int]] = defaultdict(list)
     instructor_objects: dict[int, Instructor] = {}
 
-    for m in meetings:
+    for m in load_meetings:
         if m.instructor_id is None:
             continue
         if m.instructor is not None:
@@ -120,7 +127,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
 
     # Gather unique section-instructor pairs from meetings
     instructor_sections: dict[int, set[int]] = defaultdict(set)
-    for m in meetings:
+    for m in load_meetings:
         if m.instructor_id is not None and m.section_id is not None:
             instructor_meeting_ids[m.instructor_id].append(m.id)
             instructor_sections[m.instructor_id].add(m.section_id)
@@ -137,6 +144,9 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     )
     for s in direct_sections:
         if s.instructor_id is not None:
+            # Skip non-load courses
+            if s.course and not getattr(s.course, "counts_toward_load", True):
+                continue
             instructor_sections[s.instructor_id].add(s.id)
             # Load instructor object if not already known from meetings
             if s.instructor_id not in instructor_objects:
@@ -166,7 +176,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
             ))
 
     # --- Prefer-avoid time check ---
-    for m in meetings:
+    for m in load_meetings:
         if m.instructor_id is None:
             continue
         if not m.days_of_week or not m.start_time or not m.end_time:
@@ -202,7 +212,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
                     ))
 
     # --- Room capacity fit check ---
-    for m in meetings:
+    for m in load_meetings:
         if m.room_id is None or m.room is None or m.section is None:
             continue
         if m.section.modality in (Modality.online_sync, Modality.online_async):
@@ -228,7 +238,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     # --- TBD checks ---
     # Flag meetings where room, time, or instructor is TBD (null) but should
     # be assigned based on section modality.
-    for m in meetings:
+    for m in load_meetings:
         section = m.section
         if section is None:
             continue
@@ -268,7 +278,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
             ))
 
     # --- Non-standard block check ---
-    for m in meetings:
+    for m in load_meetings:
         # Skip meetings with no time (already flagged as TBD above)
         if not m.days_of_week or not m.start_time or not m.end_time:
             continue
@@ -288,7 +298,7 @@ def detect_soft_warnings(db: Session, term_id: int) -> list[ConflictItem]:
     # time blocks with no break
     instructor_day_meetings: dict[tuple[int, str], list[Meeting]] = defaultdict(list)
 
-    for m in meetings:
+    for m in load_meetings:
         if m.instructor_id is None:
             continue
         if not m.days_of_week or not m.start_time or not m.end_time:

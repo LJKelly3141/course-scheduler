@@ -31,7 +31,6 @@ from app.models.room import Room
 from app.models.section import Modality, Section, SectionStatus
 from app.models.term import Term, TermStatus, TermType
 from app.models.time_block import BlockPattern, TimeBlock
-from app.models.user import User
 from app.services.conflict_engine import check_meeting_conflicts, detect_hard_conflicts
 
 

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import enum
-from sqlalchemy import String, Integer, Boolean, Enum, ForeignKey, Time
+from typing import Optional
+from sqlalchemy import String, Integer, Boolean, Date, Enum, ForeignKey, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -16,21 +19,53 @@ class AvailabilityType(str, enum.Enum):
     prefer_avoid = "prefer_avoid"
 
 
+class InstructorType(str, enum.Enum):
+    faculty = "faculty"
+    ias = "ias"
+    adjunct = "adjunct"
+    nias = "nias"
+
+
+class AcademicRank(str, enum.Enum):
+    professor = "professor"
+    associate_professor = "associate_professor"
+    assistant_professor = "assistant_professor"
+    senior_lecturer = "senior_lecturer"
+    lecturer = "lecturer"
+    adjunct_instructor = "adjunct_instructor"
+
+
+class TenureStatus(str, enum.Enum):
+    tenured = "tenured"
+    tenure_track = "tenure_track"
+    non_tenure = "non_tenure"
+
+
 class Instructor(Base):
     __tablename__ = "instructors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
+    first_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     email: Mapped[str] = mapped_column(String(200), unique=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    office_location: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     department: Mapped[str] = mapped_column(String(50))
     modality_constraint: Mapped[ModalityConstraint] = mapped_column(
         Enum(ModalityConstraint), default=ModalityConstraint.any
     )
     max_credits: Mapped[int] = mapped_column(Integer, default=12)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    instructor_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    rank: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    tenure_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    hire_date: Mapped[Optional[str]] = mapped_column(Date, nullable=True)
 
     availabilities = relationship("InstructorAvailability", back_populates="instructor")
     meetings = relationship("Meeting", back_populates="instructor")
+    load_adjustments = relationship("LoadAdjustment", back_populates="instructor")
+    notes = relationship("InstructorNote", back_populates="instructor", cascade="all, delete-orphan")
 
 
 class InstructorAvailability(Base):

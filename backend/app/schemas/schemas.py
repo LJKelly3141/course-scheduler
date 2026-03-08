@@ -5,6 +5,22 @@ from typing import Optional
 from datetime import date, time
 
 
+# --- Academic Year ---
+class AcademicYearCreate(BaseModel):
+    label: str
+    start_date: date
+    end_date: date
+    is_current: bool = False
+
+class AcademicYearRead(BaseModel):
+    id: int
+    label: str
+    start_date: date
+    end_date: date
+    is_current: bool
+    model_config = {"from_attributes": True}
+
+
 # --- Term ---
 class TermBase(BaseModel):
     name: str
@@ -21,10 +37,33 @@ class TermUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[str] = None
+    academic_year_id: Optional[int] = None
+
+class TermSessionCreate(BaseModel):
+    name: str
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    head_count_days: Optional[int] = None
+    head_count_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class TermSessionRead(BaseModel):
+    id: int
+    term_id: int
+    name: str
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    head_count_days: Optional[int] = None
+    head_count_date: Optional[date] = None
+    notes: Optional[str] = None
+    model_config = {"from_attributes": True}
 
 class TermRead(TermBase):
     id: int
     status: str
+    academic_year_id: Optional[int] = None
+    academic_year: Optional[AcademicYearRead] = None
+    sessions: list[TermSessionRead] = []
     model_config = {"from_attributes": True}
 
 
@@ -70,25 +109,61 @@ class RoomReadWithBuilding(RoomRead):
 # --- Instructor ---
 class InstructorBase(BaseModel):
     name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: str
+    phone: Optional[str] = None
+    office_location: Optional[str] = None
     department: str
     modality_constraint: str = "any"
     max_credits: int = 12
     is_active: bool = True
+    instructor_type: Optional[str] = None
+    rank: Optional[str] = None
+    tenure_status: Optional[str] = None
+    hire_date: Optional[date] = None
 
 class InstructorCreate(InstructorBase):
     pass
 
 class InstructorUpdate(BaseModel):
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
+    office_location: Optional[str] = None
     department: Optional[str] = None
     modality_constraint: Optional[str] = None
     max_credits: Optional[int] = None
     is_active: Optional[bool] = None
+    instructor_type: Optional[str] = None
+    rank: Optional[str] = None
+    tenure_status: Optional[str] = None
+    hire_date: Optional[date] = None
 
 class InstructorRead(InstructorBase):
     id: int
+    model_config = {"from_attributes": True}
+
+
+# --- InstructorNote ---
+class InstructorNoteCreate(BaseModel):
+    term_id: Optional[int] = None
+    category: str = "general"
+    content: str = ""
+
+class InstructorNoteUpdate(BaseModel):
+    term_id: Optional[int] = None
+    category: Optional[str] = None
+    content: Optional[str] = None
+
+class InstructorNoteRead(BaseModel):
+    id: int
+    instructor_id: int
+    term_id: Optional[int] = None
+    category: str
+    content: str
     model_config = {"from_attributes": True}
 
 
@@ -118,6 +193,7 @@ class CourseBase(BaseModel):
     course_number: str
     title: str
     credits: int = 3
+    counts_toward_load: bool = True
 
 class CourseCreate(CourseBase):
     pass
@@ -127,6 +203,7 @@ class CourseUpdate(BaseModel):
     course_number: Optional[str] = None
     title: Optional[str] = None
     credits: Optional[int] = None
+    counts_toward_load: Optional[bool] = None
 
 class CourseRead(CourseBase):
     id: int
@@ -141,7 +218,13 @@ class SectionBase(BaseModel):
     enrollment_cap: int = 30
     modality: str = "in_person"
     session: str = "regular"
+    term_session_id: Optional[int] = None
     instructor_id: Optional[int] = None
+    duration_weeks: Optional[int] = None
+    equivalent_credits: Optional[int] = None
+    lecture_hours: Optional[float] = None
+    special_course_fee: Optional[float] = None
+    notes: Optional[str] = None
 
 class SectionCreate(SectionBase):
     pass
@@ -151,15 +234,30 @@ class SectionUpdate(BaseModel):
     enrollment_cap: Optional[int] = None
     modality: Optional[str] = None
     session: Optional[str] = None
+    term_session_id: Optional[int] = None
     status: Optional[str] = None
     instructor_id: Optional[int] = None
+    duration_weeks: Optional[int] = None
+    equivalent_credits: Optional[int] = None
+    lecture_hours: Optional[float] = None
+    special_course_fee: Optional[float] = None
+    notes: Optional[str] = None
 
 class SectionRead(SectionBase):
     id: int
     status: str
     session: str = "regular"
+    term_session_id: Optional[int] = None
     instructor_id: Optional[int] = None
     instructor: Optional[InstructorRead] = None
+    term_session: Optional[TermSessionRead] = None
+    duration_weeks: Optional[int] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    equivalent_credits: Optional[int] = None
+    lecture_hours: Optional[float] = None
+    special_course_fee: Optional[float] = None
+    notes: Optional[str] = None
     model_config = {"from_attributes": True}
 
 class SectionReadWithCourse(SectionRead):
@@ -222,23 +320,6 @@ class ValidationResult(BaseModel):
     soft_warnings: list[ConflictItem] = []
 
 
-# --- Auth ---
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-class LoginResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: "UserRead"
-
-class UserRead(BaseModel):
-    id: int
-    email: str
-    name: str
-    role: str
-    model_config = {"from_attributes": True}
-
 
 # --- Import ---
 class BatchDeleteRequest(BaseModel):
@@ -272,6 +353,51 @@ class ImportResult(BaseModel):
     errors: list[str] = []
 
 
+# --- Schedule Comparison ---
+class FieldDiff(BaseModel):
+    field: str
+    registrar_value: str
+    department_value: str
+
+class ChangedSection(BaseModel):
+    crn: Optional[int] = None
+    department_code: str
+    course_number: str
+    section_number: str
+    title: str
+    diffs: list[FieldDiff] = []
+
+class NewSection(BaseModel):
+    department_code: str
+    course_number: str
+    section_number: str
+    title: str
+    details: str
+    time: str = ""
+    room: str = ""
+    instructor: str = ""
+    modality: str = ""
+
+class RemovedSection(BaseModel):
+    crn: Optional[int] = None
+    department_code: str
+    course_number: str
+    section_number: str
+    title: str
+    details: str
+    time: str = ""
+    room: str = ""
+    instructor: str = ""
+    modality: str = ""
+
+class CompareResult(BaseModel):
+    term_name: str
+    changed: list[ChangedSection] = []
+    new_sections: list[NewSection] = []
+    removed: list[RemovedSection] = []
+    unchanged_count: int = 0
+
+
 # --- AppSetting ---
 class AppSettingRead(BaseModel):
     key: str
@@ -281,3 +407,69 @@ class AppSettingRead(BaseModel):
 class AppSettingWrite(BaseModel):
     key: str
     value: str
+
+
+# --- Load Adjustments ---
+class LoadAdjustmentCreate(BaseModel):
+    term_id: int
+    description: str
+    equivalent_credits: float = 0.0
+    adjustment_type: str = "other"
+
+class LoadAdjustmentUpdate(BaseModel):
+    description: Optional[str] = None
+    equivalent_credits: Optional[float] = None
+    adjustment_type: Optional[str] = None
+
+class LoadAdjustmentRead(BaseModel):
+    id: int
+    instructor_id: int
+    term_id: int
+    description: str
+    equivalent_credits: float
+    adjustment_type: str
+    model_config = {"from_attributes": True}
+
+
+# --- Workload ---
+class WorkloadSectionRow(BaseModel):
+    section_id: int
+    department_code: str
+    course_number: str
+    section_number: str
+    title: str
+    actual_credits: int
+    equivalent_credits: int
+    enrollment_cap: int
+    sch: int
+    modality: str
+    schedule_info: str
+    status: str
+    counts_toward_load: bool
+
+class WorkloadAdjustmentRow(BaseModel):
+    id: int
+    description: str
+    equivalent_credits: float
+    adjustment_type: str
+
+class InstructorWorkload(BaseModel):
+    instructor_id: int
+    name: str
+    last_name: str
+    first_name: str
+    instructor_type: Optional[str] = None
+    department: str
+    max_credits: int
+    section_count: int
+    sections: list[WorkloadSectionRow] = []
+    adjustments: list[WorkloadAdjustmentRow] = []
+    total_teaching_credits: int = 0
+    total_equivalent_credits: float = 0.0
+    total_sch: int = 0
+    is_overloaded: bool = False
+
+class WorkloadResponse(BaseModel):
+    instructors: list[InstructorWorkload] = []
+    unassigned_sections: list[WorkloadSectionRow] = []
+    term_totals: dict = {}

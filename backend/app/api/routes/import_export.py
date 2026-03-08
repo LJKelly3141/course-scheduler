@@ -26,8 +26,9 @@ from app.schemas.schemas import (
     ImportResult,
     ScheduleImportPreview,
     ColumnDetectResponse,
+    CompareResult,
 )
-from app.services.export import export_term_csv, export_print_html
+from app.services.export import export_term_csv, export_term_xlsx, export_print_html
 from app.services.xlsx_reader import (
     read_xlsx_to_rows,
     read_csv_to_rows,
@@ -42,6 +43,7 @@ from app.services.xlsx_schedule_parser import (
     match_time_block,
     find_instructor_matches,
 )
+from app.services.schedule_compare import compare_schedule
 
 router = APIRouter()
 
@@ -609,6 +611,24 @@ async def import_schedule(
             except ValueError:
                 session_val = SessionEnum.regular
 
+            # Try to resolve term_session_id from TermSession name lookup
+            from app.models.term_session import TermSession
+            term_session_id = None
+            if session_raw and session_raw != "regular":
+                # Map legacy enum names to TermSession names
+                _legacy_map = {
+                    "session_a": "A", "session_b": "B",
+                    "session_c": "C", "session_d": "D",
+                }
+                ts_name = _legacy_map.get(session_raw, session_raw)
+                ts_obj = (
+                    db.query(TermSession)
+                    .filter(TermSession.term_id == term_id, TermSession.name == ts_name)
+                    .first()
+                )
+                if ts_obj:
+                    term_session_id = ts_obj.id
+
             # --- Section: find or create, update if exists ---
             existing_section = (
                 db.query(Section)
@@ -624,6 +644,7 @@ async def import_schedule(
                 # Update existing section with latest import data
                 existing_section.modality = modality_val
                 existing_section.session = session_val
+                existing_section.term_session_id = term_session_id or existing_section.term_session_id
                 existing_section.instructor_id = instructor.id if instructor else existing_section.instructor_id
                 if has_schedule or is_online:
                     existing_section.status = SectionStatus.scheduled
@@ -637,6 +658,7 @@ async def import_schedule(
                     enrollment_cap=30,
                     modality=modality_val,
                     session=session_val,
+                    term_session_id=term_session_id,
                     status=SectionStatus.scheduled if (has_schedule or is_online) else SectionStatus.unscheduled,
                     instructor_id=instructor.id if instructor else None,
                 )
@@ -704,6 +726,44 @@ async def import_schedule(
 
 
 # ---------------------------------------------------------------------------
+# POST /terms/{term_id}/compare-schedule
+# ---------------------------------------------------------------------------
+@router.post("/terms/{term_id}/compare-schedule", response_model=CompareResult)
+async def compare_schedule_endpoint(
+    term_id: int,
+    file: UploadFile = File(...),
+    column_mapping: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    contents = await file.read()
+
+    # Parse column mapping override if provided
+    mapping_override: Optional[dict] = None
+    if column_mapping:
+        try:
+            mapping_override = json.loads(column_mapping)
+        except json.JSONDecodeError:
+            pass
+
+    valid_rows, errors, _ = read_xlsx_schedule(
+        contents, column_mapping_override=mapping_override
+    )
+
+    if errors:
+        # Filter out non-blocking warnings; only raise on missing-column errors
+        blocking = [e for e in errors if e.startswith("Missing required")]
+        if blocking:
+            raise HTTPException(status_code=400, detail=blocking)
+
+    try:
+        result = compare_schedule(db, term_id, valid_rows)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # GET /terms/{term_id}/export/csv
 # ---------------------------------------------------------------------------
 @router.get("/terms/{term_id}/export/csv")
@@ -718,6 +778,25 @@ def export_csv(term_id: int, db: Session = Depends(get_db)):
         media_type="text/csv",
         headers={
             "Content-Disposition": f"attachment; filename=schedule_term_{term_id}.csv"
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /terms/{term_id}/export/xlsx
+# ---------------------------------------------------------------------------
+@router.get("/terms/{term_id}/export/xlsx")
+def export_xlsx(term_id: int, db: Session = Depends(get_db)):
+    try:
+        xlsx_bytes = export_term_xlsx(db, term_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return StreamingResponse(
+        io.BytesIO(xlsx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=schedule_term_{term_id}.xlsx"
         },
     )
 

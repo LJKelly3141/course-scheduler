@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.meeting import Meeting
 from app.models.room import Room
 from app.models.section import Section, SectionStatus
+from app.models.term import Term, TermStatus
 from app.schemas.schemas import (
     ConflictItem,
     MeetingCreate,
@@ -34,6 +35,7 @@ def _get_meeting_full(db: Session, meeting_id: int) -> Meeting | None:
         db.query(Meeting)
         .options(
             joinedload(Meeting.section).joinedload(Section.course),
+            joinedload(Meeting.section).joinedload(Section.term_session),
             joinedload(Meeting.room).joinedload(Room.building),
             joinedload(Meeting.instructor),
             joinedload(Meeting.time_block),
@@ -52,6 +54,7 @@ def list_meetings(term_id: int, db: Session = Depends(get_db)):
         .filter(Section.term_id == term_id)
         .options(
             joinedload(Meeting.section).joinedload(Section.course),
+            joinedload(Meeting.section).joinedload(Section.term_session),
             joinedload(Meeting.room).joinedload(Room.building),
             joinedload(Meeting.instructor),
             joinedload(Meeting.time_block),
@@ -61,6 +64,13 @@ def list_meetings(term_id: int, db: Session = Depends(get_db)):
     return meetings
 
 
+def _require_draft_term(db: Session, term_id: int):
+    """Raise 409 if the term is locked (final)."""
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if term and term.status == TermStatus.final:
+        raise HTTPException(status_code=409, detail="Term is locked (final). Unlock it to make changes.")
+
+
 @router.post("/terms/{term_id}/meetings", response_model=MeetingCreateResponse, status_code=201)
 def create_meeting(term_id: int, payload: MeetingCreate, db: Session = Depends(get_db)):
     """
@@ -68,6 +78,7 @@ def create_meeting(term_id: int, payload: MeetingCreate, db: Session = Depends(g
     If hard conflicts are detected, the meeting is still created but
     conflicts are returned in the response.
     """
+    _require_draft_term(db, term_id)
     # Verify the section belongs to this term
     section = db.query(Section).filter(Section.id == payload.section_id).first()
     if not section:
@@ -120,6 +131,11 @@ def update_meeting(meeting_id: int, payload: MeetingUpdate, db: Session = Depend
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
+    # Check term lock
+    section = db.query(Section).filter(Section.id == meeting.section_id).first()
+    if section:
+        _require_draft_term(db, section.term_id)
+
     # Apply updates
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -154,6 +170,11 @@ def delete_meeting(meeting_id: int, db: Session = Depends(get_db)):
     meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+
+    # Check term lock
+    section_obj = db.query(Section).filter(Section.id == meeting.section_id).first()
+    if section_obj:
+        _require_draft_term(db, section_obj.term_id)
 
     section_id = meeting.section_id
 

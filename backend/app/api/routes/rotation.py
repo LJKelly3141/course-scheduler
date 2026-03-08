@@ -1,0 +1,508 @@
+"""
+Course rotation plan: CRUD for planned offering patterns + apply-to-term.
+"""
+from __future__ import annotations
+
+import datetime
+import json
+from typing import Optional, List
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.orm import Session, joinedload
+
+from app.database import get_db
+from app.models.course import Course
+from app.models.course_rotation import CourseRotation, YearParity, RotationSemester
+from app.models.meeting import Meeting
+from app.models.section import Section, SectionStatus
+from app.models.term import Term
+from app.models.time_block import TimeBlock
+
+router = APIRouter()
+
+
+# ── Schemas ──
+
+class RotationEntryCreate(BaseModel):
+    course_id: int
+    semester: str  # fall, spring, summer, winter
+    year_parity: str = "every_year"  # every_year, even_years, odd_years
+    num_sections: int = 1
+    enrollment_cap: int = 30
+    modality: str = "in_person"
+    time_block_id: Optional[int] = None
+    days_of_week: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class RotationEntryUpdate(BaseModel):
+    semester: Optional[str] = None
+    year_parity: Optional[str] = None
+    num_sections: Optional[int] = None
+    enrollment_cap: Optional[int] = None
+    modality: Optional[str] = None
+    time_block_id: Optional[int] = None
+    days_of_week: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ApplyRotationRequest(BaseModel):
+    term_id: int
+
+
+def _parse_time(t: Optional[str]) -> Optional[datetime.time]:
+    if not t:
+        return None
+    try:
+        parts = t.split(":")
+        return datetime.time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
+    except (ValueError, IndexError):
+        return None
+
+
+def _time_str(t) -> Optional[str]:
+    if t is None:
+        return None
+    if hasattr(t, 'strftime'):
+        return t.strftime("%H:%M:%S")
+    return str(t)
+
+
+# ── CRUD ──
+
+@router.get("")
+def list_rotation_entries(
+    department: Optional[str] = Query(None),
+    semester: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """List all rotation entries, optionally filtered by department/semester."""
+    query = (
+        db.query(CourseRotation)
+        .join(Course, CourseRotation.course_id == Course.id)
+        .options(joinedload(CourseRotation.course), joinedload(CourseRotation.time_block))
+    )
+    if department:
+        query = query.filter(Course.department_code == department)
+    if semester:
+        query = query.filter(CourseRotation.semester == semester)
+
+    entries = query.order_by(
+        Course.department_code, Course.course_number, CourseRotation.semester
+    ).all()
+
+    return [_serialize(e) for e in entries]
+
+
+@router.post("", status_code=201)
+def create_rotation_entry(body: RotationEntryCreate, db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == body.course_id).first()
+    if not course:
+        raise HTTPException(404, "Course not found")
+
+    try:
+        sem = RotationSemester(body.semester)
+    except ValueError:
+        raise HTTPException(400, f"Invalid semester: {body.semester}")
+    try:
+        parity = YearParity(body.year_parity)
+    except ValueError:
+        raise HTTPException(400, f"Invalid year_parity: {body.year_parity}")
+
+    entry = CourseRotation(
+        course_id=body.course_id,
+        semester=sem,
+        year_parity=parity,
+        num_sections=body.num_sections,
+        enrollment_cap=body.enrollment_cap,
+        modality=body.modality,
+        time_block_id=body.time_block_id,
+        days_of_week=body.days_of_week,
+        start_time=_parse_time(body.start_time),
+        end_time=_parse_time(body.end_time),
+        notes=body.notes,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    entry.course  # trigger lazy load
+    return _serialize(entry)
+
+
+@router.put("/{entry_id}")
+def update_rotation_entry(
+    entry_id: int,
+    body: RotationEntryUpdate,
+    db: Session = Depends(get_db),
+):
+    entry = db.query(CourseRotation).filter(CourseRotation.id == entry_id).first()
+    if not entry:
+        raise HTTPException(404, "Rotation entry not found")
+
+    if body.semester is not None:
+        try:
+            entry.semester = RotationSemester(body.semester)
+        except ValueError:
+            raise HTTPException(400, f"Invalid semester: {body.semester}")
+    if body.year_parity is not None:
+        try:
+            entry.year_parity = YearParity(body.year_parity)
+        except ValueError:
+            raise HTTPException(400, f"Invalid year_parity: {body.year_parity}")
+    if body.num_sections is not None:
+        entry.num_sections = body.num_sections
+    if body.enrollment_cap is not None:
+        entry.enrollment_cap = body.enrollment_cap
+    if body.modality is not None:
+        entry.modality = body.modality
+    if body.time_block_id is not None:
+        entry.time_block_id = body.time_block_id if body.time_block_id != 0 else None
+    if body.days_of_week is not None:
+        entry.days_of_week = body.days_of_week or None
+    if body.start_time is not None:
+        entry.start_time = _parse_time(body.start_time)
+    if body.end_time is not None:
+        entry.end_time = _parse_time(body.end_time)
+    if body.notes is not None:
+        entry.notes = body.notes
+
+    db.commit()
+    db.refresh(entry)
+    return _serialize(entry)
+
+
+@router.delete("/{entry_id}")
+def delete_rotation_entry(entry_id: int, db: Session = Depends(get_db)):
+    entry = db.query(CourseRotation).filter(CourseRotation.id == entry_id).first()
+    if not entry:
+        raise HTTPException(404, "Rotation entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/batch", status_code=201)
+def batch_set_rotation(
+    entries: List[RotationEntryCreate],
+    db: Session = Depends(get_db),
+):
+    """Replace all rotation entries for the given courses with new ones."""
+    course_ids = {e.course_id for e in entries}
+
+    courses = db.query(Course).filter(Course.id.in_(course_ids)).all()
+    course_map = {c.id: c for c in courses}
+    for cid in course_ids:
+        if cid not in course_map:
+            raise HTTPException(404, f"Course {cid} not found")
+
+    # Delete existing entries for these courses
+    db.query(CourseRotation).filter(
+        CourseRotation.course_id.in_(course_ids)
+    ).delete(synchronize_session="fetch")
+
+    # Insert new entries
+    created = []
+    for e in entries:
+        try:
+            sem = RotationSemester(e.semester)
+        except ValueError:
+            raise HTTPException(400, f"Invalid semester: {e.semester}")
+        try:
+            parity = YearParity(e.year_parity)
+        except ValueError:
+            raise HTTPException(400, f"Invalid year_parity: {e.year_parity}")
+
+        entry = CourseRotation(
+            course_id=e.course_id,
+            semester=sem,
+            year_parity=parity,
+            num_sections=e.num_sections,
+            enrollment_cap=e.enrollment_cap,
+            modality=e.modality,
+            time_block_id=e.time_block_id,
+            days_of_week=e.days_of_week,
+            start_time=_parse_time(e.start_time),
+            end_time=_parse_time(e.end_time),
+            notes=e.notes,
+        )
+        db.add(entry)
+        created.append(entry)
+
+    db.commit()
+    for e in created:
+        db.refresh(e)
+    return [_serialize(e) for e in created]
+
+
+# ── Apply rotation to term ──
+
+@router.post("/apply")
+def apply_rotation_to_term(
+    body: ApplyRotationRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Create sections (and meetings if time blocks are specified) in the target
+    term based on the rotation plan.
+    """
+    term = db.query(Term).filter(Term.id == body.term_id).first()
+    if not term:
+        raise HTTPException(404, "Term not found")
+    if term.status == "final":
+        raise HTTPException(400, "Cannot modify a finalized term")
+
+    sem_map = {"fall": "fall", "spring": "spring", "summer": "summer", "winter": "winter"}
+    term_semester = sem_map.get(term.type, "fall")
+
+    year = term.start_date.year if hasattr(term.start_date, 'year') else int(str(term.start_date)[:4])
+    is_even = year % 2 == 0
+
+    matching_entries = (
+        db.query(CourseRotation)
+        .options(joinedload(CourseRotation.time_block))
+        .filter(CourseRotation.semester == term_semester)
+        .all()
+    )
+
+    applicable = []
+    for entry in matching_entries:
+        if entry.year_parity == YearParity.every_year:
+            applicable.append(entry)
+        elif entry.year_parity == YearParity.even_years and is_even:
+            applicable.append(entry)
+        elif entry.year_parity == YearParity.odd_years and not is_even:
+            applicable.append(entry)
+
+    # Get existing sections in this term, grouped by course+modality
+    existing = db.query(Section).filter(Section.term_id == term.id).all()
+    existing_by_course_modality: dict[tuple[int, str], int] = {}
+    existing_by_course_total: dict[int, int] = {}
+    for s in existing:
+        key = (s.course_id, s.modality)
+        existing_by_course_modality[key] = existing_by_course_modality.get(key, 0) + 1
+        existing_by_course_total[s.course_id] = existing_by_course_total.get(s.course_id, 0) + 1
+
+    created_sections: list[dict] = []
+    meetings_created = 0
+
+    for entry in applicable:
+        modality_val = entry.modality or "in_person"
+        current_count = existing_by_course_modality.get((entry.course_id, modality_val), 0)
+        needed = entry.num_sections - current_count
+        if needed <= 0:
+            continue
+
+        course = db.query(Course).filter(Course.id == entry.course_id).first()
+        if not course:
+            continue
+
+        total_for_course = existing_by_course_total.get(entry.course_id, 0)
+        already_created_for_course = sum(
+            1 for c in created_sections
+            if c["course"] == f"{course.department_code} {course.course_number}"
+        )
+
+        # Resolve time info: prefer time_block, fall back to custom days/times
+        tb = entry.time_block
+        meeting_days = None
+        meeting_start = None
+        meeting_end = None
+        meeting_tb_id = None
+
+        if tb:
+            meeting_tb_id = tb.id
+            meeting_days = tb.days_of_week
+            meeting_start = tb.start_time
+            meeting_end = tb.end_time
+        elif entry.days_of_week and entry.start_time and entry.end_time:
+            meeting_days = entry.days_of_week
+            meeting_start = entry.start_time
+            meeting_end = entry.end_time
+
+        has_meeting_info = meeting_days is not None
+
+        for i in range(needed):
+            section_number = str(total_for_course + already_created_for_course + i + 1).zfill(2)
+            section = Section(
+                course_id=entry.course_id,
+                term_id=term.id,
+                section_number=section_number,
+                enrollment_cap=entry.enrollment_cap,
+                modality=modality_val,
+                session="regular",
+                status=SectionStatus.scheduled if has_meeting_info else SectionStatus.unscheduled,
+            )
+            db.add(section)
+            db.flush()  # get section.id for meeting FK
+
+            # Create meeting if time info is available
+            if has_meeting_info:
+                meeting = Meeting(
+                    section_id=section.id,
+                    days_of_week=meeting_days,
+                    start_time=meeting_start,
+                    end_time=meeting_end,
+                    time_block_id=meeting_tb_id,
+                )
+                db.add(meeting)
+                meetings_created += 1
+
+            time_label = ""
+            if tb:
+                time_label = tb.label
+            elif meeting_days:
+                time_label = f"{meeting_days} {_time_str(meeting_start)}-{_time_str(meeting_end)}"
+
+            created_sections.append({
+                "course": f"{course.department_code} {course.course_number}",
+                "section_number": section_number,
+                "enrollment_cap": entry.enrollment_cap,
+                "modality": modality_val,
+                "time": time_label,
+            })
+
+    db.commit()
+
+    return {
+        "term_id": term.id,
+        "term_name": term.name,
+        "entries_matched": len(applicable),
+        "sections_created": len(created_sections),
+        "meetings_created": meetings_created,
+        "details": created_sections,
+    }
+
+
+# ── Extract rotation from existing term ──
+
+@router.get("/from-term/{term_id}")
+def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
+    """
+    Analyze an existing term's sections/meetings and return proposed rotation
+    entries.  Groups sections by (course, modality, time_block) and returns
+    one entry per group with the section count and most-common enrollment cap.
+    """
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if not term:
+        raise HTTPException(404, "Term not found")
+
+    sem_map = {"fall": "fall", "spring": "spring", "summer": "summer", "winter": "winter"}
+    term_semester = sem_map.get(term.type, "fall")
+
+    sections = (
+        db.query(Section)
+        .filter(Section.term_id == term_id)
+        .options(joinedload(Section.course))
+        .all()
+    )
+
+    # For each section, find its first meeting to get time block info
+    section_ids = [s.id for s in sections]
+    meetings = (
+        db.query(Meeting)
+        .filter(Meeting.section_id.in_(section_ids))
+        .options(joinedload(Meeting.time_block))
+        .all()
+    ) if section_ids else []
+
+    meeting_by_section: dict[int, Meeting] = {}
+    for m in meetings:
+        if m.section_id not in meeting_by_section:
+            meeting_by_section[m.section_id] = m
+
+    # Group by (course_id, modality, time_block_id)
+    groups: dict[tuple, list] = {}
+    for s in sections:
+        meeting = meeting_by_section.get(s.id)
+        tb_id = meeting.time_block_id if meeting else None
+        key = (s.course_id, s.modality, tb_id)
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(s)
+
+    results = []
+    for (course_id, modality, tb_id), group_sections in groups.items():
+        course = group_sections[0].course
+        if not course:
+            continue
+
+        # Most common enrollment cap in this group
+        caps = [s.enrollment_cap for s in group_sections]
+        cap = max(set(caps), key=caps.count) if caps else 30
+
+        # Time block info
+        tb_label = None
+        days = None
+        start = None
+        end = None
+        if tb_id:
+            sample_meeting = meeting_by_section.get(group_sections[0].id)
+            if sample_meeting and sample_meeting.time_block:
+                tb = sample_meeting.time_block
+                tb_label = tb.label
+                days = tb.days_of_week
+                start = _time_str(tb.start_time)
+                end = _time_str(tb.end_time)
+        elif group_sections[0].id in meeting_by_section:
+            m = meeting_by_section[group_sections[0].id]
+            days = m.days_of_week
+            start = _time_str(m.start_time)
+            end = _time_str(m.end_time)
+
+        results.append({
+            "course_id": course_id,
+            "department_code": course.department_code,
+            "course_number": course.course_number,
+            "title": course.title,
+            "credits": course.credits,
+            "semester": term_semester,
+            "year_parity": "every_year",
+            "num_sections": len(group_sections),
+            "enrollment_cap": cap,
+            "modality": modality or "in_person",
+            "time_block_id": tb_id,
+            "time_block_label": tb_label,
+            "days_of_week": days,
+            "start_time": start,
+            "end_time": end,
+            "notes": None,
+        })
+
+    results.sort(key=lambda r: (r["department_code"], r["course_number"], r["modality"]))
+    return {
+        "term_id": term.id,
+        "term_name": term.name,
+        "semester": term_semester,
+        "entries": results,
+    }
+
+
+# ── Helpers ──
+
+def _serialize(entry: CourseRotation) -> dict:
+    course = entry.course
+    tb = entry.time_block
+    return {
+        "id": entry.id,
+        "course_id": entry.course_id,
+        "department_code": course.department_code if course else "",
+        "course_number": course.course_number if course else "",
+        "title": course.title if course else "",
+        "credits": course.credits if course else 0,
+        "semester": entry.semester.value if hasattr(entry.semester, 'value') else str(entry.semester),
+        "year_parity": entry.year_parity.value if hasattr(entry.year_parity, 'value') else str(entry.year_parity),
+        "num_sections": entry.num_sections,
+        "enrollment_cap": entry.enrollment_cap,
+        "modality": entry.modality,
+        "time_block_id": entry.time_block_id,
+        "time_block_label": tb.label if tb else None,
+        "days_of_week": entry.days_of_week,
+        "start_time": _time_str(entry.start_time),
+        "end_time": _time_str(entry.end_time),
+        "notes": entry.notes,
+    }

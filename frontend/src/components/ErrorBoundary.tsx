@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-muted/30 p-8">
-          <div className="bg-white rounded-lg border border-border shadow-sm max-w-lg w-full p-6 space-y-4">
+          <div className="bg-card rounded-lg border border-border shadow-sm max-w-lg w-full p-6 space-y-4">
             <h2 className="text-lg font-bold text-destructive">Something went wrong</h2>
             <p className="text-sm text-muted-foreground">
               {this.state.error?.message || "An unexpected error occurred."}

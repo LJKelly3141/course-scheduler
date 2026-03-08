@@ -1,7 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api } from "../../api/client";
-import type { Meeting, Section, Room, Instructor, TimeBlock } from "../../api/types";
+import type { Meeting, Section, Room, Instructor, TimeBlock, Term } from "../../api/types";
 import { parseDaysOfWeek } from "../../lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   termId: number;
@@ -12,11 +20,12 @@ interface Props {
   instructors: Instructor[];
   timeBlocks: TimeBlock[];
   termType?: string;
+  term?: Term | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (info?: { meeting?: Meeting; previousMeeting?: Meeting | null; action: "create" | "update" }) => void;
 }
 
-export function MeetingDialog({ termId, meeting, section, sections, rooms, instructors, timeBlocks, termType, onClose, onSaved }: Props) {
+export function MeetingDialog({ termId, meeting, section, sections, rooms, instructors, timeBlocks, termType, term, onClose, onSaved }: Props) {
   const [sectionId, setSectionId] = useState(meeting?.section_id ?? section?.id ?? 0);
   const [timeBlockId, setTimeBlockId] = useState<number | null>(meeting?.time_block_id ?? null);
   const [roomId, setRoomId] = useState<number | null>(meeting?.room_id ?? null);
@@ -28,20 +37,45 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Section fields
   const currentSection = section ?? sections.find((s) => s.id === sectionId) ?? null;
   const [sectionNumber, setSectionNumber] = useState(currentSection?.section_number ?? "");
   const [enrollmentCap, setEnrollmentCap] = useState(currentSection?.enrollment_cap ?? 30);
   const [modality, setModality] = useState(currentSection?.modality ?? "in_person");
   const [session, setSession] = useState(currentSection?.session ?? "regular");
+  const [termSessionId, setTermSessionId] = useState<number | null>(currentSection?.term_session_id ?? null);
+  const termSessions = term?.sessions ?? [];
   const [sectionInstructorId, setSectionInstructorId] = useState<number | null>(currentSection?.instructor_id ?? null);
+  const [durationWeeks, setDurationWeeks] = useState<number | null>(currentSection?.duration_weeks ?? null);
+  const [lectureHours, setLectureHours] = useState<number | null>(currentSection?.lecture_hours ?? null);
+  const [specialCourseFee, setSpecialCourseFee] = useState<number | null>(currentSection?.special_course_fee ?? null);
+  const [sectionNotes, setSectionNotes] = useState(currentSection?.notes ?? "");
 
   const isOnline = modality === "online_sync" || modality === "online_async";
   const isAsync = modality === "online_async";
-  const showSessions = termType === "fall" || termType === "spring";
+  const isSummer = termType === "summer";
+  const showSessions = true;
   const isEditing = !!meeting || !!section;
 
-  // When a time block is selected, populate days and times
+  // Client-side date preview for summer sessions
+  const selectedTermSession = useMemo(() => {
+    if (!termSessionId || !termSessions.length) return null;
+    return termSessions.find((s) => s.id === termSessionId) ?? null;
+  }, [termSessionId, termSessions]);
+
+  const sessionStartDate = selectedTermSession?.start_date ?? null;
+  const sessionEndDate = selectedTermSession?.end_date ?? null;
+
+  const computedEndDate = useMemo(() => {
+    if (sessionEndDate) return sessionEndDate;
+    if (!sessionStartDate || !durationWeeks || durationWeeks < 1) return null;
+    const start = new Date(sessionStartDate + "T00:00:00");
+    const rawEnd = new Date(start.getTime() + (durationWeeks - 1) * 7 * 86400000);
+    const dayOfWeek = rawEnd.getDay(); // 0=Sun ... 5=Fri
+    const daysUntilFri = (5 - dayOfWeek + 7) % 7;
+    const endDate = new Date(rawEnd.getTime() + daysUntilFri * 86400000);
+    return endDate.toISOString().slice(0, 10);
+  }, [sessionStartDate, sessionEndDate, durationWeeks]);
+
   useEffect(() => {
     if (timeBlockId && !customTime) {
       const block = timeBlocks.find((b) => b.id === timeBlockId);
@@ -53,7 +87,6 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
     }
   }, [timeBlockId, customTime, timeBlocks]);
 
-  // When time block is cleared, clear days and times
   useEffect(() => {
     if (!timeBlockId && !customTime) {
       setDaysOfWeek([]);
@@ -88,26 +121,33 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
 
     setSaving(true);
     try {
-      // Save section changes if editing an existing section
       if (isEditing && currentSection) {
         const sectionUpdate: Record<string, unknown> = {};
         if (sectionNumber !== currentSection.section_number) sectionUpdate.section_number = sectionNumber;
         if (enrollmentCap !== currentSection.enrollment_cap) sectionUpdate.enrollment_cap = enrollmentCap;
         if (modality !== currentSection.modality) sectionUpdate.modality = modality;
         if (session !== (currentSection.session ?? "regular")) sectionUpdate.session = session;
+        if (termSessionId !== currentSection.term_session_id) sectionUpdate.term_session_id = termSessionId;
         if (sectionInstructorId !== currentSection.instructor_id) sectionUpdate.instructor_id = sectionInstructorId;
+        if (durationWeeks !== currentSection.duration_weeks) sectionUpdate.duration_weeks = durationWeeks;
+        if (lectureHours !== currentSection.lecture_hours) sectionUpdate.lecture_hours = lectureHours;
+        if (specialCourseFee !== currentSection.special_course_fee) sectionUpdate.special_course_fee = specialCourseFee;
+        if (sectionNotes !== (currentSection.notes ?? "")) sectionUpdate.notes = sectionNotes || null;
 
         if (Object.keys(sectionUpdate).length > 0) {
           await api.put(`/sections/${currentSection.id}`, sectionUpdate);
         }
       }
 
-      // Save meeting (skip for async online with no meeting)
       if (!isAsync) {
         if (meeting) {
-          await api.put(`/meetings/${meeting.id}`, meetingBody);
+          const updated = await api.put<Meeting>(`/meetings/${meeting.id}`, meetingBody);
+          onSaved({ meeting: updated, previousMeeting: meeting, action: "update" });
+          return;
         } else {
-          await api.post(`/terms/${termId}/meetings`, meetingBody);
+          const created = await api.post<Meeting>(`/terms/${termId}/meetings`, meetingBody);
+          onSaved({ meeting: created, action: "create" });
+          return;
         }
       }
 
@@ -123,20 +163,21 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold">
-          {meeting ? "Edit Section & Meeting" : section ? "Edit Section" : "Add Meeting"}
-        </h3>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {meeting ? "Edit Section & Meeting" : section ? "Edit Section" : "Add Meeting"}
+          </DialogTitle>
+        </DialogHeader>
 
         {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded p-2">
+          <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-2">
             {errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
           </div>
         )}
 
         <div className="space-y-3">
-          {/* --- Section fields --- */}
           {isEditing && currentSection && (
             <div className="space-y-3 pb-3 border-b border-border">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Section</p>
@@ -165,18 +206,42 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                     <option value="hybrid">Hybrid</option>
                   </select>
                 </div>
-                {showSessions && (
+                {showSessions && termSessions.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium mb-1">Session</label>
                     <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
-                      value={session} onChange={(e) => setSession(e.target.value)}>
-                      <option value="regular">Regular</option>
-                      <option value="session_a">Session A</option>
-                      <option value="session_b">Session B</option>
+                      value={termSessionId ?? ""} onChange={(e) => setTermSessionId(e.target.value ? Number(e.target.value) : null)}>
+                      <option value="">No Session</option>
+                      {termSessions.map((ts) => (
+                        <option key={ts.id} value={ts.id}>{ts.name}</option>
+                      ))}
                     </select>
                   </div>
                 )}
               </div>
+
+              {isSummer && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Duration (weeks)</label>
+                    <input type="number" min="1" max="16"
+                      className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                      value={durationWeeks ?? ""}
+                      onChange={(e) => setDurationWeeks(e.target.value ? parseInt(e.target.value) : null)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Date Range</label>
+                    <p className="text-sm text-muted-foreground py-2">
+                      {sessionStartDate && computedEndDate
+                        ? `${sessionStartDate} to ${computedEndDate}`
+                        : sessionStartDate
+                        ? "Set duration to compute end date"
+                        : "Session start date not configured"}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium mb-1">Section Instructor</label>
@@ -188,10 +253,35 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                   ))}
                 </select>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Lecture Hours</label>
+                  <input type="number" step="0.5" min="0"
+                    className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                    value={lectureHours ?? ""}
+                    onChange={(e) => setLectureHours(e.target.value ? parseFloat(e.target.value) : null)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Special Course Fee</label>
+                  <input type="number" step="0.01" min="0"
+                    className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                    placeholder="$"
+                    value={specialCourseFee ?? ""}
+                    onChange={(e) => setSpecialCourseFee(e.target.value ? parseFloat(e.target.value) : null)} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Class Notes</label>
+                <input className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                  placeholder="Optional notes for the dean's office"
+                  value={sectionNotes}
+                  onChange={(e) => setSectionNotes(e.target.value)} />
+              </div>
             </div>
           )}
 
-          {/* --- Meeting fields --- */}
           {!isAsync && (
             <>
               {isEditing && (
@@ -307,16 +397,13 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
           )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted">
-            Cancel
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : isEditing ? "Update" : "Create"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -3,14 +3,9 @@ const isFileProtocol = window.location.protocol === "file:";
 const API_BASE = isFileProtocol ? "http://127.0.0.1:8000/api" : "/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem("token");
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
   };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   if (options?.body && typeof options.body === "string") {
     headers["Content-Type"] = "application/json";
@@ -36,4 +31,7 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   upload: <T>(path: string, formData: FormData) =>
     request<T>(path, { method: "POST", body: formData }),
+  getRaw: (path: string): Promise<Response> => {
+    return fetch(`${API_BASE}${path}`);
+  },
 };

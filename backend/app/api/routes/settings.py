@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, engine
 from app.models.settings import AppSetting
 from app.schemas.schemas import AppSettingRead, AppSettingWrite
 
@@ -17,7 +19,9 @@ router = APIRouter()
 KNOWN_KEYS = {
     "export_directory": "",
     "github_repo_url": "",
+    "github_pages_url": "",
     "department_name": "",
+    "academic_year_start_month": "7",
 }
 
 # --- .env file for secrets ---
@@ -168,6 +172,7 @@ class GitHubSetupResponse(BaseModel):
 class GitHubStatusResponse(BaseModel):
     configured: bool
     repo_url: str
+    pages_url: str
 
 
 @router.get("/github-status", response_model=GitHubStatusResponse)
@@ -175,10 +180,13 @@ def github_status(db: Session = Depends(get_db)):
     """Check whether GitHub is configured (without exposing the token)."""
     repo_setting = db.query(AppSetting).filter(AppSetting.key == "github_repo_url").first()
     repo_url = repo_setting.value if repo_setting else ""
+    pages_setting = db.query(AppSetting).filter(AppSetting.key == "github_pages_url").first()
+    pages_url = pages_setting.value if pages_setting else ""
     token = _read_env_value("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
     return GitHubStatusResponse(
         configured=bool(repo_url and token),
         repo_url=repo_url,
+        pages_url=pages_url,
     )
 
 
@@ -201,3 +209,59 @@ def github_setup(payload: GitHubSetupRequest, db: Session = Depends(get_db)):
     os.environ["GITHUB_TOKEN"] = payload.token
 
     return GitHubSetupResponse(configured=True, repo_url=payload.repo_url)
+
+
+# --- Database info & backup ---
+
+class DatabaseInfoResponse(BaseModel):
+    path: str
+    size_bytes: int
+    size_display: str
+
+
+def _format_size(size_bytes: int) -> str:
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
+    else:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+
+@router.get("/database-info", response_model=DatabaseInfoResponse)
+def database_info():
+    """Return the database file path and size."""
+    db_url = str(engine.url)
+    # sqlite:///path -> path
+    db_path = db_url.replace("sqlite:///", "")
+    db_path = os.path.abspath(db_path)
+    size = os.path.getsize(db_path) if os.path.isfile(db_path) else 0
+    return DatabaseInfoResponse(
+        path=db_path,
+        size_bytes=size,
+        size_display=_format_size(size),
+    )
+
+
+@router.get("/database-backup")
+def database_backup():
+    """Download a backup copy of the database (with WAL checkpoint)."""
+    db_url = str(engine.url)
+    db_path = db_url.replace("sqlite:///", "")
+    db_path = os.path.abspath(db_path)
+    if not os.path.isfile(db_path):
+        raise HTTPException(status_code=404, detail="Database file not found")
+
+    # Checkpoint WAL to ensure backup is complete
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.close()
+    except Exception:
+        pass  # Non-fatal: backup still works, just might not have latest WAL data
+
+    return FileResponse(
+        path=db_path,
+        filename="scheduler-backup.db",
+        media_type="application/octet-stream",
+    )

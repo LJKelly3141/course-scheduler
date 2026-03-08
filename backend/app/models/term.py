@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import enum
-from sqlalchemy import String, Date, Enum
+from typing import Optional
+from sqlalchemy import String, Date, Enum, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -25,7 +28,12 @@ class Term(Base):
     start_date: Mapped[str] = mapped_column(Date)
     end_date: Mapped[str] = mapped_column(Date)
     status: Mapped[TermStatus] = mapped_column(Enum(TermStatus), default=TermStatus.draft)
+    academic_year_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("academic_years.id"), nullable=True
+    )
 
+    academic_year = relationship("AcademicYear", back_populates="terms")
     sections = relationship("Section", back_populates="term", cascade="all, delete-orphan")
+    sessions = relationship("TermSession", back_populates="term", cascade="all, delete-orphan")
     instructor_availabilities = relationship("InstructorAvailability", back_populates="term", cascade="all, delete-orphan")
     dismissed_warnings = relationship("DismissedWarning", cascade="all, delete-orphan", passive_deletes=True)

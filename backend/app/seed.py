@@ -3,15 +3,11 @@ import json
 from datetime import time, date
 from sqlalchemy.orm import Session
 from app.database import engine, SessionLocal
-from app.models import Base, TimeBlock, Building, Room, Instructor, Course, Term
+from app.models import Base, TimeBlock, Building, Room, Instructor, Course, Term, TermSession
 from app.models.section import Section, Modality, SectionStatus
 from app.models.meeting import Meeting
 from app.models.time_block import BlockPattern
 from app.models.instructor import ModalityConstraint
-from app.models.user import User, UserRole
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 STANDARD_TIME_BLOCKS = [
     # MWF blocks
@@ -279,25 +275,30 @@ def seed_sections_and_meetings(db: Session):
     print(f"Seeded {len(sections)} sections and meetings (including intentional conflicts).")
 
 
-def seed_users(db: Session):
-    if db.query(User).count() > 0:
-        print("Users already seeded, skipping.")
+def seed_summer_term(db: Session):
+    """Seed a Summer 2026 term with 4 sessions."""
+    existing = db.query(Term).filter(Term.name == "Summer 2026").first()
+    if existing:
+        print("Summer 2026 term already exists, skipping.")
         return
-    admin = User(
-        email="admin@uwrf.edu",
-        hashed_password=pwd_context.hash("admin123"),
-        name="Admin User",
-        role=UserRole.admin,
+    term = Term(
+        name="Summer 2026",
+        type="summer",
+        start_date=date(2026, 5, 26),
+        end_date=date(2026, 8, 21),
+        status="draft",
     )
-    instructor_user = User(
-        email="alice.johnson@uwrf.edu",
-        hashed_password=pwd_context.hash("password"),
-        name="Alice Johnson",
-        role=UserRole.instructor,
-    )
-    db.add_all([admin, instructor_user])
+    db.add(term)
+    db.flush()
+    sessions = [
+        TermSession(term_id=term.id, name="A", start_date=date(2026, 5, 26)),
+        TermSession(term_id=term.id, name="B", start_date=date(2026, 6, 15)),
+        TermSession(term_id=term.id, name="C", start_date=date(2026, 7, 6)),
+        TermSession(term_id=term.id, name="D", start_date=date(2026, 7, 27)),
+    ]
+    db.add_all(sessions)
     db.commit()
-    print("Seeded users (admin@uwrf.edu / admin123).")
+    print("Seeded Summer 2026 term with 4 sessions.")
 
 
 def main():
@@ -307,7 +308,7 @@ def main():
         seed_time_blocks(db)
         seed_sample_data(db)
         seed_sections_and_meetings(db)
-        seed_users(db)
+        seed_summer_term(db)
         print("Seeding complete!")
     finally:
         db.close()

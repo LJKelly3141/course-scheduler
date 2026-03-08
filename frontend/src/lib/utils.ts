@@ -76,6 +76,12 @@ export const SLOT_HEIGHT_PX = 20;
 export const TOTAL_SLOTS = (GRID_END_HOUR - GRID_START_HOUR) * (60 / SLOT_MINUTES); // 52
 export const GRID_START_MINUTES = GRID_START_HOUR * 60; // 480
 
+/** Returns the hex alpha suffix for entity background colors.
+ *  Dark mode needs more opacity to be visible against the dark surface. */
+export function entityBgAlpha(isDark: boolean): string {
+  return isDark ? "33" : "14";
+}
+
 /** "09:30" → 570 */
 export function timeToMinutes(time: string | null | undefined): number {
   if (!time) return 0;
@@ -87,11 +93,12 @@ export function timeToMinutes(time: string | null | undefined): number {
 export function meetingPosition(
   startTime: string,
   endTime: string,
-  slotHeight: number = SLOT_HEIGHT_PX
+  slotHeight: number = SLOT_HEIGHT_PX,
+  gridStartMinutes: number = GRID_START_MINUTES
 ): { topPx: number; heightPx: number } {
   const startMin = timeToMinutes(startTime);
   const endMin = timeToMinutes(endTime);
-  const topPx = ((startMin - GRID_START_MINUTES) / SLOT_MINUTES) * slotHeight;
+  const topPx = ((startMin - gridStartMinutes) / SLOT_MINUTES) * slotHeight;
   const heightPx = ((endMin - startMin) / SLOT_MINUTES) * slotHeight;
   return { topPx, heightPx };
 }

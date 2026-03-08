@@ -20,6 +20,7 @@ def create_course(payload: CourseCreate, db: Session = Depends(get_db)):
         course_number=payload.course_number,
         title=payload.title,
         credits=payload.credits,
+        counts_toward_load=payload.counts_toward_load,
     )
     db.add(course)
     db.commit()
