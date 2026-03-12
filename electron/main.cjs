@@ -5,8 +5,8 @@ const http = require("http");
 
 let backendProcess = null;
 let mainWindow = null;
+let isDev = false;
 
-const isDev = !app.isPackaged;
 const BACKEND_PORT = 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 
@@ -210,6 +210,7 @@ function setupMenu() {
 }
 
 app.whenReady().then(async () => {
+  isDev = !app.isPackaged;
   startBackend();
 
   try {
