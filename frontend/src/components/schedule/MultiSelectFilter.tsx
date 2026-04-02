@@ -21,9 +21,9 @@ export function MultiSelectFilter({ label, options, selected, onChange }: MultiS
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1">
+        <Button variant="outline" size="sm" className="gap-1" aria-label={`Filter by ${label}`}>
           {displayLabel}
-          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+          <ChevronDown className="h-3.5 w-3.5 opacity-50" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-h-64 overflow-y-auto" align="start">

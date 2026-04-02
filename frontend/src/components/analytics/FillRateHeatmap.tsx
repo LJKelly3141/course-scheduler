@@ -79,10 +79,10 @@ export function FillRateHeatmap({ courses, terms, cells }: Props) {
                 }
                 const bg =
                   cell.fill_rate >= 0.8
-                    ? "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300"
+                    ? "bg-success text-success-foreground"
                     : cell.fill_rate >= 0.6
-                      ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"
-                      : "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300";
+                      ? "bg-warning text-warning-foreground"
+                      : "bg-destructive/10 text-destructive";
                 return (
                   <td
                     key={`${t.academic_year}-${t.semester}`}

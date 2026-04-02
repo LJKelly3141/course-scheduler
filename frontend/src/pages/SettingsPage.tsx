@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
 
 interface DirectoryEntry {
   name: string;
@@ -253,13 +254,15 @@ function GitHubSetupDialog({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="github-repo-url" className="block text-sm font-medium mb-1">
               Repository URL
             </label>
             <input
+              id="github-repo-url"
               type="text"
               className="w-full border border-border rounded-md px-3 py-2 text-sm"
               placeholder="https://github.com/user/schedules"
+              aria-required
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
             />
@@ -269,13 +272,15 @@ function GitHubSetupDialog({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="github-token" className="block text-sm font-medium mb-1">
               Personal Access Token
             </label>
             <input
+              id="github-token"
               type="password"
               className="w-full border border-border rounded-md px-3 py-2 text-sm font-mono"
               placeholder="ghp_..."
+              aria-required
               value={token}
               onChange={(e) => setToken(e.target.value)}
             />
@@ -289,7 +294,7 @@ function GitHubSetupDialog({
             <p className="text-sm text-destructive">{error}</p>
           )}
           {success && (
-            <p className="text-sm text-emerald-600 font-medium">
+            <p className="text-sm text-success font-medium">
               GitHub configured successfully!
             </p>
           )}
@@ -373,10 +378,11 @@ export function SettingsPage() {
         </h3>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="settings-dept-name" className="block text-sm font-medium mb-1">
             Department Name
           </label>
           <input
+            id="settings-dept-name"
             type="text"
             className="w-full border border-border rounded-md px-3 py-2 text-sm"
             placeholder="e.g. Computer Science"
@@ -395,7 +401,7 @@ export function SettingsPage() {
             {saveMutation.isPending ? "Saving..." : "Save"}
           </Button>
           {toast && (
-            <span className="text-sm text-emerald-600 font-medium">
+            <span className="text-sm text-success font-medium">
               {toast}
             </span>
           )}
@@ -409,11 +415,12 @@ export function SettingsPage() {
         </h3>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="settings-ay-start" className="block text-sm font-medium mb-1">
             Academic Year Start Month
           </label>
-          <select
-            className="w-48 border border-border rounded-md px-3 py-2 text-sm"
+          <StyledSelect
+            id="settings-ay-start"
+            className="w-48"
             value={form.academic_year_start_month}
             onChange={(e) =>
               setForm({ ...form, academic_year_start_month: e.target.value })
@@ -425,7 +432,7 @@ export function SettingsPage() {
             ].map((name, i) => (
               <option key={i + 1} value={String(i + 1)}>{name}</option>
             ))}
-          </select>
+          </StyledSelect>
           <p className="text-xs text-muted-foreground mt-1">
             The month the academic year begins. Default is July (Jul 1 – Jun 30).
             Terms are automatically assigned to academic years based on their start date and this setting.
@@ -444,11 +451,12 @@ export function SettingsPage() {
         </h3>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="settings-export-dir" className="block text-sm font-medium mb-1">
             Export Directory
           </label>
           <div className="flex gap-2">
             <input
+              id="settings-export-dir"
               type="text"
               className="flex-1 border border-border rounded-md px-3 py-2 text-sm font-mono"
               placeholder="~/Documents/schedules"
@@ -522,7 +530,7 @@ export function SettingsPage() {
         {githubStatus?.configured ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="inline-block w-2 h-2 rounded-full bg-success" />
               <span className="text-sm font-medium">Connected</span>
             </div>
             <div className="text-sm">
@@ -537,10 +545,11 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label htmlFor="settings-gh-pages-url" className="block text-sm font-medium mb-1">
                 GitHub Pages URL
               </label>
               <input
+                id="settings-gh-pages-url"
                 type="text"
                 className="w-full border border-border rounded-md px-3 py-2 text-sm font-mono"
                 placeholder="https://username.github.io/schedules"

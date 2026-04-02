@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Term } from "../api/types";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 type ImportType = "rooms" | "instructors" | "courses" | "schedule" | "enrollment";
@@ -247,21 +248,25 @@ export function ImportPage() {
 
       <div className="bg-card rounded-lg border border-border p-6 space-y-4">
         <div className="flex gap-4 items-center flex-wrap">
-          <select className="border border-border rounded-md px-3 py-2 text-sm"
+          <label htmlFor="import-type" className="sr-only">Import type</label>
+          <StyledSelect id="import-type" className="w-auto"
             value={importType} onChange={(e) => { setImportType(e.target.value as ImportType); resetState(); }}>
             <option value="rooms">Rooms</option>
             <option value="instructors">Instructors</option>
             <option value="courses">Courses</option>
             <option value="schedule">Schedule</option>
             <option value="enrollment">Enrollment History</option>
-          </select>
+          </StyledSelect>
           <HelpTooltip content="Import rooms, instructors, and courses first, then schedule data. Enrollment history powers analytics." side="right" />
 
+          <label htmlFor="import-file" className="sr-only">Choose file</label>
           <input
+            id="import-file"
             type="file"
             accept=".xlsx,.csv"
             className="text-sm"
             key={importType}
+            aria-required
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setEditableRows([]); setResult(null); }}
           />
 
@@ -375,7 +380,7 @@ export function ImportPage() {
               </p>
             </div>
             {columnDetect.warnings.length > 0 && (
-              <div className="text-xs text-amber-700 dark:text-amber-400 space-y-0.5">
+              <div className="text-xs text-warning space-y-0.5">
                 {columnDetect.warnings.map((w, i) => <p key={i}>{w}</p>)}
               </div>
             )}
@@ -386,8 +391,9 @@ export function ImportPage() {
                     {header}
                   </span>
                   <span className="text-muted-foreground">&rarr;</span>
-                  <select
-                    className={`border rounded px-2 py-1.5 text-sm flex-1 max-w-xs ${
+                  <StyledSelect
+                    aria-label={`Mapping for column ${header}`}
+                    className={`flex-1 max-w-xs ${
                       columnMapping[header]
                         ? "border-indigo-300 dark:border-indigo-700 bg-background"
                         : "border-border bg-muted/30 text-muted-foreground"
@@ -410,7 +416,7 @@ export function ImportPage() {
                     {columnDetect.canonical_columns.map((col) => (
                       <option key={col} value={col}>{col}</option>
                     ))}
-                  </select>
+                  </StyledSelect>
                   {columnMapping[header] && (
                     <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Mapped</span>
                   )}
@@ -441,7 +447,7 @@ export function ImportPage() {
 
         {/* Term selection for schedule import - shown after preview */}
         {isSchedule && preview && editableRows.length > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-4 space-y-3">
+          <div className="bg-info/10 border border-info/30 rounded p-4 space-y-3">
             <p className="text-sm font-medium">Select Term for Import</p>
             <div className="flex gap-4 items-center">
               <label className="flex items-center gap-2 text-sm">
@@ -465,53 +471,76 @@ export function ImportPage() {
             </div>
 
             {termMode === "existing" ? (
-              <select
-                className="border border-border rounded px-3 py-2 text-sm"
-                value={importTermId ?? selectedTerm?.id ?? ""}
-                onChange={(e) => setImportTermId(Number(e.target.value))}
-              >
-                {terms.length === 0 && <option value="">No terms available</option>}
-                {terms.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} {t.status === "final" ? "(Final)" : ""}
-                  </option>
-                ))}
-              </select>
+              <>
+                <label htmlFor="import-term-select" className="sr-only">Select term</label>
+                <StyledSelect
+                  id="import-term-select"
+                  className="w-auto"
+                  aria-required
+                  value={importTermId ?? selectedTerm?.id ?? ""}
+                  onChange={(e) => setImportTermId(Number(e.target.value))}
+                >
+                  {terms.length === 0 && <option value="">No terms available</option>}
+                  {terms.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {t.status === "final" ? "(Final)" : ""}
+                    </option>
+                  ))}
+                </StyledSelect>
+              </>
             ) : (
               <div className="grid grid-cols-4 gap-3">
-                <input
-                  placeholder="Term name"
-                  className="border border-border rounded px-2 py-1.5 text-sm"
-                  value={newTerm.name}
-                  onChange={(e) => setNewTerm({ ...newTerm, name: e.target.value })}
-                />
-                <select
-                  className="border border-border rounded px-2 py-1.5 text-sm"
-                  value={newTerm.type}
-                  onChange={(e) => setNewTerm({ ...newTerm, type: e.target.value })}
-                >
-                  <option value="fall">Fall</option>
-                  <option value="spring">Spring</option>
-                  <option value="summer">Summer</option>
-                  <option value="winter">Winter</option>
-                </select>
-                <input
-                  type="date"
-                  className="border border-border rounded px-2 py-1.5 text-sm"
-                  value={newTerm.start_date}
-                  onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
-                />
-                <input
-                  type="date"
-                  className="border border-border rounded px-2 py-1.5 text-sm"
-                  value={newTerm.end_date}
-                  onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
-                />
+                <div>
+                  <label htmlFor="new-term-name" className="sr-only">Term name</label>
+                  <input
+                    id="new-term-name"
+                    placeholder="Term name"
+                    className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                    aria-required
+                    value={newTerm.name}
+                    onChange={(e) => setNewTerm({ ...newTerm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="new-term-type" className="sr-only">Term type</label>
+                  <StyledSelect
+                    id="new-term-type"
+                    value={newTerm.type}
+                    onChange={(e) => setNewTerm({ ...newTerm, type: e.target.value })}
+                  >
+                    <option value="fall">Fall</option>
+                    <option value="spring">Spring</option>
+                    <option value="summer">Summer</option>
+                    <option value="winter">Winter</option>
+                  </StyledSelect>
+                </div>
+                <div>
+                  <label htmlFor="new-term-start" className="sr-only">Start date</label>
+                  <input
+                    id="new-term-start"
+                    type="date"
+                    className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                    aria-required
+                    value={newTerm.start_date}
+                    onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="new-term-end" className="sr-only">End date</label>
+                  <input
+                    id="new-term-end"
+                    type="date"
+                    className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                    aria-required
+                    value={newTerm.end_date}
+                    onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
+                  />
+                </div>
               </div>
             )}
 
             {preview.suggested_term && (
-              <p className="text-xs text-blue-600 dark:text-blue-400">
+              <p className="text-xs text-info">
                 Detected from file dates: <strong>{preview.suggested_term.name}</strong> ({preview.suggested_term.start_date} to {preview.suggested_term.end_date}).
                 {termMode === "existing" && (
                   <>
@@ -531,7 +560,7 @@ export function ImportPage() {
 
         {/* Instructor matching section */}
         {isSchedule && preview && preview.instructor_matches && preview.instructor_matches.length > 0 && (
-          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded p-4 space-y-3">
+          <div className="bg-warning/10 border border-warning/30 rounded p-4 space-y-3">
             <p className="text-sm font-medium">Instructor Matching</p>
             <p className="text-xs text-muted-foreground">
               Review how imported instructors map to existing records. Adjust as needed before confirming.
@@ -541,8 +570,9 @@ export function ImportPage() {
                 <div key={match.name} className="flex items-center gap-3 text-sm">
                   <span className="w-56 font-medium truncate" title={match.name}>{match.name}</span>
                   <span className="text-muted-foreground">&rarr;</span>
-                  <select
-                    className="border border-border rounded px-2 py-1.5 text-sm flex-1 max-w-sm"
+                  <StyledSelect
+                    aria-label={`Match for instructor ${match.name}`}
+                    className="flex-1 max-w-sm"
                     value={instructorMappings[match.name] ?? ""}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -558,12 +588,12 @@ export function ImportPage() {
                         {m.name} ({m.email}) — {Math.round(m.score * 100)}% match
                       </option>
                     ))}
-                  </select>
+                  </StyledSelect>
                   {instructorMappings[match.name] === null && (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">New</span>
+                    <span className="text-xs text-warning font-medium">New</span>
                   )}
                   {instructorMappings[match.name] !== null && instructorMappings[match.name] !== undefined && (
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Linked</span>
+                    <span className="text-xs text-success font-medium">Linked</span>
                   )}
                 </div>
               ))}
@@ -576,7 +606,7 @@ export function ImportPage() {
           <div className="space-y-3">
             <p className="text-sm font-medium">Enrollment Data Summary</p>
             {preview.errors.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-3">
+              <div className="bg-destructive/10 border border-destructive/30 rounded p-3">
                 <p className="text-sm font-medium text-destructive mb-1">Errors:</p>
                 {preview.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
               </div>
@@ -593,7 +623,7 @@ export function ImportPage() {
             </table>
             {preview.valid_count > 0 && (
               <div className="flex gap-3">
-                <Button onClick={handleConfirm} disabled={loading} className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
+                <Button onClick={handleConfirm} disabled={loading} className="bg-success hover:bg-success/90">
                   Import {preview.valid_count} Records
                 </Button>
                 <Button variant="outline" onClick={resetState} disabled={loading}>
@@ -616,7 +646,7 @@ export function ImportPage() {
               )}
             </div>
             {preview.errors.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-3">
+              <div className="bg-destructive/10 border border-destructive/30 rounded p-3">
                 <p className="text-sm font-medium text-destructive mb-1">Errors:</p>
                 {preview.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
               </div>
@@ -640,6 +670,7 @@ export function ImportPage() {
                             onClick={() => deleteRow(i)}
                             className="text-destructive hover:text-destructive/80 text-xs font-bold px-1"
                             title="Remove row"
+                            aria-label={`Remove row ${i + 1}`}
                           >
                             &times;
                           </button>
@@ -663,7 +694,7 @@ export function ImportPage() {
               <div className="flex gap-3">
                 <Button onClick={handleConfirm}
                   disabled={loading || (isSchedule && termMode === "existing" && !effectiveTermId && terms.length === 0) || (isSchedule && termMode === "new" && !newTerm.name)}
-                  className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
+                  className="bg-success hover:bg-success/90">
                   Confirm Import ({editableRows.length} rows)
                 </Button>
                 <Button variant="outline" onClick={resetState} disabled={loading}>
@@ -674,12 +705,14 @@ export function ImportPage() {
           </div>
         )}
 
-        {result && (
-          <div className={`p-3 rounded ${result.errors.length > 0 ? "bg-yellow-50 dark:bg-yellow-950" : "bg-green-50 dark:bg-green-950"}`}>
-            <p className="text-sm font-medium">Import complete: {result.created} records created</p>
-            {result.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
-          </div>
-        )}
+        <div aria-live="polite">
+          {result && (
+            <div className={`p-3 rounded ${result.errors.length > 0 ? "bg-warning/10" : "bg-success/10"}`}>
+              <p className="text-sm font-medium">Import complete: {result.created} records created</p>
+              {result.errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

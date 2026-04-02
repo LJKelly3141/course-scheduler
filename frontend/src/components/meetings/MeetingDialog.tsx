@@ -10,6 +10,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
+
+const DAY_LABELS: Record<string, string> = {
+  M: "Monday",
+  T: "Tuesday",
+  W: "Wednesday",
+  Th: "Thursday",
+  F: "Friday",
+};
 
 interface Props {
   termId: number;
@@ -172,7 +181,7 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
         </DialogHeader>
 
         {errors.length > 0 && (
-          <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-2">
+          <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-2" role="alert">
             {errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
           </div>
         )}
@@ -184,38 +193,41 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Section Number</label>
-                  <input className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                  <label htmlFor="mtg-section-number" className="block text-sm font-medium mb-1">Section Number</label>
+                  <input id="mtg-section-number" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                    aria-required="true"
                     value={sectionNumber} onChange={(e) => setSectionNumber(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Enrollment Cap</label>
-                  <input type="number" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                  <label htmlFor="mtg-enrollment-cap" className="block text-sm font-medium mb-1">Enrollment Cap</label>
+                  <input id="mtg-enrollment-cap" type="number" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                    aria-required="true"
                     value={enrollmentCap} onChange={(e) => setEnrollmentCap(parseInt(e.target.value) || 30)} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Modality</label>
-                  <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                  <label htmlFor="mtg-modality" className="block text-sm font-medium mb-1">Modality</label>
+                  <StyledSelect id="mtg-modality"
+                    aria-required="true"
                     value={modality} onChange={(e) => setModality(e.target.value)}>
                     <option value="in_person">In Person</option>
                     <option value="online_sync">Online Sync</option>
                     <option value="online_async">Online Async</option>
                     <option value="hybrid">Hybrid</option>
-                  </select>
+                  </StyledSelect>
                 </div>
                 {showSessions && termSessions.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium mb-1">Session</label>
-                    <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                    <label htmlFor="mtg-term-session" className="block text-sm font-medium mb-1">Session</label>
+                    <StyledSelect id="mtg-term-session"
                       value={termSessionId ?? ""} onChange={(e) => setTermSessionId(e.target.value ? Number(e.target.value) : null)}>
                       <option value="">No Session</option>
                       {termSessions.map((ts) => (
                         <option key={ts.id} value={ts.id}>{ts.name}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                 )}
               </div>
@@ -223,8 +235,8 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
               {isSummer && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Duration (weeks)</label>
-                    <input type="number" min="1" max="16"
+                    <label htmlFor="mtg-duration-weeks" className="block text-sm font-medium mb-1">Duration (weeks)</label>
+                    <input id="mtg-duration-weeks" type="number" min="1" max="16"
                       className="w-full border border-border rounded-md px-3 py-2 text-sm"
                       value={durationWeeks ?? ""}
                       onChange={(e) => setDurationWeeks(e.target.value ? parseInt(e.target.value) : null)}
@@ -244,27 +256,27 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
               )}
 
               <div>
-                <label className="block text-sm font-medium mb-1">Section Instructor</label>
-                <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                <label htmlFor="mtg-section-instructor" className="block text-sm font-medium mb-1">Section Instructor</label>
+                <StyledSelect id="mtg-section-instructor"
                   value={sectionInstructorId ?? ""} onChange={(e) => setSectionInstructorId(Number(e.target.value) || null)}>
                   <option value="">TBD</option>
                   {instructors.filter(i => i.is_active).map((i) => (
                     <option key={i.id} value={i.id}>{i.name} ({i.modality_constraint})</option>
                   ))}
-                </select>
+                </StyledSelect>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Lecture Hours</label>
-                  <input type="number" step="0.5" min="0"
+                  <label htmlFor="mtg-lecture-hours" className="block text-sm font-medium mb-1">Lecture Hours</label>
+                  <input id="mtg-lecture-hours" type="number" step="0.5" min="0"
                     className="w-full border border-border rounded-md px-3 py-2 text-sm"
                     value={lectureHours ?? ""}
                     onChange={(e) => setLectureHours(e.target.value ? parseFloat(e.target.value) : null)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Special Course Fee</label>
-                  <input type="number" step="0.01" min="0"
+                  <label htmlFor="mtg-special-course-fee" className="block text-sm font-medium mb-1">Special Course Fee</label>
+                  <input id="mtg-special-course-fee" type="number" step="0.01" min="0"
                     className="w-full border border-border rounded-md px-3 py-2 text-sm"
                     placeholder="$"
                     value={specialCourseFee ?? ""}
@@ -273,8 +285,8 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Class Notes</label>
-                <input className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                <label htmlFor="mtg-class-notes" className="block text-sm font-medium mb-1">Class Notes</label>
+                <input id="mtg-class-notes" className="w-full border border-border rounded-md px-3 py-2 text-sm"
                   placeholder="Optional notes for the dean's office"
                   value={sectionNotes}
                   onChange={(e) => setSectionNotes(e.target.value)} />
@@ -290,8 +302,9 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
 
               {!isEditing && (
                 <div>
-                  <label className="block text-sm font-medium mb-1">Section</label>
-                  <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                  <label htmlFor="mtg-section-select" className="block text-sm font-medium mb-1">Section</label>
+                  <StyledSelect id="mtg-section-select"
+                    aria-required="true"
                     value={sectionId} onChange={(e) => setSectionId(Number(e.target.value))}>
                     <option value={0}>Select section...</option>
                     {(meeting ? sections : unscheduledSections).map((s) => (
@@ -299,19 +312,19 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                         {s.course?.department_code} {s.course?.course_number}-{s.section_number} ({s.modality.replace("_", " ")})
                       </option>
                     ))}
-                  </select>
+                  </StyledSelect>
                 </div>
               )}
 
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Custom Time</label>
-                <input type="checkbox" checked={customTime} onChange={(e) => setCustomTime(e.target.checked)} />
+                <label htmlFor="mtg-custom-time" className="text-sm font-medium">Custom Time</label>
+                <input id="mtg-custom-time" type="checkbox" checked={customTime} onChange={(e) => setCustomTime(e.target.checked)} />
               </div>
 
               {!customTime ? (
                 <div>
-                  <label className="block text-sm font-medium mb-1">Time Block</label>
-                  <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                  <label htmlFor="mtg-time-block" className="block text-sm font-medium mb-1">Time Block</label>
+                  <StyledSelect id="mtg-time-block"
                     value={timeBlockId ?? ""} onChange={(e) => setTimeBlockId(Number(e.target.value) || null)}>
                     <option value="">TBD</option>
                     <optgroup label="MWF">
@@ -332,15 +345,18 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                     <optgroup label="Other">
                       <option value="none">No meeting time</option>
                     </optgroup>
-                  </select>
+                  </StyledSelect>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Days</label>
-                    <div className="flex gap-1">
-                      {["M", "T", "W", "Th", "F"].map((d) => (
+                    <label className="block text-sm font-medium mb-1" id="mtg-days-label">Days</label>
+                    <div className="flex gap-1" role="group" aria-labelledby="mtg-days-label">
+                      {(["M", "T", "W", "Th", "F"] as const).map((d) => (
                         <button key={d}
+                          type="button"
+                          aria-label={DAY_LABELS[d]}
+                          aria-pressed={daysOfWeek.includes(d)}
                           onClick={() => setDaysOfWeek(daysOfWeek.includes(d) ? daysOfWeek.filter((x) => x !== d) : [...daysOfWeek, d])}
                           className={`px-2 py-1 rounded text-xs font-medium ${
                             daysOfWeek.includes(d) ? "bg-primary text-white" : "bg-muted"
@@ -350,13 +366,13 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Start</label>
-                      <input type="time" className="w-full border border-border rounded px-2 py-1.5 text-sm"
+                      <label htmlFor="mtg-start-time" className="block text-sm font-medium mb-1">Start</label>
+                      <input id="mtg-start-time" type="time" className="w-full border border-border rounded px-2 py-1.5 text-sm"
                         value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">End</label>
-                      <input type="time" className="w-full border border-border rounded px-2 py-1.5 text-sm"
+                      <label htmlFor="mtg-end-time" className="block text-sm font-medium mb-1">End</label>
+                      <input id="mtg-end-time" type="time" className="w-full border border-border rounded px-2 py-1.5 text-sm"
                         value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                     </div>
                   </div>
@@ -364,8 +380,8 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
               )}
 
               <div>
-                <label className="block text-sm font-medium mb-1">Room</label>
-                <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                <label htmlFor="mtg-room" className="block text-sm font-medium mb-1">Room</label>
+                <StyledSelect id="mtg-room"
                   value={roomId ?? ""} onChange={(e) => setRoomId(Number(e.target.value) || null)}>
                   <option value="">TBD</option>
                   <option value="none">No room (online)</option>
@@ -374,18 +390,18 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                       {r.building?.abbreviation} {r.room_number} (cap: {r.capacity})
                     </option>
                   ))}
-                </select>
+                </StyledSelect>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Meeting Instructor</label>
-                <select className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                <label htmlFor="mtg-instructor" className="block text-sm font-medium mb-1">Meeting Instructor</label>
+                <StyledSelect id="mtg-instructor"
                   value={instructorId ?? ""} onChange={(e) => setInstructorId(Number(e.target.value) || null)}>
                   <option value="">TBD</option>
                   {instructors.filter(i => i.is_active).map((i) => (
                     <option key={i.id} value={i.id}>{i.name} ({i.modality_constraint})</option>
                   ))}
-                </select>
+                </StyledSelect>
               </div>
             </>
           )}

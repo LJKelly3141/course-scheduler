@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { api } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { EnrollmentTrendChart } from "./EnrollmentTrendChart";
 import { TrendBadge, ConfidenceBadge } from "./ForecastBadges";
 import { fillColor, pct } from "./analyticsHelpers";
@@ -140,12 +141,14 @@ export function CourseDetailTab({ termId, department, level }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-live="polite">
       {/* Course Selector + Stat Badges */}
       <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex items-center gap-4 flex-wrap">
-          <select
-            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background"
+          <label htmlFor="course-detail-selector" className="sr-only">Select course</label>
+          <StyledSelect
+            id="course-detail-selector"
+            className="text-sm"
             value={activeCourse.course_id}
             onChange={(e) => setSelectedCourseId(Number(e.target.value))}
           >
@@ -154,7 +157,7 @@ export function CourseDetailTab({ termId, department, level }: Props) {
                 {c.department_code} {c.course_number} — {c.title}
               </option>
             ))}
-          </select>
+          </StyledSelect>
           {forecast && forecast.confidence !== "none" && (
             <div className="flex gap-2">
               <TrendBadge trend={forecast.trend} />
@@ -269,9 +272,9 @@ export function CourseDetailTab({ termId, department, level }: Props) {
 
       {/* Recommendations */}
       {recommendations.length > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Recommendations</h3>
-          <ul className="list-disc list-inside space-y-1 text-sm text-blue-800 dark:text-blue-300">
+        <div className="bg-info border border-info rounded-lg p-4" aria-live="polite">
+          <h3 className="font-semibold text-info-foreground mb-2">Recommendations</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-info-foreground">
             {recommendations.map((r, i) => (
               <li key={i}>{r}</li>
             ))}

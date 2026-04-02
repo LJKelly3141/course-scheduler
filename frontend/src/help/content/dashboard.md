@@ -28,10 +28,11 @@ Six cards across the top show at-a-glance metrics for the selected term:
 
 ## Conflicts & Warnings Panel
 
-This panel groups issues into three tabs:
+This panel groups issues into sequential sections:
 
 - **Hard Conflicts** — Must be resolved before the term can be finalized. Click a conflict to see which meetings are involved.
 - **Soft Warnings** — Advisory issues like credit overloads or room capacity mismatches. Click the **dismiss** button to hide warnings you've reviewed.
+- **Prerequisite Warnings** — Highlights courses with prerequisite scheduling issues, such as a prerequisite course not being offered in a prior term.
 - **Dismissed** — Previously dismissed warnings. Click **restore** to bring them back.
 
 ## Missing Courses

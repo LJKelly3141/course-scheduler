@@ -62,11 +62,20 @@ export function DraggableMeetingCard({
     ? { ...baseStyle, transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
     : baseStyle;
 
+  const roomLabel = meeting.room
+    ? `${meeting.room.building?.abbreviation ?? ""} ${meeting.room.room_number}`
+    : "Online";
+  const instructorLabel = meeting.instructor?.name ?? "TBD";
+  const ariaLabel = `${meeting.section?.course?.department_code ?? ""} ${courseNum}-${meeting.section?.section_number ?? ""}, ${days} ${timeRange}, ${instructorLabel}, ${roomLabel}${isDraggable ? ". Draggable." : ""}`;
+
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      tabIndex={0}
+      role="button"
+      aria-label={ariaLabel}
       style={dragStyle}
       onClick={(e) => {
         e.stopPropagation();

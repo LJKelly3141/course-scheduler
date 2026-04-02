@@ -204,12 +204,71 @@ def _ensure_schema_current():
                     ("days_of_week", "VARCHAR(50)"),
                     ("start_time", "TIME"),
                     ("end_time", "TIME"),
+                    ("instructor_id", "INTEGER REFERENCES instructors(id) ON DELETE SET NULL"),
+                    ("room_id", "INTEGER REFERENCES rooms(id) ON DELETE SET NULL"),
+                    ("session", "VARCHAR(20)"),
                 ]:
                     if col not in rotation_cols:
                         conn.execute(
                             sa.text(f"ALTER TABLE course_rotations ADD COLUMN {col} {col_type}")
                         )
                         logger.info("Added missing column course_rotations.%s", col)
+
+                # Drop unique constraints that block multiple offering groups
+                result = conn.execute(sa.text(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type='table' AND name='course_rotations'"
+                ))
+                ddl_row = result.fetchone()
+                if ddl_row and "UNIQUE" in (ddl_row[0] or ""):
+                    # Re-read columns after any ADD COLUMN above
+                    result = conn.execute(sa.text("PRAGMA table_info(course_rotations)"))
+                    current_cols = {row[1] for row in result}
+
+                    logger.info("Dropping unique constraint from course_rotations via table rebuild")
+                    conn.execute(sa.text(
+                        "CREATE TABLE course_rotations_new ("
+                        "  id INTEGER NOT NULL PRIMARY KEY,"
+                        "  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,"
+                        "  semester VARCHAR(6) NOT NULL,"
+                        "  year_parity VARCHAR(10) NOT NULL,"
+                        "  num_sections INTEGER NOT NULL,"
+                        "  enrollment_cap INTEGER NOT NULL,"
+                        "  modality VARCHAR(20) NOT NULL,"
+                        "  notes VARCHAR(200),"
+                        "  time_block_id INTEGER REFERENCES time_blocks(id) ON DELETE SET NULL,"
+                        "  days_of_week VARCHAR(50),"
+                        "  start_time TIME,"
+                        "  end_time TIME,"
+                        "  instructor_id INTEGER REFERENCES instructors(id) ON DELETE SET NULL,"
+                        "  room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,"
+                        "  session VARCHAR(20)"
+                        ")"
+                    ))
+                    # Build column list based on what actually exists
+                    all_cols = [
+                        "id", "course_id", "semester", "year_parity", "num_sections",
+                        "enrollment_cap", "modality", "notes", "time_block_id",
+                        "days_of_week", "start_time", "end_time",
+                        "instructor_id", "room_id", "session",
+                    ]
+                    copy_cols = [c for c in all_cols if c in current_cols]
+                    # For new columns not in old table, use NULL
+                    select_parts = []
+                    for c in all_cols:
+                        if c in current_cols:
+                            select_parts.append(c)
+                        else:
+                            select_parts.append(f"NULL as {c}")
+                    conn.execute(sa.text(
+                        f"INSERT INTO course_rotations_new ({', '.join(all_cols)}) "
+                        f"SELECT {', '.join(select_parts)} FROM course_rotations"
+                    ))
+                    conn.execute(sa.text("DROP TABLE course_rotations"))
+                    conn.execute(sa.text(
+                        "ALTER TABLE course_rotations_new RENAME TO course_rotations"
+                    ))
+                    logger.info("Rebuilt course_rotations without unique constraint")
             except Exception:
                 pass  # Table may not exist yet
 

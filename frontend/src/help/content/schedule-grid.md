@@ -20,9 +20,9 @@ Switch between three views using the tabs at the top of the grid:
 |------|-----------|----------|
 | **By Room** | Room (columns) | Spotting room double-bookings, seeing room utilization |
 | **By Instructor** | Instructor (columns) | Checking instructor workloads and conflicts |
-| **By Level** | Course level: 100, 200, 300, 400+ (columns) | Ensuring level distribution across time slots |
+| **By Level** | Course level: 100, 200, 300, 400, 600, 700 (columns) | Ensuring level distribution across time slots |
 
-Each view uses a different color scheme so you can tell them apart at a glance. The color legend appears below the grid.
+Each view uses a different color scheme so you can tell them apart at a glance. The color legend appears above the grid, between the filter bar and the grid itself.
 
 ## Drag and Drop
 
@@ -48,7 +48,7 @@ Filters work with AND logic across categories (e.g., "CS department" AND "Room N
 
 ## Conflict Sidebar
 
-Toggle the conflict sidebar using the **Conflicts** button (with badge count) in the header area. The sidebar shows:
+Toggle the conflict sidebar using the **Conflicts** button (with badge count) in the filter bar. The sidebar shows:
 
 - **Hard Conflicts** — Red indicators for issues that block finalization
 - **Soft Warnings** — Yellow indicators for advisory issues
@@ -68,7 +68,7 @@ The **Export** dropdown in the header provides four options:
 
 ## Online / Async Sections
 
-Below the grid, a separate table shows **Online Asynchronous** sections that don't have physical meeting times. You can mark these as scheduled or unscheduled.
+Below the grid, a separate table shows **Online Asynchronous** sections that don't have physical meeting times, along with their current status.
 
 ## Adding a Meeting
 

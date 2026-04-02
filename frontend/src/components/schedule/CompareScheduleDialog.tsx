@@ -16,6 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
 
 interface ColumnDetectResponse {
   file_headers: string[];
@@ -373,15 +374,16 @@ export function CompareScheduleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4" aria-live="polite">
           {/* Step 1: File upload */}
           {step === "upload" && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label htmlFor="compare-schedule-file" className="block text-sm font-medium mb-1">
                   Registrar Schedule (XLSX)
                 </label>
                 <input
+                  id="compare-schedule-file"
                   ref={fileRef}
                   type="file"
                   accept=".xlsx"
@@ -430,7 +432,9 @@ export function CompareScheduleDialog({
                         {header}
                       </span>
                       <span className="text-muted-foreground">&rarr;</span>
-                      <select
+                      <label htmlFor={`col-map-${header}`} className="sr-only">Map column {header}</label>
+                      <StyledSelect
+                        id={`col-map-${header}`}
                         className={`border rounded px-2 py-1.5 text-sm flex-1 max-w-xs ${
                           columnMapping[header]
                             ? "border-indigo-300 dark:border-indigo-700 bg-background"
@@ -454,7 +458,7 @@ export function CompareScheduleDialog({
                         {columnDetect.canonical_columns.map((col) => (
                           <option key={col} value={col}>{col}</option>
                         ))}
-                      </select>
+                      </StyledSelect>
                       {columnMapping[header] && (
                         <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Mapped</span>
                       )}
@@ -477,7 +481,7 @@ export function CompareScheduleDialog({
 
           {/* Error display */}
           {error && (
-            <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md px-3 py-2 text-sm text-red-700 dark:text-red-400">
+            <div className="bg-destructive/10 border border-destructive rounded-md px-3 py-2 text-sm text-destructive" role="alert">
               {error}
             </div>
           )}
@@ -489,13 +493,13 @@ export function CompareScheduleDialog({
               <div className="bg-accent/50 border border-border rounded-md px-4 py-3">
                 <div className="flex flex-wrap gap-4 text-sm">
                   <span>
-                    <span className="font-semibold text-amber-600 dark:text-amber-400">{displayResult.changed.length}</span> changed
+                    <span className="font-semibold text-warning-foreground">{displayResult.changed.length}</span> changed
                   </span>
                   <span>
-                    <span className="font-semibold text-emerald-600">{displayResult.new_sections.length}</span> new
+                    <span className="font-semibold text-success-foreground">{displayResult.new_sections.length}</span> new
                   </span>
                   <span>
-                    <span className="font-semibold text-red-600 dark:text-red-400">{displayResult.removed.length}</span> removed
+                    <span className="font-semibold text-destructive">{displayResult.removed.length}</span> removed
                   </span>
                   <span>
                     <span className="font-semibold text-muted-foreground">{displayResult.unchanged_count}</span> unchanged
@@ -517,7 +521,7 @@ export function CompareScheduleDialog({
               {/* Changed sections */}
               {displayResult.changed.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">
+                  <h4 className="text-sm font-semibold text-warning-foreground mb-2">
                     Changed Sections ({displayResult.changed.length})
                   </h4>
                   <div className="space-y-2">
@@ -560,10 +564,10 @@ export function CompareScheduleDialog({
                               <div key={j} className="text-xs">
                                 <span className="font-medium text-foreground">{d.field}</span>
                                 <div className="ml-3 text-muted-foreground">
-                                  Currently: <span className="text-red-600 dark:text-red-400/70">{humanizeValue(d.field, d.registrar_value)}</span>
+                                  Currently: <span className="text-destructive">{humanizeValue(d.field, d.registrar_value)}</span>
                                 </div>
                                 <div className="ml-3 text-muted-foreground">
-                                  Change to: <span className="text-emerald-700 font-medium">{humanizeValue(d.field, d.department_value)}</span>
+                                  Change to: <span className="text-success-foreground font-medium">{humanizeValue(d.field, d.department_value)}</span>
                                 </div>
                               </div>
                             ))}
@@ -578,7 +582,7 @@ export function CompareScheduleDialog({
               {/* New sections (with match dropdown) */}
               {displayResult.new_sections.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-emerald-700 mb-2">
+                  <h4 className="text-sm font-semibold text-success-foreground mb-2">
                     New Sections ({displayResult.new_sections.length})
                   </h4>
                   {availableRemoved.length > 0 && displayResult.new_sections.length > 0 && (
@@ -611,11 +615,12 @@ export function CompareScheduleDialog({
                           </div>
                           {availableRemoved.length > 0 && (
                             <div className="mt-2 flex items-center gap-2">
-                              <label className="text-xs text-muted-foreground shrink-0">
+                              <label htmlFor={`match-section-${displayIdx}`} className="text-xs text-muted-foreground shrink-0">
                                 Match with:
                               </label>
-                              <select
-                                className="text-xs border border-border rounded px-2 py-1 flex-1 max-w-sm"
+                              <StyledSelect
+                                id={`match-section-${displayIdx}`}
+                                className="text-xs border border-border rounded px-2 py-1 flex-1 max-w-sm h-auto"
                                 value=""
                                 onChange={(e) => {
                                   const removedOrigIdx = Number(e.target.value);
@@ -631,7 +636,7 @@ export function CompareScheduleDialog({
                                     {rem.department_code} {rem.course_number}-{rem.section_number} "{rem.title}"
                                   </option>
                                 ))}
-                              </select>
+                              </StyledSelect>
                             </div>
                           )}
                         </div>
@@ -644,7 +649,7 @@ export function CompareScheduleDialog({
               {/* Removed sections */}
               {displayResult.removed.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-2">
+                  <h4 className="text-sm font-semibold text-destructive mb-2">
                     Removed Sections ({displayResult.removed.length})
                   </h4>
                   <div className="space-y-2">
@@ -670,7 +675,7 @@ export function CompareScheduleDialog({
         <DialogFooter className="px-5 py-3 border-t flex items-center gap-2 sm:justify-between">
           <div className="flex items-center gap-2">
             {copyFeedback && (
-              <span className="text-sm text-emerald-600 font-medium">
+              <span className="text-sm text-success-foreground font-medium">
                 {copyFeedback}
               </span>
             )}

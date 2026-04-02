@@ -12,7 +12,8 @@ import type {
 } from "../api/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save } from "lucide-react";
+import { StyledSelect } from "@/components/ui/styled-select";
+import { ArrowLeft, Save, X, AlertTriangle, Check } from "lucide-react";
 
 const RANK_LABELS: Record<string, string> = {
   professor: "Professor",
@@ -70,7 +71,7 @@ export function InstructorDetailPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/instructors")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/instructors")} aria-label="Back to instructors list">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -93,11 +94,13 @@ export function InstructorDetailPage() {
         </div>
       </div>
 
-      <div className="border-b border-border">
+      <div className="border-b border-border" role="tablist">
         <div className="flex gap-0">
           {tabs.map((tab) => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
@@ -168,17 +171,21 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
     });
   };
 
-  const field = (label: string, key: keyof typeof form, type = "text") => (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
-      <input
-        type={type}
-        className="w-full border border-border rounded-md px-3 py-2 text-sm"
-        value={form[key] as string}
-        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-      />
-    </div>
-  );
+  const field = (label: string, key: keyof typeof form, type = "text") => {
+    const fieldId = `profile-${key}`;
+    return (
+      <div>
+        <label htmlFor={fieldId} className="block text-sm font-medium mb-1">{label}</label>
+        <input
+          id={fieldId}
+          type={type}
+          className="w-full border border-border rounded-md px-3 py-2 text-sm"
+          value={form[key] as string}
+          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -201,9 +208,10 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
           Employment
         </h3>
         <div>
-          <label className="block text-sm font-medium mb-1">Type</label>
-          <select
-            className="w-full border border-border rounded-md px-3 py-2 text-sm"
+          <label htmlFor="profile-instructor-type" className="block text-sm font-medium mb-1">Type</label>
+          <StyledSelect
+            id="profile-instructor-type"
+            className="w-full"
             value={form.instructor_type}
             onChange={(e) => setForm({ ...form, instructor_type: e.target.value })}
           >
@@ -212,12 +220,13 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
             <option value="ias">IAS</option>
             <option value="adjunct">Adjunct</option>
             <option value="nias">NIAS</option>
-          </select>
+          </StyledSelect>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Academic Rank</label>
-          <select
-            className="w-full border border-border rounded-md px-3 py-2 text-sm"
+          <label htmlFor="profile-rank" className="block text-sm font-medium mb-1">Academic Rank</label>
+          <StyledSelect
+            id="profile-rank"
+            className="w-full"
             value={form.rank}
             onChange={(e) => setForm({ ...form, rank: e.target.value })}
           >
@@ -225,12 +234,13 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
             {Object.entries(RANK_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Tenure Status</label>
-          <select
-            className="w-full border border-border rounded-md px-3 py-2 text-sm"
+          <label htmlFor="profile-tenure-status" className="block text-sm font-medium mb-1">Tenure Status</label>
+          <StyledSelect
+            id="profile-tenure-status"
+            className="w-full"
             value={form.tenure_status}
             onChange={(e) => setForm({ ...form, tenure_status: e.target.value })}
           >
@@ -238,13 +248,14 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
             {Object.entries(TENURE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
         {field("Hire Date", "hire_date", "date")}
         <div>
-          <label className="block text-sm font-medium mb-1">Modality Constraint</label>
-          <select
-            className="w-full border border-border rounded-md px-3 py-2 text-sm"
+          <label htmlFor="profile-modality" className="block text-sm font-medium mb-1">Modality Constraint</label>
+          <StyledSelect
+            id="profile-modality"
+            className="w-full"
             value={form.modality_constraint}
             onChange={(e) => setForm({ ...form, modality_constraint: e.target.value })}
           >
@@ -252,11 +263,12 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
             <option value="online_only">Online Only</option>
             <option value="mwf_only">MWF Only</option>
             <option value="tth_only">TTh Only</option>
-          </select>
+          </StyledSelect>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Max Credits</label>
+          <label htmlFor="profile-max-credits" className="block text-sm font-medium mb-1">Max Credits</label>
           <input
+            id="profile-max-credits"
             type="number"
             className="w-full border border-border rounded-md px-3 py-2 text-sm"
             value={form.max_credits}
@@ -268,6 +280,7 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
             type="checkbox"
             checked={form.is_active}
             onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+            aria-label="Active status"
           />
           <span className="text-sm">Active</span>
         </label>
@@ -279,7 +292,7 @@ function ProfileTab({ instructor }: { instructor: Instructor }) {
           {updateMutation.isPending ? "Saving..." : "Save Changes"}
         </Button>
         {toast && (
-          <span className="text-sm text-emerald-600 font-medium">{toast}</span>
+          <span className="text-sm text-success font-medium">{toast}</span>
         )}
       </div>
 
@@ -331,7 +344,9 @@ function NotesSection({ instructorId }: { instructorId: number }) {
 
       <div className="flex gap-2 items-end">
         <div className="flex-1">
+          <label htmlFor="note-content" className="sr-only">Note content</label>
           <textarea
+            id="note-content"
             className="w-full border border-border rounded-md px-3 py-2 text-sm resize-y"
             rows={2}
             placeholder="Add a note..."
@@ -340,15 +355,17 @@ function NotesSection({ instructorId }: { instructorId: number }) {
           />
         </div>
         <div className="flex flex-col gap-2">
-          <select
-            className="border border-border rounded-md px-2 py-1.5 text-xs"
+          <label htmlFor="note-category" className="sr-only">Note category</label>
+          <StyledSelect
+            id="note-category"
+            className="text-xs"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
           >
             {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
-          </select>
+          </StyledSelect>
           <Button
             size="sm"
             onClick={() => createMutation.mutate({ category: newCategory, content: newNote })}
@@ -373,6 +390,7 @@ function NotesSection({ instructorId }: { instructorId: number }) {
             <button
               onClick={() => deleteMutation.mutate(note.id)}
               className="text-xs text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label={`Delete note: ${note.content.substring(0, 30)}`}
             >
               &times;
             </button>
@@ -464,6 +482,14 @@ function ScheduleTab({
     saveMutation.mutate(newAvail);
   };
 
+  const formatTime = (hour: number) => `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
+
+  const getStatusLabel = (type: string | null) => {
+    if (type === "unavailable") return "Unavailable";
+    if (type === "prefer_avoid") return "Prefer to avoid";
+    return "Available";
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-card rounded-lg border border-border p-5">
@@ -471,7 +497,7 @@ function ScheduleTab({
           Availability — {selectedTerm.name}
         </h3>
         <p className="text-xs text-muted-foreground mb-3">
-          Click to cycle: Available → Unavailable (red) → Prefer Avoid (yellow) → Available
+          Click to cycle: <span className="inline-flex items-center gap-0.5"><Check className="h-3 w-3 text-success" /> Available</span> → <span className="inline-flex items-center gap-0.5"><X className="h-3 w-3 text-destructive" /> Unavailable</span> → <span className="inline-flex items-center gap-0.5"><AlertTriangle className="h-3 w-3 text-warning" /> Prefer Avoid</span> → Available
         </p>
         <div className="overflow-x-auto">
           <table className="text-xs">
@@ -487,7 +513,7 @@ function ScheduleTab({
               {hours.map((h) => (
                 <tr key={h}>
                   <td className="px-2 py-0.5 text-muted-foreground">
-                    {h > 12 ? h - 12 : h}:00 {h >= 12 ? "PM" : "AM"}
+                    {formatTime(h)}
                   </td>
                   {days.map((d) => {
                     const type = getBlockType(d, h);
@@ -495,14 +521,20 @@ function ScheduleTab({
                       <td key={d} className="px-1 py-0.5">
                         <button
                           onClick={() => toggleBlock(d, h)}
-                          className={`w-10 h-6 rounded border ${
+                          aria-label={`${d} ${formatTime(h)}: ${getStatusLabel(type)}. Click to change.`}
+                          aria-pressed={type !== null}
+                          className={`w-10 h-6 rounded border flex items-center justify-center ${
                             type === "unavailable"
-                              ? "bg-red-200 dark:bg-red-900 border-red-300 dark:border-red-700"
+                              ? "bg-destructive/20 border-destructive/40"
                               : type === "prefer_avoid"
-                              ? "bg-yellow-200 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700"
-                              : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                              ? "bg-warning/20 border-warning/40"
+                              : "bg-success/20 border-success/40"
                           }`}
-                        />
+                        >
+                          {type === "unavailable" && <X className="h-3 w-3 text-destructive" />}
+                          {type === "prefer_avoid" && <AlertTriangle className="h-3 w-3 text-warning" />}
+                          {type === null && <Check className="h-3 w-3 text-success" />}
+                        </button>
                       </td>
                     );
                   })}
@@ -564,7 +596,7 @@ function WorkloadTab({
       </div>
 
       {instWorkload.is_overloaded && (
-        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-3">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3">
           <p className="text-sm text-destructive font-medium">
             Overloaded: {instWorkload.total_equivalent_credits} equivalent credits exceeds max of{" "}
             {instWorkload.max_credits}
@@ -649,7 +681,7 @@ function StatCard({
   return (
     <div
       className={`bg-card rounded-lg border p-4 ${
-        warn ? "border-red-300 dark:border-red-700" : "border-border"
+        warn ? "border-destructive/50" : "border-border"
       }`}
     >
       <p className={`text-2xl font-bold ${warn ? "text-destructive" : ""}`}>{value}</p>

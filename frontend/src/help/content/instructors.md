@@ -18,20 +18,27 @@ Click **Instructors** in the sidebar. Click any instructor's **name** to open th
 ### Add an Instructor
 
 Click **+ Add Instructor** at the top. Fill in:
-- **Name** — Full name (auto-split into first/last name)
+- **Name** — Full name
 - **Email** — Email address
 - **Department** — Department code
 - **Type** — Faculty, IAS, Adjunct, or NIAS
 - **Modality** — Any, Online Only, MWF Only, or TTh Only
-- **Max Credits** — Maximum credits per term
 
 ### Edit an Instructor
 
-Click the **pencil icon** to edit inline, or click the instructor's **name** to open the full detail page.
+The actions column provides **Detail**, **Availability**, and **Delete** links for each instructor. Click **Detail** or the instructor's **name** to open the full detail page.
 
 ### Active / Inactive
 
-Toggle the **Active** switch to mark instructors as inactive (e.g., on sabbatical, no longer teaching). Inactive instructors won't appear in assignment dropdowns.
+Active status is shown as "Yes" or "No" text on the roster. To change an instructor's active status, open their detail page and edit it on the Profile tab. Inactive instructors won't appear in assignment dropdowns.
+
+### Batch Delete
+
+Use the checkboxes to select multiple instructors, then click **Delete Selected** to remove them all at once.
+
+### Sorting
+
+Click any column header to sort the roster by that column.
 
 ### Search
 
@@ -39,12 +46,12 @@ Use the search bar to filter by name, email, or department.
 
 ## Availability Grid
 
-Click the **clock icon** or expand an instructor's row to see their weekly availability grid (Monday–Friday, 7 AM – 8 PM).
+Click the **Availability** link in the actions column to toggle the instructor's weekly availability grid (Monday–Friday, 7 AM – 8 PM).
 
 Click any cell to cycle through states:
-- **Green (Available)** — Can be scheduled at this time
-- **Red (Unavailable)** — Cannot teach at this time; scheduling here creates a hard conflict
-- **Yellow (Prefer Avoid)** — Can teach but prefers not to; scheduling here creates a soft warning
+- **Green checkmark (Available)** — Can be scheduled at this time
+- **Red X (Unavailable)** — Cannot teach at this time; scheduling here creates a hard conflict
+- **Yellow triangle (Prefer Avoid)** — Can teach but prefers not to; scheduling here creates a soft warning
 
 Changes save automatically.
 
@@ -62,7 +69,7 @@ Click an instructor's **name** to open their detail page with three tabs:
 
 **Tenure Status:** Tenured, Tenure Track, Non-Tenure
 
-### Schedule Tab
+### Schedule & Availability Tab
 
 Shows the instructor's weekly meeting grid for the selected term — a visual display of all their assigned meetings.
 

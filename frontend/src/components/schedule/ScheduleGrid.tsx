@@ -1,6 +1,7 @@
 import {
   DndContext,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -36,6 +37,15 @@ interface Props {
 
 const DAY_LABELS = ["M", "T", "W", "Th", "F"];
 const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAY_FULL_MAP: Record<string, string> = { M: "Monday", T: "Tuesday", W: "Wednesday", Th: "Thursday", F: "Friday" };
+
+function formatSlotTime(minuteOfDay: number): string {
+  const h = Math.floor(minuteOfDay / 60);
+  const m = minuteOfDay % 60;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return m === 0 ? `${h12}:00 ${suffix}` : `${h12}:${m.toString().padStart(2, "0")} ${suffix}`;
+}
 
 interface OverlapInfo {
   column: number;
@@ -122,9 +132,11 @@ export function ScheduleGrid({
   isMoving,
 }: Props) {
   const [activeDragMeeting, setActiveDragMeeting] = useState<Meeting | null>(null);
+  const [dragStatus, setDragStatus] = useState("");
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   // Get meetings for a specific day (skip meetings with no time assigned)
@@ -139,13 +151,19 @@ export function ScheduleGrid({
   function handleDragStart(event: DragStartEvent) {
     const { meeting } = event.active.data.current as { meeting: Meeting };
     setActiveDragMeeting(meeting);
+    const course = meeting.section?.course;
+    const label = course ? `${course.department_code} ${course.course_number}` : "Meeting";
+    setDragStatus(`Dragging ${label}. Use arrow keys to move, Enter to drop, Escape to cancel.`);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveDragMeeting(null);
 
-    if (!over || !onMove) return;
+    if (!over || !onMove) {
+      setDragStatus("Drop cancelled.");
+      return;
+    }
 
     const { meeting } = active.data.current as { meeting: Meeting };
     const { day, slotIndex } = over.data.current as { day: string; slotIndex: number };
@@ -153,14 +171,23 @@ export function ScheduleGrid({
     const dropMinute = dynStartMinutes + slotIndex * SLOT_MINUTES;
     const targetBlock = findNearestBlock(day, dropMinute, timeBlocks);
 
-    if (!targetBlock) return;
+    if (!targetBlock) {
+      setDragStatus("Drop cancelled — no valid time block at target.");
+      return;
+    }
     if (targetBlock.id !== meeting.time_block_id) {
       onMove(meeting.id, targetBlock);
+      const course = meeting.section?.course;
+      const label = course ? `${course.department_code} ${course.course_number}` : "Meeting";
+      setDragStatus(`${label} moved to new time slot.`);
+    } else {
+      setDragStatus("Returned to original position.");
     }
   }
 
   function handleDragCancel() {
     setActiveDragMeeting(null);
+    setDragStatus("Drag cancelled.");
   }
 
   // Compute dynamic time range from meetings (1-hour buffer on each side)
@@ -266,18 +293,23 @@ export function ScheduleGrid({
 
           {/* Droppable background cells */}
           {Array.from({ length: dynTotalSlots }, (_, slotIdx) =>
-            DAY_LABELS.map((day, dayIdx) => (
-              <DroppableCell
-                key={`${day}-${slotIdx}`}
-                day={day}
-                slotIndex={slotIdx}
-                isDragging={activeDragMeeting != null}
-                style={{
-                  gridColumn: dayIdx + 2,
-                  gridRow: slotIdx + 2,
-                }}
-              />
-            ))
+            DAY_LABELS.map((day, dayIdx) => {
+              const slotMinute = dynStartMinutes + slotIdx * SLOT_MINUTES;
+              const cellLabel = `${DAY_FULL_MAP[day]} ${formatSlotTime(slotMinute)}`;
+              return (
+                <DroppableCell
+                  key={`${day}-${slotIdx}`}
+                  day={day}
+                  slotIndex={slotIdx}
+                  isDragging={activeDragMeeting != null}
+                  aria-label={cellLabel}
+                  style={{
+                    gridColumn: dayIdx + 2,
+                    gridRow: slotIdx + 2,
+                  }}
+                />
+              );
+            })
           )}
 
           {/* Day column overlays with absolutely-positioned meeting cards */}
@@ -328,6 +360,10 @@ export function ScheduleGrid({
       <DragOverlay dropAnimation={null}>
         {activeDragMeeting ? <MeetingDragOverlay meeting={activeDragMeeting} bgColor={colorFn?.(activeDragMeeting)} /> : null}
       </DragOverlay>
+
+      <div aria-live="polite" className="sr-only">
+        {dragStatus}
+      </div>
     </DndContext>
   );
 }

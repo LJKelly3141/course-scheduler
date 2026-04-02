@@ -6,7 +6,8 @@ import type { Instructor, InstructorAvailability, Term } from "../api/types";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { StyledSelect } from "@/components/ui/styled-select";
+import { Plus, Trash2, X, AlertTriangle, Check } from "lucide-react";
 import { useUndoRedo } from "../hooks/useUndoRedo";
 import { useSort } from "../hooks/useSort";
 import { SortableHeader } from "@/components/ui/sortable-header";
@@ -155,6 +156,7 @@ export function InstructorsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-56"
+            aria-label="Search instructors"
           />
           {selectedIds.size > 0 && (
             <Button variant="destructive" onClick={() => setDeleteTarget({ type: "batch" })}>
@@ -172,27 +174,42 @@ export function InstructorsPage() {
       {showAdd && (
         <div className="bg-card rounded-lg border border-border p-4 space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <input placeholder="Name" className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <input placeholder="Email" className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <input placeholder="Department" className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.department ?? ""} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-            <select className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.modality_constraint ?? "any"} onChange={(e) => setForm({ ...form, modality_constraint: e.target.value })}>
-              <option value="any">Any</option>
-              <option value="online_only">Online Only</option>
-              <option value="mwf_only">MWF Only</option>
-              <option value="tth_only">TTh Only</option>
-            </select>
-            <select className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.instructor_type ?? ""} onChange={(e) => setForm({ ...form, instructor_type: e.target.value || null })}>
-              <option value="">Type (optional)</option>
-              <option value="faculty">Faculty</option>
-              <option value="ias">IAS</option>
-              <option value="adjunct">Adjunct</option>
-              <option value="nias">NIAS</option>
-            </select>
+            <div>
+              <label htmlFor="add-instructor-name" className="sr-only">Name</label>
+              <input id="add-instructor-name" placeholder="Name" className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <label htmlFor="add-instructor-email" className="sr-only">Email</label>
+              <input id="add-instructor-email" placeholder="Email" className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div>
+              <label htmlFor="add-instructor-department" className="sr-only">Department</label>
+              <input id="add-instructor-department" placeholder="Department" className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                value={form.department ?? ""} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+            </div>
+            <div>
+              <label htmlFor="add-instructor-modality" className="sr-only">Modality Constraint</label>
+              <StyledSelect id="add-instructor-modality"
+                value={form.modality_constraint ?? "any"} onChange={(e) => setForm({ ...form, modality_constraint: e.target.value })}>
+                <option value="any">Any</option>
+                <option value="online_only">Online Only</option>
+                <option value="mwf_only">MWF Only</option>
+                <option value="tth_only">TTh Only</option>
+              </StyledSelect>
+            </div>
+            <div>
+              <label htmlFor="add-instructor-type" className="sr-only">Instructor Type</label>
+              <StyledSelect id="add-instructor-type"
+                value={form.instructor_type ?? ""} onChange={(e) => setForm({ ...form, instructor_type: e.target.value || null })}>
+                <option value="">Type (optional)</option>
+                <option value="faculty">Faculty</option>
+                <option value="ias">IAS</option>
+                <option value="adjunct">Adjunct</option>
+                <option value="nias">NIAS</option>
+              </StyledSelect>
+            </div>
           </div>
           <Button size="sm" onClick={() => createMutation.mutate(form)}>
             Save
@@ -209,6 +226,7 @@ export function InstructorsPage() {
                   type="checkbox"
                   checked={instructors.length > 0 && selectedIds.size === instructors.length}
                   onChange={toggleAll}
+                  aria-label="Select all instructors"
                 />
               </th>
               <SortableHeader label="Name" sortKey="name" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
@@ -253,6 +271,7 @@ export function InstructorsPage() {
                     type="checkbox"
                     checked={selectedIds.has(inst.id)}
                     onChange={() => toggleSelect(inst.id)}
+                    aria-label={`Select ${inst.name}`}
                   />
                 </td>
                 <td className="px-4 py-2.5">
@@ -367,11 +386,19 @@ function AvailabilityEditor({
     saveMutation.mutate(newAvail);
   };
 
+  const formatTime = (hour: number) => `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
+
+  const getStatusLabel = (type: string | null) => {
+    if (type === "unavailable") return "Unavailable";
+    if (type === "prefer_avoid") return "Prefer to avoid";
+    return "Available";
+  };
+
   return (
     <div className="bg-card rounded-lg border border-border p-4">
       <h3 className="font-semibold mb-3">Availability Grid</h3>
       <p className="text-xs text-muted-foreground mb-3">
-        Click to cycle: Available → Unavailable (red) → Prefer Avoid (yellow) → Available
+        Click to cycle: <span className="inline-flex items-center gap-0.5"><Check className="h-3 w-3 text-success" /> Available</span> → <span className="inline-flex items-center gap-0.5"><X className="h-3 w-3 text-destructive" /> Unavailable</span> → <span className="inline-flex items-center gap-0.5"><AlertTriangle className="h-3 w-3 text-warning" /> Prefer Avoid</span> → Available
       </p>
       <div className="overflow-x-auto">
         <table className="text-xs">
@@ -385,7 +412,7 @@ function AvailabilityEditor({
             {hours.map((h) => (
               <tr key={h}>
                 <td className="px-2 py-0.5 text-muted-foreground">
-                  {h > 12 ? h - 12 : h}:00 {h >= 12 ? "PM" : "AM"}
+                  {formatTime(h)}
                 </td>
                 {days.map((d) => {
                   const type = getBlockType(d, h);
@@ -393,14 +420,20 @@ function AvailabilityEditor({
                     <td key={d} className="px-1 py-0.5">
                       <button
                         onClick={() => toggleBlock(d, h)}
-                        className={`w-10 h-6 rounded border ${
+                        aria-label={`${d} ${formatTime(h)}: ${getStatusLabel(type)}. Click to change.`}
+                        aria-pressed={type !== null}
+                        className={`w-10 h-6 rounded border flex items-center justify-center ${
                           type === "unavailable"
-                            ? "bg-red-200 dark:bg-red-900 border-red-300 dark:border-red-700"
+                            ? "bg-destructive/20 border-destructive/40"
                             : type === "prefer_avoid"
-                            ? "bg-yellow-200 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700"
-                            : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                            ? "bg-warning/20 border-warning/40"
+                            : "bg-success/20 border-success/40"
                         }`}
-                      />
+                      >
+                        {type === "unavailable" && <X className="h-3 w-3 text-destructive" />}
+                        {type === "prefer_avoid" && <AlertTriangle className="h-3 w-3 text-warning" />}
+                        {type === null && <Check className="h-3 w-3 text-success" />}
+                      </button>
                     </td>
                   );
                 })}

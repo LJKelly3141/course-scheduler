@@ -5,6 +5,7 @@ import type { Room, Building } from "../api/types";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { Plus, Trash2 } from "lucide-react";
 import { useUndoRedo } from "../hooks/useUndoRedo";
 import { useSort } from "../hooks/useSort";
@@ -148,6 +149,7 @@ export function RoomsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-56"
+            aria-label="Search rooms"
           />
           {selectedIds.size > 0 && (
             <Button variant="destructive" onClick={() => setDeleteTarget({ type: "batch" })}>
@@ -165,15 +167,24 @@ export function RoomsPage() {
       {showAdd && (
         <div className="bg-card rounded-lg border border-border p-4 space-y-3">
           <div className="grid grid-cols-3 gap-3">
-            <select className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.building_id ?? ""} onChange={(e) => setForm({ ...form, building_id: Number(e.target.value) })}>
-              <option value="">Select Building</option>
-              {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-            <input placeholder="Room Number" className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.room_number ?? ""} onChange={(e) => setForm({ ...form, room_number: e.target.value })} />
-            <input type="number" placeholder="Capacity" className="border border-border rounded px-2 py-1.5 text-sm"
-              value={form.capacity ?? ""} onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} />
+            <div>
+              <label htmlFor="add-room-building" className="sr-only">Building</label>
+              <StyledSelect id="add-room-building"
+                value={form.building_id ?? ""} onChange={(e) => setForm({ ...form, building_id: Number(e.target.value) })}>
+                <option value="">Select Building</option>
+                {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </StyledSelect>
+            </div>
+            <div>
+              <label htmlFor="add-room-number" className="sr-only">Room Number</label>
+              <input id="add-room-number" placeholder="Room Number" className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                value={form.room_number ?? ""} onChange={(e) => setForm({ ...form, room_number: e.target.value })} />
+            </div>
+            <div>
+              <label htmlFor="add-room-capacity" className="sr-only">Capacity</label>
+              <input id="add-room-capacity" type="number" placeholder="Capacity" className="border border-border rounded px-2 py-1.5 text-sm w-full"
+                value={form.capacity ?? ""} onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} />
+            </div>
           </div>
           <Button size="sm" onClick={() => createMutation.mutate(form)}>Save</Button>
         </div>
@@ -188,6 +199,7 @@ export function RoomsPage() {
                   type="checkbox"
                   checked={rooms.length > 0 && selectedIds.size === rooms.length}
                   onChange={toggleAll}
+                  aria-label="Select all rooms"
                 />
               </th>
               <SortableHeader label="Building" sortKey="building" currentKey={sortState.key} direction={sortState.direction} onSort={toggleSort as (key: string) => void} />
@@ -228,6 +240,7 @@ export function RoomsPage() {
                     type="checkbox"
                     checked={selectedIds.has(room.id)}
                     onChange={() => toggleSelect(room.id)}
+                    aria-label={`Select room ${room.building?.name ?? ''} ${room.room_number}`}
                   />
                 </td>
                 <td className="px-4 py-2.5">{room.building?.name ?? `Building ${room.building_id}`}</td>
@@ -235,7 +248,8 @@ export function RoomsPage() {
                 <td className="px-4 py-2.5">
                   {editingId === room.id ? (
                     <div className="flex gap-2 items-center">
-                      <input type="number" className="border rounded px-2 py-1 w-20 text-sm"
+                      <label htmlFor={`edit-cap-${room.id}`} className="sr-only">Capacity for {room.room_number}</label>
+                      <input id={`edit-cap-${room.id}`} type="number" className="border rounded px-2 py-1 w-20 text-sm"
                         value={editCap} onChange={(e) => setEditCap(parseInt(e.target.value) || 0)} />
                       <Button variant="link" size="sm" className="h-auto px-0" onClick={() => updateMutation.mutate({ id: room.id, capacity: editCap, oldCapacity: room.capacity })}>Save</Button>
                       <Button variant="ghost" size="sm" className="h-auto px-0" onClick={() => setEditingId(null)}>Cancel</Button>

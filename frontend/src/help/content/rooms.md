@@ -17,11 +17,9 @@ Click **Rooms** in the sidebar.
 ### Add a Room
 
 Click **+ Add Room** at the top. Fill in:
-- **Building** — Select from existing buildings or type a new building name
+- **Building** — Select from the dropdown of existing buildings
 - **Room Number** — The room identifier (e.g., "301", "A102")
 - **Capacity** — Maximum student capacity
-
-New buildings are created automatically when you type a name that doesn't exist yet.
 
 ### Edit Capacity
 
@@ -29,7 +27,11 @@ Click the **capacity number** on any room row to edit it inline. Press Enter or 
 
 ### Delete Rooms
 
-Click the **trash icon** on a single room, or select multiple rooms with checkboxes and use **batch delete**.
+Click the **Delete** link on a single room to remove it. To delete multiple rooms at once, select them using the checkboxes and click **Delete Selected**.
+
+### Sorting
+
+Click any column header to sort the room list by that column.
 
 ### Search
 

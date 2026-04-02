@@ -56,7 +56,10 @@ Publish your schedule as a web page anyone can view with a link.
 1. Click **Set Up GitHub** (or **Reconfigure** if already connected)
 2. Enter your **Repository URL** — a GitHub repo where the schedule HTML will be pushed (e.g., `https://github.com/yourname/schedules`)
 3. Enter a **Personal Access Token** — generate one at GitHub with `repo` scope
-4. Optionally set a **Custom URL** — the base URL for your GitHub Pages site (auto-derived if left blank)
+
+### GitHub Pages URL
+
+After setup is complete, a **GitHub Pages URL** field appears on the main settings page. This is the base URL for your GitHub Pages site. It is auto-derived from your repository URL but can be edited if you use a custom domain.
 
 ### Connection Status
 

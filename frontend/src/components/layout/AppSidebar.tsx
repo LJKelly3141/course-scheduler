@@ -145,6 +145,7 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
+        <nav aria-label="Main navigation">
         {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
@@ -157,6 +158,7 @@ export function AppSidebar({
                         <SidebarMenuButton
                           isActive={isActive}
                           tooltip={item.label}
+                          aria-current={isActive ? "page" : undefined}
                         >
                           <item.icon />
                           <span>{item.label}</span>
@@ -169,6 +171,7 @@ export function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        </nav>
       </SidebarContent>
 
       <SidebarFooter>
@@ -176,7 +179,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <NavLink to="/help">
               {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive} tooltip="Help">
+                <SidebarMenuButton isActive={isActive} tooltip="Help" aria-current={isActive ? "page" : undefined}>
                   <HelpCircle className="size-4" />
                   <span>Help</span>
                 </SidebarMenuButton>

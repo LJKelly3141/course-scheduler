@@ -19,6 +19,9 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-md focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring">
+        Skip to main content
+      </a>
       <AppSidebar
         terms={terms}
         selectedTerm={selectedTerm}
@@ -35,6 +38,7 @@ export function AppLayout() {
             disabled={!canUndo}
             onClick={() => undo()}
             title={undoLabel ? `Undo: ${undoLabel}` : "Nothing to undo"}
+            aria-label={undoLabel ? `Undo: ${undoLabel}` : "Undo"}
           >
             <Undo2 className={`h-4 w-4 ${canUndo ? "" : "opacity-30"}`} />
           </Button>
@@ -45,6 +49,7 @@ export function AppLayout() {
             disabled={!canRedo}
             onClick={() => redo()}
             title={redoLabel ? `Redo: ${redoLabel}` : "Nothing to redo"}
+            aria-label={redoLabel ? `Redo: ${redoLabel}` : "Redo"}
           >
             <Redo2 className={`h-4 w-4 ${canRedo ? "" : "opacity-30"}`} />
           </Button>
@@ -58,11 +63,12 @@ export function AppLayout() {
             className="h-7 w-7"
             onClick={() => navigate("/help")}
             title="Help"
+            aria-label="Help"
           >
             <HelpCircle className="h-4 w-4" />
           </Button>
         </header>
-        <main className="flex-1 overflow-y-auto p-4">
+        <main id="main-content" className="flex-1 overflow-y-auto p-4">
           <Outlet context={{ selectedTerm, isReadOnly: selectedTerm?.status === "final" }} />
         </main>
       </SidebarInset>

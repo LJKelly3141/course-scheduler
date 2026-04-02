@@ -6,9 +6,10 @@ interface Props {
   slotIndex: number;
   isDragging: boolean;
   style: React.CSSProperties;
+  "aria-label"?: string;
 }
 
-export function DroppableCell({ day, slotIndex, isDragging, style }: Props) {
+export function DroppableCell({ day, slotIndex, isDragging, style, "aria-label": ariaLabel }: Props) {
   const { isOver, setNodeRef } = useDroppable({
     id: `slot-${day}-${slotIndex}`,
     data: { day, slotIndex },
@@ -20,6 +21,7 @@ export function DroppableCell({ day, slotIndex, isDragging, style }: Props) {
     <div
       ref={setNodeRef}
       style={style}
+      aria-label={ariaLabel}
       className={cn(
         "border-r border-border/30",
         isHourBoundary

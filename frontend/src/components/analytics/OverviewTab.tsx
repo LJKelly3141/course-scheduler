@@ -109,7 +109,7 @@ export function OverviewTab({ termId, department, level }: Props) {
   ].sort((a, b) => b.value - a.value);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-live="polite">
       {/* KPI Cards */}
       <KpiCards
         items={[
@@ -260,10 +260,10 @@ export function OverviewTab({ termId, department, level }: Props) {
                             key={flag}
                             className={
                               flag === "over_capacity"
-                                ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
+                                ? "bg-destructive/10 text-destructive border-destructive"
                                 : flag === "cancel_risk"
-                                  ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800"
-                                  : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                                  ? "bg-warning text-warning-foreground border-warning"
+                                  : "bg-info text-info-foreground border-info"
                             }
                           >
                             {flag === "over_capacity"

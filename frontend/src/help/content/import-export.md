@@ -28,7 +28,7 @@ Upload a faculty roster.
 - `name` — Full name
 - `email` — Email address
 - `department` — Department code
-- `modality_constraint` — "Any", "Online Only", "MWF Only", or "TTh Only"
+- `modality_constraint` — "any", "in_person_only", or "online_only"
 - `max_credits` — Maximum teaching credits per term
 
 ### 3. Courses
@@ -108,4 +108,4 @@ On the **Schedule Grid** page, the Export dropdown provides:
 
 > **Tip:** The schedule import's preview mode (`preview=true`) validates without saving. Use this to check your data before committing.
 
-> **Tip:** For summer term sessions, the import dialog offers **Merge** (add alongside existing) or **Replace** (overwrite existing) modes.
+> **Tip:** For summer terms with multiple sessions, use the **Paste Sessions** feature on the Terms page to add or replace session data via Merge or Replace modes.

@@ -8,7 +8,6 @@ Helpful shortcuts, conventions, and workflow tips to get the most out of Course 
 |----------|--------|
 | **Ctrl+Z / Cmd+Z** | Undo last action |
 | **Ctrl+Y / Cmd+Y** | Redo last undone action |
-| **Cmd+?** (macOS) | Open this Help page |
 
 Undo and Redo are also available as buttons in the top header bar.
 
@@ -88,6 +87,6 @@ Your schedule data is stored in a local SQLite database. To protect your data:
 
 ## Getting Help
 
-- Click the **?** icon in the header to return to this Help page at any time
+- Click the **help icon** (circle with question mark) in the header to return to this Help page at any time
 - Use the sidebar topic list to jump directly to a feature's documentation
 - Use the **search bar** to find help on a specific topic

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { WorkloadResponse, InstructorWorkload, LoadAdjustment } from "@/api/types";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
 import {
   ChevronDown,
   ChevronRight,
@@ -119,7 +120,7 @@ export function WorkloadTab({ termId }: { termId: number }) {
   const { instructors, unassigned_sections, term_totals } = data;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-live="polite">
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard label="Instructors" value={term_totals.total_instructors} />
@@ -231,14 +232,14 @@ function KpiCard({
     <div
       className={`rounded-lg border p-3 ${
         warn
-          ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
+          ? "border-warning bg-warning"
           : "border-border bg-card"
       }`}
     >
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-xl font-bold mt-0.5 flex items-center gap-1.5">
         {value}
-        {warn && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+        {warn && <AlertTriangle className="h-4 w-4 text-warning-foreground" />}
       </p>
     </div>
   );
@@ -275,7 +276,7 @@ function InstructorRow({
       <tr
         className={`border-b border-border cursor-pointer hover:bg-muted/30 ${
           inst.is_overloaded
-            ? "bg-amber-50/50 dark:bg-amber-950/20"
+            ? "bg-warning/50"
             : ""
         }`}
         onClick={onToggle}
@@ -291,8 +292,12 @@ function InstructorRow({
           {inst.last_name}, {inst.first_name}
         </td>
         <td className="px-3 py-2.5">
-          <select
-            className="uppercase text-xs bg-transparent border border-transparent hover:border-border rounded px-1 py-0.5 cursor-pointer focus:border-primary focus:outline-none"
+          <label htmlFor={`instructor-type-${inst.instructor_id}`} className="sr-only">
+            Instructor type for {inst.last_name}, {inst.first_name}
+          </label>
+          <StyledSelect
+            id={`instructor-type-${inst.instructor_id}`}
+            className="uppercase text-xs bg-transparent border border-transparent hover:border-border rounded px-1 py-0.5 cursor-pointer focus:border-primary focus:outline-none h-auto"
             value={inst.instructor_type || ""}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) =>
@@ -304,7 +309,7 @@ function InstructorRow({
             <option value="IAS">IAS</option>
             <option value="Adjunct">Adjunct</option>
             <option value="NIAS">NIAS</option>
-          </select>
+          </StyledSelect>
         </td>
         <td className="px-3 py-2.5">{inst.department}</td>
         <td className="px-3 py-2.5 text-right">{inst.section_count}</td>
@@ -314,7 +319,7 @@ function InstructorRow({
         <td className="px-3 py-2.5 text-right font-medium">
           <span
             className={
-              inst.is_overloaded ? "text-amber-600 dark:text-amber-400" : ""
+              inst.is_overloaded ? "text-warning-foreground" : ""
             }
           >
             {inst.total_equivalent_credits}
@@ -388,6 +393,7 @@ function InstructorRow({
                     onDeleteAdj(adj.id);
                   }}
                   className="text-destructive hover:text-destructive/80"
+                  aria-label={`Delete adjustment: ${adj.description}`}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -414,8 +420,10 @@ function InstructorRow({
                 />
               </td>
               <td className="px-3 py-2">
-                <select
-                  className="border border-border rounded px-1 py-1 text-xs w-full"
+                <label htmlFor={`adj-type-${inst.instructor_id}`} className="sr-only">Adjustment type</label>
+                <StyledSelect
+                  id={`adj-type-${inst.instructor_id}`}
+                  className="border border-border rounded px-1 py-1 text-xs w-full h-auto"
                   value={adjForm.adjustment_type}
                   onChange={(e) =>
                     onAdjFormChange({
@@ -430,7 +438,7 @@ function InstructorRow({
                       {t.label}
                     </option>
                   ))}
-                </select>
+                </StyledSelect>
               </td>
               <td />
               <td className="px-3 py-2">

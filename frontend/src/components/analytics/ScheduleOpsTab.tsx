@@ -117,7 +117,7 @@ export function ScheduleOpsTab({ termId }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-live="polite">
       {/* Add Section Candidates */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h3 className="font-semibold mb-4">Add Section Candidates</h3>
@@ -151,7 +151,7 @@ export function ScheduleOpsTab({ termId }: Props) {
                       {f.forecast_enrollment}
                     </td>
                     <td className="py-2 pr-4 text-right">{f.currentCap}</td>
-                    <td className="py-2 pr-4 text-right font-semibold text-amber-600 dark:text-amber-400">
+                    <td className="py-2 pr-4 text-right font-semibold text-warning-foreground">
                       +{f.shortfall}
                     </td>
                     <td className="py-2 pr-4 text-right">
@@ -209,7 +209,7 @@ export function ScheduleOpsTab({ termId }: Props) {
                         {f.title}
                       </span>
                     </td>
-                    <td className="py-2 pr-4 text-right font-semibold text-red-600 dark:text-red-400">
+                    <td className="py-2 pr-4 text-right font-semibold text-destructive">
                       {f.forecast_enrollment}
                     </td>
                     <td className="py-2 pr-4">
@@ -392,7 +392,7 @@ function CapRecommendationsPanel({
                 </td>
                 <td className="py-2 pr-4 text-right">{rec.currentPerSection}</td>
                 <td className="py-2 pr-4 text-right font-semibold">{rec.suggestedPerSection}</td>
-                <td className={`py-2 pr-4 text-right font-semibold ${rec.diff > 0 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+                <td className={`py-2 pr-4 text-right font-semibold ${rec.diff > 0 ? "text-success-foreground" : "text-warning-foreground"}`}>
                   {rec.diff > 0 ? "+" : ""}{rec.diff}
                 </td>
                 <td className="py-2 pr-4">
@@ -400,7 +400,7 @@ function CapRecommendationsPanel({
                 </td>
                 <td className="py-2">
                   {appliedIds.has(rec.course_id) ? (
-                    <span className="text-xs text-green-600 dark:text-green-400">Applied</span>
+                    <span className="text-xs text-success-foreground">Applied</span>
                   ) : (
                     <Button
                       size="sm"

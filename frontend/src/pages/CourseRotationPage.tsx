@@ -23,9 +23,12 @@ import {
   Copy,
   Download,
 } from "lucide-react";
+import { StyledSelect } from "@/components/ui/styled-select";
 import type {
   Term,
   Course,
+  Instructor,
+  Room,
   RotationEntry,
   ApplyRotationResult,
   TimeBlock,
@@ -55,6 +58,8 @@ const PARITY_DOT: Record<string, string> = {
 };
 const MODALITY_OPTIONS = [
   { value: "in_person", label: "In Person" },
+  { value: "online_async", label: "Online Async" },
+  { value: "online_sync", label: "Online Sync" },
   { value: "online", label: "Online" },
   { value: "hybrid", label: "Hybrid" },
   { value: "hyflex", label: "HyFlex" },
@@ -62,9 +67,26 @@ const MODALITY_OPTIONS = [
 const MODALITY_LABELS: Record<string, string> = {
   in_person: "In Person",
   online: "Online",
+  online_sync: "Online Sync",
+  online_async: "Online Async",
   hybrid: "Hybrid",
   hyflex: "HyFlex",
 };
+const SESSION_LABELS: Record<string, string> = {
+  regular: "Regular",
+  session_a: "Session A",
+  session_b: "Session B",
+  session_c: "Session C",
+  session_d: "Session D",
+};
+const SESSION_OPTIONS = [
+  { value: "", label: "None" },
+  { value: "regular", label: "Regular" },
+  { value: "session_a", label: "Session A" },
+  { value: "session_b", label: "Session B" },
+  { value: "session_c", label: "Session C" },
+  { value: "session_d", label: "Session D" },
+];
 
 /** Unique key for a cell: courseId:semester */
 type CellKey = `${number}:${string}`;
@@ -85,6 +107,11 @@ interface OfferingGroup {
   start_time: string | null;
   end_time: string | null;
   notes: string | null;
+  instructor_id: number | null;
+  instructor_name: string | null;
+  room_id: number | null;
+  room_label: string | null;
+  session: string | null;
 }
 
 type CellData = OfferingGroup[];
@@ -132,6 +159,16 @@ export function CourseRotationPage() {
     queryFn: () => api.get<TimeBlock[]>("/timeblocks"),
   });
 
+  const { data: instructors } = useQuery({
+    queryKey: ["instructors"],
+    queryFn: () => api.get<Instructor[]>("/instructors"),
+  });
+
+  const { data: rooms } = useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => api.get<Room[]>("/rooms"),
+  });
+
   // ── Initialize grid from server data ──
 
   useEffect(() => {
@@ -152,6 +189,11 @@ export function CourseRotationPage() {
           start_time: entry.start_time,
           end_time: entry.end_time,
           notes: entry.notes,
+          instructor_id: entry.instructor_id,
+          instructor_name: entry.instructor_name,
+          room_id: entry.room_id,
+          room_label: entry.room_label,
+          session: entry.session,
         });
         grid.set(key, existing);
       }
@@ -315,6 +357,11 @@ export function CourseRotationPage() {
         start_time: null,
         end_time: null,
         notes: null,
+        instructor_id: null,
+        instructor_name: null,
+        room_id: null,
+        room_label: null,
+        session: null,
       });
       // Make sure the card is expanded
       setCollapsedCourses((prev) => {
@@ -328,24 +375,18 @@ export function CourseRotationPage() {
 
   /** Import entries from a term schedule into the grid */
   const importEntries = useCallback(
-    (
-      entries: {
-        course_id: number;
-        semester: string;
-        year_parity: string;
-        num_sections: number;
-        enrollment_cap: number;
-        modality: string;
-        time_block_id: number | null;
-        time_block_label: string | null;
-        days_of_week: string | null;
-        start_time: string | null;
-        end_time: string | null;
-        notes: string | null;
-      }[]
-    ) => {
+    (entries: TermExtractEntry[]) => {
       setLocalGrid((prev) => {
         const next = new Map(prev);
+        // Clear existing entries for imported courses in this semester
+        // so re-importing replaces rather than duplicates
+        const importedKeys = new Set<CellKey>();
+        for (const e of entries) {
+          importedKeys.add(cellKey(e.course_id, e.semester));
+        }
+        for (const key of importedKeys) {
+          next.delete(key);
+        }
         for (const e of entries) {
           const key = cellKey(e.course_id, e.semester);
           const existing = next.get(key) || [];
@@ -362,6 +403,11 @@ export function CourseRotationPage() {
               start_time: e.start_time,
               end_time: e.end_time,
               notes: e.notes,
+              instructor_id: e.instructor_id,
+              instructor_name: e.instructor_name,
+              room_id: e.room_id,
+              room_label: e.room_label,
+              session: e.session,
             },
           ]);
         }
@@ -384,19 +430,7 @@ export function CourseRotationPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const entries: {
-        course_id: number;
-        semester: string;
-        year_parity: string;
-        num_sections: number;
-        enrollment_cap: number;
-        modality: string;
-        time_block_id: number | null;
-        days_of_week: string | null;
-        start_time: string | null;
-        end_time: string | null;
-        notes: string | null;
-      }[] = [];
+      const entries: Record<string, unknown>[] = [];
 
       const courseIdsInGrid = new Set<number>();
       for (const [key, groups] of localGrid) {
@@ -416,6 +450,9 @@ export function CourseRotationPage() {
             start_time: g.start_time,
             end_time: g.end_time,
             notes: g.notes,
+            instructor_id: g.instructor_id,
+            room_id: g.room_id,
+            session: g.session,
           });
         }
       }
@@ -444,8 +481,13 @@ export function CourseRotationPage() {
     },
     onSuccess: () => {
       setHasChanges(false);
-      setGridInitialized(false);
+      // Keep localGrid as-is — it already reflects what was saved.
+      // Invalidate the query cache so rotationEntries stays in sync
+      // for future operations (e.g., detecting cleared courses on next save).
       queryClient.invalidateQueries({ queryKey: ["rotation"] });
+    },
+    onError: (error: Error) => {
+      alert(`Failed to save rotation plan: ${error.message}`);
     },
   });
 
@@ -534,7 +576,7 @@ export function CourseRotationPage() {
       </div>
 
       {hasChanges && (
-        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+        <div className="bg-warning border border-warning rounded-lg px-3 py-2 text-sm text-warning-foreground">
           You have unsaved changes. Press <strong>Ctrl+S</strong> or click{" "}
           <strong>Save Plan</strong> to persist.
         </div>
@@ -571,6 +613,8 @@ export function CourseRotationPage() {
               course={course}
               localGrid={localGrid}
               timeBlocks={timeBlocks || []}
+              instructors={instructors || []}
+              rooms={rooms || []}
               collapsed={collapsedCourses.has(course.id)}
               onToggleCollapse={() => {
                 setCollapsedCourses((prev) => {
@@ -625,6 +669,8 @@ export function CourseRotationPage() {
         onOpenChange={setShowImportDialog}
         terms={terms || []}
         onImport={importEntries}
+        localGrid={localGrid}
+        courseMap={courseMap}
       />
 
       {/* Apply to Term Dialog */}
@@ -647,6 +693,8 @@ function CourseCard({
   course,
   localGrid,
   timeBlocks,
+  instructors,
+  rooms,
   collapsed,
   onToggleCollapse,
   onAddOffering,
@@ -658,6 +706,8 @@ function CourseCard({
   course: Course;
   localGrid: Map<CellKey, CellData>;
   timeBlocks: TimeBlock[];
+  instructors: Instructor[];
+  rooms: Room[];
   collapsed: boolean;
   onToggleCollapse: () => void;
   onAddOffering: (
@@ -700,6 +750,8 @@ function CourseCard({
       <div
         className="flex items-center gap-3 px-4 py-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={onToggleCollapse}
+        role="button"
+        aria-expanded={!collapsed}
       >
         {collapsed ? (
           <ChevronRight className="size-4 text-muted-foreground shrink-0" />
@@ -731,6 +783,7 @@ function CourseCard({
               onRemoveCourse(course.id);
             }}
             title="Remove course from plan"
+            aria-label="Remove course from plan"
           >
             <X className="size-3.5" />
           </Button>
@@ -750,6 +803,8 @@ function CourseCard({
                 semester={sem}
                 groups={groups}
                 timeBlocks={timeBlocks}
+                instructors={instructors}
+                rooms={rooms}
                 onAdd={(group) => onAddOffering(course.id, sem, group)}
                 onUpdate={(index, updates) =>
                   onUpdateOffering(course.id, sem, index, updates)
@@ -774,6 +829,8 @@ function SemesterSection({
   semester,
   groups,
   timeBlocks,
+  instructors,
+  rooms,
   onAdd,
   onUpdate,
   onRemove,
@@ -783,6 +840,8 @@ function SemesterSection({
   semester: string;
   groups: OfferingGroup[];
   timeBlocks: TimeBlock[];
+  instructors: Instructor[];
+  rooms: Room[];
   onAdd: (group: OfferingGroup) => void;
   onUpdate: (index: number, updates: Partial<OfferingGroup>) => void;
   onRemove: (index: number) => void;
@@ -818,6 +877,8 @@ function SemesterSection({
                   group={group}
                   currentSemester={semester}
                   timeBlocks={timeBlocks}
+                  instructors={instructors}
+                  rooms={rooms}
                   onUpdate={(updates) => onUpdate(idx, updates)}
                   onRemove={() => onRemove(idx)}
                   onCopyTo={(targetSem) => onCopyTo(group, targetSem)}
@@ -826,6 +887,8 @@ function SemesterSection({
               {showAddForm ? (
                 <InlineAddForm
                   timeBlocks={timeBlocks}
+                  instructors={instructors}
+                  rooms={rooms}
                   existingGroups={groups}
                   onAdd={(group) => {
                     onAdd(group);
@@ -856,6 +919,8 @@ function OfferingRow({
   group,
   currentSemester,
   timeBlocks,
+  instructors,
+  rooms,
   onUpdate,
   onRemove,
   onCopyTo,
@@ -863,6 +928,8 @@ function OfferingRow({
   group: OfferingGroup;
   currentSemester: string;
   timeBlocks: TimeBlock[];
+  instructors: Instructor[];
+  rooms: Room[];
   onUpdate: (updates: Partial<OfferingGroup>) => void;
   onRemove: () => void;
   onCopyTo: (targetSemester: string) => void;
@@ -881,6 +948,8 @@ function OfferingRow({
         group={group}
         currentSemester={currentSemester}
         timeBlocks={timeBlocks}
+        instructors={instructors}
+        rooms={rooms}
         onSave={(updates) => {
           onUpdate(updates);
           setEditing(false);
@@ -916,6 +985,26 @@ function OfferingRow({
           {timeLabel}
         </span>
       )}
+      {group.room_label && (
+        <span className="text-xs text-muted-foreground bg-background/60 px-2 py-0.5 rounded">
+          {group.room_label}
+        </span>
+      )}
+      {group.instructor_name && (
+        <span className="text-xs text-muted-foreground bg-background/60 px-2 py-0.5 rounded">
+          {group.instructor_name}
+        </span>
+      )}
+      {!group.instructor_id && !group.instructor_name && (
+        <span className="text-xs text-muted-foreground/50 bg-background/40 px-2 py-0.5 rounded italic">
+          TBD
+        </span>
+      )}
+      {group.session && group.session !== "regular" && (
+        <span className="text-xs text-muted-foreground bg-background/60 px-2 py-0.5 rounded">
+          {SESSION_LABELS[group.session] || group.session}
+        </span>
+      )}
       <span className="text-xs text-muted-foreground">
         cap {group.enrollment_cap}
       </span>
@@ -936,6 +1025,7 @@ function OfferingRow({
             e.stopPropagation();
             onRemove();
           }}
+          aria-label="Delete offering"
         >
           <Trash2 className="size-3" />
         </Button>
@@ -948,11 +1038,15 @@ function OfferingRow({
 
 function InlineAddForm({
   timeBlocks,
+  instructors,
+  rooms,
   existingGroups,
   onAdd,
   onCancel,
 }: {
   timeBlocks: TimeBlock[];
+  instructors: Instructor[];
+  rooms: Room[];
   existingGroups: OfferingGroup[];
   onAdd: (group: OfferingGroup) => void;
   onCancel: () => void;
@@ -974,8 +1068,17 @@ function InlineAddForm({
     defaults?.year_parity || "every_year"
   );
   const [notes, setNotes] = useState("");
+  const [instructorId, setInstructorId] = useState<number | null>(
+    defaults?.instructor_id ?? null
+  );
+  const [roomId, setRoomId] = useState<number | null>(
+    defaults?.room_id ?? null
+  );
+  const [session, setSession] = useState(defaults?.session || "");
 
   const selectedTb = timeBlocks.find((tb) => tb.id === timeBlockId);
+  const selectedInstructor = instructors.find((i) => i.id === instructorId);
+  const selectedRoom = rooms.find((r) => r.id === roomId);
 
   const handleSubmit = () => {
     onAdd({
@@ -989,6 +1092,13 @@ function InlineAddForm({
       start_time: selectedTb?.start_time || null,
       end_time: selectedTb?.end_time || null,
       notes: notes || null,
+      instructor_id: instructorId,
+      instructor_name: selectedInstructor?.name || null,
+      room_id: roomId,
+      room_label: selectedRoom
+        ? `${selectedRoom.building?.abbreviation || ""} ${selectedRoom.room_number}`.trim()
+        : null,
+      session: session || null,
     });
   };
 
@@ -996,10 +1106,11 @@ function InlineAddForm({
     <div className="border border-border rounded-md p-3 bg-muted/20 space-y-2.5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="add-sections" className="text-[11px] text-muted-foreground font-medium">
             Sections
           </label>
           <Input
+            id="add-sections"
             type="number"
             min={1}
             max={20}
@@ -1009,10 +1120,11 @@ function InlineAddForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="add-enrollment-cap" className="text-[11px] text-muted-foreground font-medium">
             Enrollment Cap
           </label>
           <Input
+            id="add-enrollment-cap"
             type="number"
             min={1}
             value={enrollmentCap}
@@ -1021,11 +1133,12 @@ function InlineAddForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="add-modality" className="text-[11px] text-muted-foreground font-medium">
             Modality
           </label>
-          <select
-            className="w-full h-8 text-sm border border-border rounded-md px-2 bg-background"
+          <StyledSelect
+            id="add-modality"
+            className="w-full h-8 text-sm"
             value={modality}
             onChange={(e) => setModality(e.target.value)}
           >
@@ -1034,14 +1147,15 @@ function InlineAddForm({
                 {m.label}
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="add-year-parity" className="text-[11px] text-muted-foreground font-medium">
             Year Parity
           </label>
-          <select
-            className="w-full h-8 text-sm border border-border rounded-md px-2 bg-background"
+          <StyledSelect
+            id="add-year-parity"
+            className="w-full h-8 text-sm"
             value={yearParity}
             onChange={(e) => setYearParity(e.target.value)}
           >
@@ -1050,16 +1164,17 @@ function InlineAddForm({
                 {p.label}
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="add-time-block" className="text-[11px] text-muted-foreground font-medium">
             Time Block
           </label>
-          <select
-            className="w-full h-8 text-sm border border-border rounded-md px-2 bg-background"
+          <StyledSelect
+            id="add-time-block"
+            className="w-full h-8 text-sm"
             value={timeBlockId ?? ""}
             onChange={(e) =>
               setTimeBlockId(e.target.value ? parseInt(e.target.value) : null)
@@ -1071,18 +1186,87 @@ function InlineAddForm({
                 {tb.label}
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="add-notes" className="text-[11px] text-muted-foreground font-medium">
             Notes
           </label>
           <Input
+            id="add-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Optional..."
             className="h-8 text-sm"
           />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-1">
+          <label htmlFor="add-instructor" className="text-[11px] text-muted-foreground font-medium">
+            Instructor
+          </label>
+          <StyledSelect
+            id="add-instructor"
+            className="w-full h-8 text-sm"
+            value={instructorId ?? ""}
+            onChange={(e) =>
+              setInstructorId(e.target.value ? parseInt(e.target.value) : null)
+            }
+          >
+            <option value="">TBD</option>
+            {instructors
+              .filter((i) => i.is_active)
+              .sort((a, b) => (a.last_name || a.name).localeCompare(b.last_name || b.name))
+              .map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.last_name ? `${i.last_name}, ${i.first_name}` : i.name}
+                </option>
+              ))}
+          </StyledSelect>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="add-room" className="text-[11px] text-muted-foreground font-medium">
+            Room
+          </label>
+          <StyledSelect
+            id="add-room"
+            className="w-full h-8 text-sm"
+            value={roomId ?? ""}
+            onChange={(e) =>
+              setRoomId(e.target.value ? parseInt(e.target.value) : null)
+            }
+          >
+            <option value="">No room</option>
+            {rooms
+              .sort((a, b) => {
+                const aLabel = `${a.building?.abbreviation || ""} ${a.room_number}`;
+                const bLabel = `${b.building?.abbreviation || ""} ${b.room_number}`;
+                return aLabel.localeCompare(bLabel);
+              })
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.building?.abbreviation || ""} {r.room_number} ({r.capacity})
+                </option>
+              ))}
+          </StyledSelect>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="add-session" className="text-[11px] text-muted-foreground font-medium">
+            Session
+          </label>
+          <StyledSelect
+            id="add-session"
+            className="w-full h-8 text-sm"
+            value={session}
+            onChange={(e) => setSession(e.target.value)}
+          >
+            {SESSION_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </StyledSelect>
         </div>
       </div>
       <div className="flex gap-2">
@@ -1109,6 +1293,8 @@ function InlineEditForm({
   group,
   currentSemester,
   timeBlocks,
+  instructors,
+  rooms,
   onSave,
   onRemove,
   onCopyTo,
@@ -1117,6 +1303,8 @@ function InlineEditForm({
   group: OfferingGroup;
   currentSemester: string;
   timeBlocks: TimeBlock[];
+  instructors: Instructor[];
+  rooms: Room[];
   onSave: (updates: Partial<OfferingGroup>) => void;
   onRemove: () => void;
   onCopyTo: (targetSemester: string) => void;
@@ -1130,8 +1318,15 @@ function InlineEditForm({
   );
   const [yearParity, setYearParity] = useState(group.year_parity);
   const [notes, setNotes] = useState(group.notes || "");
+  const [instructorId, setInstructorId] = useState<number | null>(
+    group.instructor_id
+  );
+  const [roomId, setRoomId] = useState<number | null>(group.room_id);
+  const [session, setSession] = useState(group.session || "");
 
   const selectedTb = timeBlocks.find((tb) => tb.id === timeBlockId);
+  const selectedInstructor = instructors.find((i) => i.id === instructorId);
+  const selectedRoom = rooms.find((r) => r.id === roomId);
   const otherSemesters = SEMESTERS.filter((s) => s !== currentSemester);
 
   const handleSave = () => {
@@ -1146,6 +1341,13 @@ function InlineEditForm({
       start_time: selectedTb?.start_time || null,
       end_time: selectedTb?.end_time || null,
       notes: notes || null,
+      instructor_id: instructorId,
+      instructor_name: selectedInstructor?.name || null,
+      room_id: roomId,
+      room_label: selectedRoom
+        ? `${selectedRoom.building?.abbreviation || ""} ${selectedRoom.room_number}`.trim()
+        : null,
+      session: session || null,
     });
   };
 
@@ -1153,10 +1355,11 @@ function InlineEditForm({
     <div className="border border-primary/30 rounded-md p-3 bg-primary/5 space-y-2.5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="edit-sections" className="text-[11px] text-muted-foreground font-medium">
             Sections
           </label>
           <Input
+            id="edit-sections"
             type="number"
             min={1}
             max={20}
@@ -1166,10 +1369,11 @@ function InlineEditForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="edit-enrollment-cap" className="text-[11px] text-muted-foreground font-medium">
             Enrollment Cap
           </label>
           <Input
+            id="edit-enrollment-cap"
             type="number"
             min={1}
             value={enrollmentCap}
@@ -1178,11 +1382,12 @@ function InlineEditForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="edit-modality" className="text-[11px] text-muted-foreground font-medium">
             Modality
           </label>
-          <select
-            className="w-full h-8 text-sm border border-border rounded-md px-2 bg-background"
+          <StyledSelect
+            id="edit-modality"
+            className="w-full h-8 text-sm"
             value={modality}
             onChange={(e) => setModality(e.target.value)}
           >
@@ -1191,14 +1396,15 @@ function InlineEditForm({
                 {m.label}
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="edit-year-parity" className="text-[11px] text-muted-foreground font-medium">
             Year Parity
           </label>
-          <select
-            className="w-full h-8 text-sm border border-border rounded-md px-2 bg-background"
+          <StyledSelect
+            id="edit-year-parity"
+            className="w-full h-8 text-sm"
             value={yearParity}
             onChange={(e) => setYearParity(e.target.value)}
           >
@@ -1207,16 +1413,17 @@ function InlineEditForm({
                 {p.label}
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="edit-time-block" className="text-[11px] text-muted-foreground font-medium">
             Time Block
           </label>
-          <select
-            className="w-full h-8 text-sm border border-border rounded-md px-2 bg-background"
+          <StyledSelect
+            id="edit-time-block"
+            className="w-full h-8 text-sm"
             value={timeBlockId ?? ""}
             onChange={(e) =>
               setTimeBlockId(e.target.value ? parseInt(e.target.value) : null)
@@ -1228,18 +1435,87 @@ function InlineEditForm({
                 {tb.label}
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">
+          <label htmlFor="edit-notes" className="text-[11px] text-muted-foreground font-medium">
             Notes
           </label>
           <Input
+            id="edit-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Optional..."
             className="h-8 text-sm"
           />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-1">
+          <label htmlFor="edit-instructor" className="text-[11px] text-muted-foreground font-medium">
+            Instructor
+          </label>
+          <StyledSelect
+            id="edit-instructor"
+            className="w-full h-8 text-sm"
+            value={instructorId ?? ""}
+            onChange={(e) =>
+              setInstructorId(e.target.value ? parseInt(e.target.value) : null)
+            }
+          >
+            <option value="">TBD</option>
+            {instructors
+              .filter((i) => i.is_active)
+              .sort((a, b) => (a.last_name || a.name).localeCompare(b.last_name || b.name))
+              .map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.last_name ? `${i.last_name}, ${i.first_name}` : i.name}
+                </option>
+              ))}
+          </StyledSelect>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="edit-room" className="text-[11px] text-muted-foreground font-medium">
+            Room
+          </label>
+          <StyledSelect
+            id="edit-room"
+            className="w-full h-8 text-sm"
+            value={roomId ?? ""}
+            onChange={(e) =>
+              setRoomId(e.target.value ? parseInt(e.target.value) : null)
+            }
+          >
+            <option value="">No room</option>
+            {rooms
+              .sort((a, b) => {
+                const aLabel = `${a.building?.abbreviation || ""} ${a.room_number}`;
+                const bLabel = `${b.building?.abbreviation || ""} ${b.room_number}`;
+                return aLabel.localeCompare(bLabel);
+              })
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.building?.abbreviation || ""} {r.room_number} ({r.capacity})
+                </option>
+              ))}
+          </StyledSelect>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="edit-session" className="text-[11px] text-muted-foreground font-medium">
+            Session
+          </label>
+          <StyledSelect
+            id="edit-session"
+            className="w-full h-8 text-sm"
+            value={session}
+            onChange={(e) => setSession(e.target.value)}
+          >
+            {SESSION_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </StyledSelect>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
@@ -1398,6 +1674,11 @@ interface TermExtractEntry {
   start_time: string | null;
   end_time: string | null;
   notes: string | null;
+  instructor_id: number | null;
+  instructor_name: string | null;
+  room_id: number | null;
+  room_label: string | null;
+  session: string | null;
 }
 
 interface TermExtractResult {
@@ -1412,11 +1693,15 @@ function ImportFromTermDialog({
   onOpenChange,
   terms,
   onImport,
+  localGrid,
+  courseMap,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   terms: Term[];
   onImport: (entries: TermExtractEntry[]) => void;
+  localGrid: Map<CellKey, CellData>;
+  courseMap: Map<number, Course>;
 }) {
   const [selectedTermId, setSelectedTermId] = useState<string>("");
   const [preview, setPreview] = useState<TermExtractResult | null>(null);
@@ -1424,6 +1709,10 @@ function ImportFromTermDialog({
   const [selectedEntries, setSelectedEntries] = useState<Set<number>>(
     new Set()
   );
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    duplicates: { courseLabel: string; semester: string }[];
+    entriesToImport: TermExtractEntry[];
+  } | null>(null);
 
   const handleFetch = async () => {
     if (!selectedTermId) return;
@@ -1445,7 +1734,38 @@ function ImportFromTermDialog({
     const entriesToImport = preview.entries.filter((_, i) =>
       selectedEntries.has(i)
     );
+
+    // Check for duplicates against existing grid
+    const duplicates: { courseLabel: string; semester: string }[] = [];
+    const seen = new Set<string>();
+    for (const e of entriesToImport) {
+      const key = cellKey(e.course_id, e.semester);
+      const dedupKey = `${e.course_id}:${e.semester}`;
+      if (localGrid.has(key) && !seen.has(dedupKey)) {
+        seen.add(dedupKey);
+        const course = courseMap.get(e.course_id);
+        duplicates.push({
+          courseLabel: course
+            ? `${course.department_code} ${course.course_number}`
+            : `Course #${e.course_id}`,
+          semester: SEMESTER_LABELS[e.semester] || e.semester,
+        });
+      }
+    }
+
+    if (duplicates.length > 0) {
+      setDuplicateWarning({ duplicates, entriesToImport });
+      return;
+    }
+
     onImport(entriesToImport);
+    handleClose();
+  };
+
+  const confirmImportWithDuplicates = () => {
+    if (!duplicateWarning) return;
+    onImport(duplicateWarning.entriesToImport);
+    setDuplicateWarning(null);
     handleClose();
   };
 
@@ -1454,6 +1774,7 @@ function ImportFromTermDialog({
     setSelectedTermId("");
     setPreview(null);
     setSelectedEntries(new Set());
+    setDuplicateWarning(null);
   };
 
   const toggleEntry = (index: number) => {
@@ -1476,7 +1797,7 @@ function ImportFromTermDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Import from Term Schedule</DialogTitle>
           <DialogDescription>
@@ -1512,12 +1833,15 @@ function ImportFromTermDialog({
                           }
                           onChange={toggleAll}
                           className="rounded"
+                          aria-label="Select all entries"
                         />
                       </th>
                       <th className="py-1.5 px-2 text-left">Course</th>
-                      <th className="py-1.5 px-2 text-left">Sections</th>
+                      <th className="py-1.5 px-2 text-left">Sec</th>
                       <th className="py-1.5 px-2 text-left">Modality</th>
-                      <th className="py-1.5 px-2 text-left">Time Block</th>
+                      <th className="py-1.5 px-2 text-left">Time</th>
+                      <th className="py-1.5 px-2 text-left">Instructor</th>
+                      <th className="py-1.5 px-2 text-left">Room</th>
                       <th className="py-1.5 px-2 text-left">Cap</th>
                     </tr>
                   </thead>
@@ -1548,6 +1872,12 @@ function ImportFromTermDialog({
                         <td className="py-1.5 px-2 text-muted-foreground">
                           {entry.time_block_label || "—"}
                         </td>
+                        <td className="py-1.5 px-2 text-muted-foreground">
+                          {entry.instructor_name || <span className="italic">TBD</span>}
+                        </td>
+                        <td className="py-1.5 px-2 text-muted-foreground">
+                          {entry.room_label || "—"}
+                        </td>
                         <td className="py-1.5 px-2">{entry.enrollment_cap}</td>
                       </tr>
                     ))}
@@ -1573,9 +1903,10 @@ function ImportFromTermDialog({
         ) : (
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Select Term</label>
-              <select
-                className="w-full h-9 border border-border rounded-md px-2 bg-background text-sm"
+              <label htmlFor="import-term-select" className="text-sm font-medium">Select Term</label>
+              <StyledSelect
+                id="import-term-select"
+                className="w-full h-9 text-sm"
                 value={selectedTermId}
                 onChange={(e) => setSelectedTermId(e.target.value)}
               >
@@ -1585,7 +1916,7 @@ function ImportFromTermDialog({
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </StyledSelect>
               {terms.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   No terms available.
@@ -1607,6 +1938,46 @@ function ImportFromTermDialog({
           </div>
         )}
       </DialogContent>
+
+      {/* Duplicate confirmation dialog */}
+      <Dialog
+        open={duplicateWarning !== null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicateWarning(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Duplicate Entries</DialogTitle>
+            <DialogDescription>
+              The following courses already have offerings in the rotation plan
+              for the same semester. Importing will add additional entries
+              alongside the existing ones.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-48 overflow-y-auto border border-border rounded-md">
+            <ul className="text-sm divide-y divide-border/30">
+              {duplicateWarning?.duplicates.map((d, i) => (
+                <li key={i} className="px-3 py-1.5">
+                  <span className="font-medium">{d.courseLabel}</span>
+                  <span className="text-muted-foreground"> — {d.semester}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDuplicateWarning(null)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmImportWithDuplicates}>
+              Import Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
@@ -1658,7 +2029,7 @@ function ApplyToTermDialog({
         </DialogHeader>
 
         {hasUnsavedChanges && (
-          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+          <div className="bg-warning border border-warning rounded-lg px-3 py-2 text-sm text-warning-foreground">
             You have unsaved changes. Save the plan first to apply the latest
             version.
           </div>
@@ -1666,11 +2037,11 @@ function ApplyToTermDialog({
 
         {result ? (
           <div className="space-y-3">
-            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
-              <p className="text-sm font-medium text-green-800 dark:text-green-300">
+            <div className="bg-success border border-success rounded-lg p-3">
+              <p className="text-sm font-medium text-success-foreground">
                 Applied to {result.term_name}
               </p>
-              <p className="text-sm text-green-700 dark:text-green-400 mt-1">
+              <p className="text-sm text-success-foreground mt-1">
                 {result.entries_matched} rotation entries matched,{" "}
                 {result.sections_created} new sections created
                 {result.meetings_created > 0 &&
@@ -1718,9 +2089,10 @@ function ApplyToTermDialog({
         ) : (
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Select Term</label>
-              <select
-                className="w-full h-9 border border-border rounded-md px-2 bg-background text-sm"
+              <label htmlFor="apply-term-select" className="text-sm font-medium">Select Term</label>
+              <StyledSelect
+                id="apply-term-select"
+                className="w-full h-9 text-sm"
                 value={selectedTermId}
                 onChange={(e) => setSelectedTermId(e.target.value)}
               >
@@ -1730,7 +2102,7 @@ function ApplyToTermDialog({
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </StyledSelect>
               {terms.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   No draft terms available. Create a term first.

@@ -14,7 +14,9 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.course import Course
 from app.models.course_rotation import CourseRotation, YearParity, RotationSemester
+from app.models.instructor import Instructor
 from app.models.meeting import Meeting
+from app.models.room import Room
 from app.models.section import Section, SectionStatus
 from app.models.term import Term
 from app.models.time_block import TimeBlock
@@ -36,6 +38,9 @@ class RotationEntryCreate(BaseModel):
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     notes: Optional[str] = None
+    instructor_id: Optional[int] = None
+    room_id: Optional[int] = None
+    session: Optional[str] = None
 
 
 class RotationEntryUpdate(BaseModel):
@@ -49,6 +54,9 @@ class RotationEntryUpdate(BaseModel):
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     notes: Optional[str] = None
+    instructor_id: Optional[int] = None
+    room_id: Optional[int] = None
+    session: Optional[str] = None
 
 
 class ApplyRotationRequest(BaseModel):
@@ -85,7 +93,12 @@ def list_rotation_entries(
     query = (
         db.query(CourseRotation)
         .join(Course, CourseRotation.course_id == Course.id)
-        .options(joinedload(CourseRotation.course), joinedload(CourseRotation.time_block))
+        .options(
+            joinedload(CourseRotation.course),
+            joinedload(CourseRotation.time_block),
+            joinedload(CourseRotation.instructor),
+            joinedload(CourseRotation.room).joinedload(Room.building),
+        )
     )
     if department:
         query = query.filter(Course.department_code == department)
@@ -126,6 +139,9 @@ def create_rotation_entry(body: RotationEntryCreate, db: Session = Depends(get_d
         start_time=_parse_time(body.start_time),
         end_time=_parse_time(body.end_time),
         notes=body.notes,
+        instructor_id=body.instructor_id,
+        room_id=body.room_id,
+        session=body.session,
     )
     db.add(entry)
     db.commit()
@@ -170,6 +186,12 @@ def update_rotation_entry(
         entry.end_time = _parse_time(body.end_time)
     if body.notes is not None:
         entry.notes = body.notes
+    if body.instructor_id is not None:
+        entry.instructor_id = body.instructor_id if body.instructor_id != 0 else None
+    if body.room_id is not None:
+        entry.room_id = body.room_id if body.room_id != 0 else None
+    if body.session is not None:
+        entry.session = body.session or None
 
     db.commit()
     db.refresh(entry)
@@ -229,6 +251,9 @@ def batch_set_rotation(
             start_time=_parse_time(e.start_time),
             end_time=_parse_time(e.end_time),
             notes=e.notes,
+            instructor_id=e.instructor_id,
+            room_id=e.room_id,
+            session=e.session,
         )
         db.add(entry)
         created.append(entry)
@@ -397,16 +422,23 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
     sections = (
         db.query(Section)
         .filter(Section.term_id == term_id)
-        .options(joinedload(Section.course))
+        .options(
+            joinedload(Section.course),
+            joinedload(Section.instructor),
+        )
         .all()
     )
 
-    # For each section, find its first meeting to get time block info
+    # For each section, find its first meeting to get time block, room, instructor info
     section_ids = [s.id for s in sections]
     meetings = (
         db.query(Meeting)
         .filter(Meeting.section_id.in_(section_ids))
-        .options(joinedload(Meeting.time_block))
+        .options(
+            joinedload(Meeting.time_block),
+            joinedload(Meeting.room).joinedload(Room.building),
+            joinedload(Meeting.instructor),
+        )
         .all()
     ) if section_ids else []
 
@@ -415,18 +447,55 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
         if m.section_id not in meeting_by_section:
             meeting_by_section[m.section_id] = m
 
-    # Group by (course_id, modality, time_block_id)
+    # Preload instructor lookup for adjunct detection
+    instructor_ids = set()
+    for s in sections:
+        if s.instructor_id:
+            instructor_ids.add(s.instructor_id)
+    for m in meetings:
+        if m.instructor_id:
+            instructor_ids.add(m.instructor_id)
+    instructors_map: dict[int, Instructor] = {}
+    if instructor_ids:
+        for inst in db.query(Instructor).filter(Instructor.id.in_(instructor_ids)).all():
+            instructors_map[inst.id] = inst
+
+    def _resolve_instructor(inst_id):
+        """Return (id, name) for faculty; (None, None) for adjunct/unknown."""
+        if not inst_id:
+            return None, None
+        inst = instructors_map.get(inst_id)
+        if not inst:
+            return None, None
+        is_adjunct = (
+            (inst.instructor_type or "").lower() == "adjunct"
+            or (getattr(inst, "rank", None) or "").lower() == "adjunct_instructor"
+        )
+        if is_adjunct:
+            return None, None
+        return inst.id, inst.name
+
+    # Group by (course_id, modality, session, instructor_id, time_block_id, room_id)
+    # to preserve all meaningful distinctions between sections
     groups: dict[tuple, list] = {}
     for s in sections:
         meeting = meeting_by_section.get(s.id)
         tb_id = meeting.time_block_id if meeting else None
-        key = (s.course_id, s.modality, tb_id)
+        room_id = meeting.room_id if meeting else None
+        # Resolve instructor: prefer section-level, then meeting-level
+        inst_id = s.instructor_id
+        if not inst_id and meeting:
+            inst_id = meeting.instructor_id
+        resolved_inst_id, _ = _resolve_instructor(inst_id)
+        session_val = s.session if s.session else "regular"
+
+        key = (s.course_id, s.modality, session_val, resolved_inst_id, tb_id, room_id)
         if key not in groups:
             groups[key] = []
         groups[key].append(s)
 
     results = []
-    for (course_id, modality, tb_id), group_sections in groups.items():
+    for (course_id, modality, session_val, resolved_inst_id, tb_id, room_id), group_sections in groups.items():
         course = group_sections[0].course
         if not course:
             continue
@@ -454,6 +523,22 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
             start = _time_str(m.start_time)
             end = _time_str(m.end_time)
 
+        # Instructor name
+        resolved_instructor_name = None
+        if resolved_inst_id:
+            inst = instructors_map.get(resolved_inst_id)
+            if inst:
+                resolved_instructor_name = inst.name
+
+        # Room info
+        resolved_room_label = None
+        if room_id:
+            sample_m = meeting_by_section.get(group_sections[0].id)
+            if sample_m and sample_m.room:
+                room = sample_m.room
+                bldg = room.building
+                resolved_room_label = f"{bldg.abbreviation} {room.room_number}" if bldg else room.room_number
+
         results.append({
             "course_id": course_id,
             "department_code": course.department_code,
@@ -464,16 +549,21 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
             "year_parity": "every_year",
             "num_sections": len(group_sections),
             "enrollment_cap": cap,
-            "modality": modality or "in_person",
+            "modality": modality if isinstance(modality, str) else (modality.value if hasattr(modality, 'value') else str(modality)),
             "time_block_id": tb_id,
             "time_block_label": tb_label,
             "days_of_week": days,
             "start_time": start,
             "end_time": end,
             "notes": None,
+            "instructor_id": resolved_inst_id,
+            "instructor_name": resolved_instructor_name,
+            "room_id": room_id,
+            "room_label": resolved_room_label,
+            "session": session_val if session_val != "regular" else None,
         })
 
-    results.sort(key=lambda r: (r["department_code"], r["course_number"], r["modality"]))
+    results.sort(key=lambda r: (r["department_code"], r["course_number"], r["modality"], r["session"] or ""))
     return {
         "term_id": term.id,
         "term_name": term.name,
@@ -487,6 +577,8 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
 def _serialize(entry: CourseRotation) -> dict:
     course = entry.course
     tb = entry.time_block
+    inst = entry.instructor
+    room = entry.room
     return {
         "id": entry.id,
         "course_id": entry.course_id,
@@ -505,4 +597,9 @@ def _serialize(entry: CourseRotation) -> dict:
         "start_time": _time_str(entry.start_time),
         "end_time": _time_str(entry.end_time),
         "notes": entry.notes,
+        "instructor_id": entry.instructor_id,
+        "instructor_name": inst.name if inst else None,
+        "room_id": entry.room_id,
+        "room_label": f"{room.building.abbreviation} {room.room_number}" if room and room.building else (room.room_number if room else None),
+        "session": entry.session,
     }

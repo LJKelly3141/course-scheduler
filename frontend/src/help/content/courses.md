@@ -26,11 +26,11 @@ Click **+ Add Course** at the top. Fill in:
 
 ### Edit a Course
 
-Click the **pencil icon** on any course row to open the edit dialog. Change any field and save.
+Click the **Edit** link on any course row to open the edit dialog. Change any field and save.
 
 ### Delete Courses
 
-Click the **trash icon** on a single course, or select multiple courses with checkboxes and use **batch delete**.
+Click the **Delete** link on a single course, or select multiple courses with checkboxes and use **Delete Selected**.
 
 ### Search
 
@@ -47,7 +47,7 @@ Click **+ Add Section** under the expanded course. Fill in:
 - **Enrollment Cap** — Maximum students
 - **Modality** — In Person, Online Sync, Online Async, or Hybrid
 - **Instructor** — Assign from the instructor dropdown
-- **Session** — For summer terms, select which session (A, B, etc.)
+- **Session** — Select which session this section belongs to, chosen from the sessions configured on the term (e.g., "Session A", "8-Week Session")
 - **Lecture Hours** — Contact hours per week (optional)
 - **Special Course Fee** — Dollar amount (optional)
 - **Notes** — Any additional information
@@ -62,12 +62,17 @@ For Online Async sections, use the **Mark Scheduled** button to set status witho
 
 ### Edit or Schedule a Section
 
-- Click the **calendar icon** to open the Meeting Dialog and assign a time/room
-- Click the **pencil icon** to edit section details
-- Click the **trash icon** to delete the section
+- Click the **Edit** link to open the Meeting Dialog and assign a time/room, or to edit section details
+- Click the **Delete** link to delete the section
 
 ## Tips
 
 > **Tip:** The "Counts Toward Load" checkbox determines whether a course's sections factor into instructor workload calculations. Uncheck it for independent studies, thesis credits, etc.
 
 > **Tip:** Sections are term-specific. When you switch terms in the sidebar, you'll see different sections for the same courses.
+
+> **Tip:** Click any column header (Dept, Course #, Title, Credits, Sections) to sort the course list by that column. Click again to reverse the sort order.
+
+> **Tip:** The **Trend** column shows a sparkline of recent enrollment history for each course. Click the sparkline to open a detailed enrollment trend dialog with forecast enrollment, suggested number of sections, and a suggested enrollment cap per section.
+
+> **Tip:** Enrollment forecasts in the trend dialog include a confidence indicator and trend direction, helping you set appropriate enrollment caps when creating sections.

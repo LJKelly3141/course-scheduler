@@ -1,5 +1,6 @@
 import type { ConflictItem } from "../../api/types";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 
 /** Deterministic key for a warning: type + sorted meeting IDs */
 export function warningKey(item: ConflictItem): string {
@@ -40,8 +41,11 @@ export function ConflictSidebar({ conflicts, warnings, dismissedKeys, onDismiss,
             <HelpTooltip content="Must be resolved before the term can be finalized" side="right" />
           </p>
           {conflicts.map((c, i) => (
-            <div key={i} className="mb-2 p-2 bg-red-50 dark:bg-red-950 rounded border border-red-200 dark:border-red-800 text-xs">
-              <p className="font-medium text-destructive capitalize">{c.type.replace("_", " ")}</p>
+            <div key={i} className="mb-2 p-2 bg-destructive/10 rounded border border-destructive/30 text-xs">
+              <p className="font-medium text-destructive capitalize flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {c.type.replace("_", " ")}
+              </p>
               <p className="text-muted-foreground mt-0.5">{c.description}</p>
             </div>
           ))}
@@ -50,22 +54,26 @@ export function ConflictSidebar({ conflicts, warnings, dismissedKeys, onDismiss,
 
       {activeWarnings.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-2 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-warning mb-2 flex items-center gap-1.5">
             Warnings ({activeWarnings.length})
             <HelpTooltip content="Advisory issues that don't block finalization. Dismiss warnings you've reviewed." side="right" />
           </p>
           {activeWarnings.map((w, i) => {
             const key = warningKey(w);
             return (
-              <div key={i} className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded border border-yellow-200 dark:border-yellow-800 text-xs group relative">
+              <div key={i} className="mb-2 p-2 bg-warning/10 rounded border border-warning/30 text-xs group relative">
                 <button
                   onClick={() => onDismiss(key)}
-                  className="absolute top-1 right-1 text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 text-sm leading-none px-1"
+                  className="absolute top-1 right-1 text-warning hover:text-warning-foreground text-sm leading-none px-1"
+                  aria-label="Dismiss warning"
                   title="Dismiss warning"
                 >
                   &times;
                 </button>
-                <p className="font-medium text-yellow-700 dark:text-yellow-400 capitalize pr-4">{w.type.replace("_", " ")}</p>
+                <p className="font-medium text-warning capitalize pr-4 flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {w.type.replace("_", " ")}
+                </p>
                 <p className="text-muted-foreground mt-0.5">{w.description}</p>
               </div>
             );
@@ -85,6 +93,7 @@ export function ConflictSidebar({ conflicts, warnings, dismissedKeys, onDismiss,
                 <button
                   onClick={() => onUndismiss(key)}
                   className="absolute top-1 right-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 text-xs leading-none px-1"
+                  aria-label="Restore conflict"
                   title="Restore warning"
                 >
                   &#x21A9;

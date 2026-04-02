@@ -1,6 +1,6 @@
 # Terms
 
-The Terms page manages academic terms (semesters) and their lifecycle from draft through finalization. Summer terms support multiple sessions with individual dates and head count tracking.
+The Terms page manages academic terms (semesters) and their lifecycle from draft through finalization. Terms can have multiple sessions with individual dates and head count tracking.
 
 ## Getting There
 
@@ -8,10 +8,10 @@ Click **Terms** in the sidebar.
 
 ## Key Concepts
 
-- **Term** — An academic period (Fall, Spring, Summer, Winterim) with start and end dates
+- **Term** — An academic period (Fall, Spring, Summer, Winter) with start and end dates
 - **Draft** — A term that can be freely edited
 - **Final** — A locked term; editing, adding, and deleting meetings is disabled
-- **Session** — A sub-period within a summer term (e.g., Session A, Session B)
+- **Session** — A sub-period within a term (e.g., Session A, Session B)
 - **Academic Year** — A grouping like "2025-2026" that spans multiple terms
 
 ## Managing Terms
@@ -20,7 +20,7 @@ Click **Terms** in the sidebar.
 
 Click **+ Add Term** at the top. Fill in:
 - **Name** — e.g., "Fall 2026", "Summer 2026"
-- **Type** — Fall, Spring, Summer, or Winterim
+- **Type** — Fall, Spring, Summer, or Winter
 - **Start Date** — Term start date
 - **End Date** — Term end date
 
@@ -32,7 +32,11 @@ Click the **pencil icon** to edit the name, type, or dates. Editing is only avai
 
 ### Delete a Term
 
-Click the **trash icon**. Deleting a term removes all its sections and meetings. This action requires confirmation.
+Click the **trash icon** to delete a single term. Deleting a term removes all its sections and meetings. This action requires confirmation.
+
+### Batch Delete Terms
+
+Use the **checkboxes** on the left side of each term row to select multiple terms, then click **Delete Selected** to remove them all at once.
 
 ### Academic Year Assignment
 
@@ -53,7 +57,7 @@ Click the **lock icon** again to unlock a finalized term and return it to draft 
 
 ## Copy Term
 
-Click the **copy icon** on any term to create a duplicate. Options:
+Click the **Copy** button on any term to create a duplicate. Options:
 - **New Name** — Name for the copied term
 - **Type** — Term type
 - **Start/End Dates** — Dates for the new term
@@ -61,9 +65,9 @@ Click the **copy icon** on any term to create a duplicate. Options:
 
 This is useful for creating next year's schedule starting from this year's.
 
-## Summer Sessions
+## Sessions
 
-For summer terms, expand the term row to manage sessions.
+Expand any term row to manage its sessions.
 
 ### Add Sessions
 
@@ -86,7 +90,7 @@ Click **Paste Sessions** to import a table from your clipboard. The dialog suppo
 
 ### Sections and Sessions
 
-When creating sections for summer terms, you can assign each section to a specific session. This determines the section's date range and head count date.
+When creating sections for a term with sessions, you can assign each section to a specific session. This determines the section's date range and head count date.
 
 ## Tips
 

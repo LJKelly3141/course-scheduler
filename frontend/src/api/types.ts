@@ -374,6 +374,11 @@ export interface RotationEntry {
   start_time: string | null;
   end_time: string | null;
   notes: string | null;
+  instructor_id: number | null;
+  instructor_name: string | null;
+  room_id: number | null;
+  room_label: string | null;
+  session: string | null;
 }
 
 export interface ApplyRotationResult {

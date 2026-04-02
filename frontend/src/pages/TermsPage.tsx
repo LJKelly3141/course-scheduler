@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { Plus, Trash2, Lock, LockOpen, ClipboardPaste } from "lucide-react";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -273,16 +274,20 @@ export function TermsPage() {
     <tr className="border-b border-border bg-blue-50/50 dark:bg-blue-950/50">
       <td className="px-4 py-2"></td>
       <td className="px-4 py-2">
+        <label htmlFor="term-form-name" className="sr-only">Term name</label>
         <input
+          id="term-form-name"
           placeholder="e.g. Fall 2026"
           className="border border-border rounded px-2 py-1.5 text-sm w-full"
+          aria-required
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
       </td>
       <td className="px-4 py-2">
-        <select
-          className="border border-border rounded px-2 py-1.5 text-sm"
+        <label htmlFor="term-form-type" className="sr-only">Term type</label>
+        <StyledSelect
+          id="term-form-type"
           value={form.type}
           onChange={(e) => setForm({ ...form, type: e.target.value })}
         >
@@ -290,21 +295,27 @@ export function TermsPage() {
           <option value="spring">Spring</option>
           <option value="summer">Summer</option>
           <option value="winter">Winter</option>
-        </select>
+        </StyledSelect>
       </td>
       <td className="px-4 py-2 text-xs text-muted-foreground">Auto</td>
       <td className="px-4 py-2">
+        <label htmlFor="term-form-start" className="sr-only">Start date</label>
         <input
+          id="term-form-start"
           type="date"
           className="border border-border rounded px-2 py-1.5 text-sm"
+          aria-required
           value={form.start_date}
           onChange={(e) => setForm({ ...form, start_date: e.target.value })}
         />
       </td>
       <td className="px-4 py-2">
+        <label htmlFor="term-form-end" className="sr-only">End date</label>
         <input
+          id="term-form-end"
           type="date"
           className="border border-border rounded px-2 py-1.5 text-sm"
+          aria-required
           value={form.end_date}
           onChange={(e) => setForm({ ...form, end_date: e.target.value })}
         />
@@ -357,6 +368,7 @@ export function TermsPage() {
               <th className="px-4 py-3 w-10">
                 <input
                   type="checkbox"
+                  aria-label="Select all terms"
                   checked={terms.length > 0 && selectedIds.size === terms.length}
                   onChange={toggleAll}
                 />
@@ -381,6 +393,7 @@ export function TermsPage() {
                   <td className="px-4 py-2.5">
                     <input
                       type="checkbox"
+                      aria-label={`Select ${term.name}`}
                       checked={selectedIds.has(term.id)}
                       onChange={() => toggleSelect(term.id)}
                     />
@@ -530,6 +543,7 @@ export function TermsPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 w-6 p-0 text-destructive"
+                                        aria-label={`Delete session ${row.name || i + 1}`}
                                         onClick={() => removeSessionRow(i, term.id)}
                                       >
                                         <Trash2 className="h-3 w-3" />
@@ -581,7 +595,7 @@ export function TermsPage() {
       </div>
 
       {(deleteMutation.isError || batchDeleteMutation.isError) && (
-        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-3">
+        <div className="bg-destructive/10 border border-destructive/30 rounded p-3">
           <p className="text-sm text-destructive">
             {((deleteMutation.error || batchDeleteMutation.error) as Error)?.message || "Failed to delete term(s)"}
           </p>
@@ -600,17 +614,20 @@ export function TermsPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label htmlFor="copy-term-name" className="block text-sm font-medium mb-1">Name</label>
               <input
+                id="copy-term-name"
                 className="border border-border rounded px-3 py-2 text-sm w-full"
+                aria-required
                 value={copyForm.name}
                 onChange={(e) => setCopyForm({ ...copyForm, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select
-                className="border border-border rounded px-3 py-2 text-sm w-full"
+              <label htmlFor="copy-term-type" className="block text-sm font-medium mb-1">Type</label>
+              <StyledSelect
+                id="copy-term-type"
+                className="w-full"
                 value={copyForm.type}
                 onChange={(e) => setCopyForm({ ...copyForm, type: e.target.value })}
               >
@@ -618,23 +635,27 @@ export function TermsPage() {
                 <option value="spring">Spring</option>
                 <option value="summer">Summer</option>
                 <option value="winter">Winter</option>
-              </select>
+              </StyledSelect>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
+                <label htmlFor="copy-term-start" className="block text-sm font-medium mb-1">Start Date</label>
                 <input
+                  id="copy-term-start"
                   type="date"
                   className="border border-border rounded px-3 py-2 text-sm w-full"
+                  aria-required
                   value={copyForm.start_date}
                   onChange={(e) => setCopyForm({ ...copyForm, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
+                <label htmlFor="copy-term-end" className="block text-sm font-medium mb-1">End Date</label>
                 <input
+                  id="copy-term-end"
                   type="date"
                   className="border border-border rounded px-3 py-2 text-sm w-full"
+                  aria-required
                   value={copyForm.end_date}
                   onChange={(e) => setCopyForm({ ...copyForm, end_date: e.target.value })}
                 />

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { api } from "@/api/client";
 import type { Term, Course, Section, PrereqWarning } from "@/api/types";
 import { OverviewTab } from "@/components/analytics/OverviewTab";
@@ -77,8 +78,10 @@ export function AnalyticsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-xl font-bold">Analytics</h2>
         <div className="flex items-center gap-2">
-          <select
-            className="border border-border rounded-md px-2 py-1 text-sm bg-background"
+          <label htmlFor="analytics-department-filter" className="sr-only">Department</label>
+          <StyledSelect
+            id="analytics-department-filter"
+            className="text-sm"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
@@ -88,9 +91,11 @@ export function AnalyticsPage() {
                 {d}
               </option>
             ))}
-          </select>
-          <select
-            className="border border-border rounded-md px-2 py-1 text-sm bg-background"
+          </StyledSelect>
+          <label htmlFor="analytics-level-filter" className="sr-only">Level</label>
+          <StyledSelect
+            id="analytics-level-filter"
+            className="text-sm"
             value={level}
             onChange={(e) => setLevel(e.target.value)}
           >
@@ -100,7 +105,7 @@ export function AnalyticsPage() {
                 {l}-level
               </option>
             ))}
-          </select>
+          </StyledSelect>
         </div>
       </div>
 
@@ -136,11 +141,11 @@ export function AnalyticsPage() {
         <TabsContent value="prerequisites" className="mt-4">
           <div className="space-y-4">
             {(prereqWarnings?.warnings?.length ?? 0) > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <h3 className="font-semibold text-amber-900 dark:text-amber-300 mb-2">
+              <div className="bg-warning border border-warning rounded-lg p-4" aria-live="polite">
+                <h3 className="font-semibold text-warning-foreground mb-2">
                   Prerequisite Warnings
                 </h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-amber-800 dark:text-amber-300">
+                <ul className="list-disc list-inside space-y-1 text-sm text-warning-foreground">
                   {prereqWarnings!.warnings.map((w, i) => (
                     <li key={i}>{w.message}</li>
                   ))}

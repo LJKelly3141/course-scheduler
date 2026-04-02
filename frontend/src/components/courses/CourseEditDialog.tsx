@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { X } from "lucide-react";
 
 interface Props {
@@ -101,34 +102,39 @@ export function CourseEditDialog({ course, onClose, onSaved }: Props) {
         </DialogHeader>
 
         {errors.length > 0 && (
-          <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-2">
+          <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-2" role="alert">
             {errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
           </div>
         )}
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Department Code</label>
-            <input className="w-full border border-border rounded-md px-3 py-2 text-sm"
+            <label htmlFor="course-dept-code" className="block text-sm font-medium mb-1">Department Code</label>
+            <input id="course-dept-code" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+              aria-required="true"
               value={departmentCode} onChange={(e) => setDepartmentCode(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Course Number</label>
-            <input className="w-full border border-border rounded-md px-3 py-2 text-sm"
+            <label htmlFor="course-number" className="block text-sm font-medium mb-1">Course Number</label>
+            <input id="course-number" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+              aria-required="true"
               value={courseNumber} onChange={(e) => setCourseNumber(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
-            <input className="w-full border border-border rounded-md px-3 py-2 text-sm"
+            <label htmlFor="course-title" className="block text-sm font-medium mb-1">Title</label>
+            <input id="course-title" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+              aria-required="true"
               value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Credits</label>
-            <input type="number" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+            <label htmlFor="course-credits" className="block text-sm font-medium mb-1">Credits</label>
+            <input id="course-credits" type="number" className="w-full border border-border rounded-md px-3 py-2 text-sm"
+              aria-required="true"
               value={credits} onChange={(e) => setCredits(parseInt(e.target.value) || 3)} />
           </div>
-          <label className="flex items-center gap-2 text-sm">
+          <label htmlFor="course-counts-load" className="flex items-center gap-2 text-sm">
             <input
+              id="course-counts-load"
               type="checkbox"
               checked={countsTowardLoad}
               onChange={(e) => setCountsTowardLoad(e.target.checked)}
@@ -139,7 +145,7 @@ export function CourseEditDialog({ course, onClose, onSaved }: Props) {
 
           {/* Prerequisites section */}
           <div className="border-t border-border pt-3">
-            <label className="block text-sm font-medium mb-2">Prerequisites</label>
+            <label id="course-prereqs-label" className="block text-sm font-medium mb-2">Prerequisites</label>
 
             {prereqs.length > 0 ? (
               <div className="space-y-1 mb-2">
@@ -171,8 +177,10 @@ export function CourseEditDialog({ course, onClose, onSaved }: Props) {
             )}
 
             <div className="flex gap-2 items-center">
-              <select
-                className="border border-border rounded-md px-2 py-1.5 text-sm flex-1 bg-background"
+              <StyledSelect
+                id="course-add-prereq"
+                aria-labelledby="course-prereqs-label"
+                className="flex-1"
                 value={addPrereqId}
                 onChange={(e) => setAddPrereqId(e.target.value)}
               >
@@ -182,9 +190,10 @@ export function CourseEditDialog({ course, onClose, onSaved }: Props) {
                     {c.department_code} {c.course_number} — {c.title}
                   </option>
                 ))}
-              </select>
-              <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+              </StyledSelect>
+              <label htmlFor="course-is-coreq" className="flex items-center gap-1 text-xs whitespace-nowrap">
                 <input
+                  id="course-is-coreq"
                   type="checkbox"
                   checked={addIsCoreq}
                   onChange={(e) => setAddIsCoreq(e.target.checked)}

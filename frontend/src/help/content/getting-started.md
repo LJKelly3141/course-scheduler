@@ -14,7 +14,7 @@ Course Scheduler helps you build, validate, and publish course schedules for you
 
 ### 1. Create a Term
 
-Go to **Terms** and click **+ Add Term**. Enter the term name (e.g., "Fall 2026"), select the type (Fall, Spring, Summer, Winterim), and set start/end dates. The term starts in **Draft** mode so you can make changes freely.
+Go to **Terms** and click **+ Add Term**. Enter the term name (e.g., "Fall 2026"), select the type (Fall, Spring, Summer, Winter), and set start/end dates. The term starts in **Draft** mode so you can make changes freely.
 
 For summer terms, expand the term row and add **sessions** (e.g., Session A, Session B) with their individual dates and head count information.
 
@@ -40,7 +40,7 @@ The **Dashboard** shows an overview of your selected term:
 
 ### 4. Build and Adjust the Schedule
 
-On the **Schedule Grid**, view your schedule by Room, Instructor, or Course Level. You can:
+On the **Schedule Grid**, view your schedule By Room, By Instructor, or By Level. You can:
 - **Drag and drop** meetings to reschedule them
 - Use **filters** to focus on specific departments, rooms, instructors, or levels
 - Open the **Conflict Sidebar** to see and resolve issues

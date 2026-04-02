@@ -19,7 +19,7 @@ At the top of the page, two dropdown filters let you focus the data:
 - **Department** — Show analytics for a specific department or all departments
 - **Course Level** — Filter by course level (100, 200, 300, 400+)
 
-Filters apply across all four tabs.
+Filters apply across all five tabs.
 
 ## Tabs
 
@@ -45,6 +45,13 @@ Schedule efficiency metrics:
 - **Time slot analysis** — Which time blocks are most/least popular
 - **Session distribution** — For summer terms, how sections are spread across sessions
 - **Recommendations** — Suggestions for optimizing room and time slot usage
+
+### Prerequisites
+
+Course dependency chain visualization and scheduling conflict detection:
+- **Prerequisite graph** — Interactive graph showing how courses depend on one another, with arrows indicating prerequisite and corequisite relationships. Courses offered in the current term are highlighted; courses not offered are shown in gray.
+- **Prerequisite warnings** — Alerts for scheduling conflicts involving prerequisites (e.g., a prerequisite course scheduled at the same time as or after a dependent course), displayed as a warning banner above the graph
+- **Legend** — Color-coded key distinguishing offered vs. not-offered courses and corequisite relationships
 
 ### Workload
 

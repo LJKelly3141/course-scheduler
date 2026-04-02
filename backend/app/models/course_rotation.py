@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 from typing import Optional
-from sqlalchemy import Integer, String, ForeignKey, Enum, UniqueConstraint, Time
+from sqlalchemy import Integer, String, ForeignKey, Enum, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -27,12 +27,7 @@ class CourseRotation(Base):
     A course can have multiple rows (e.g., offered both Fall and Spring every year).
     """
     __tablename__ = "course_rotations"
-    __table_args__ = (
-        UniqueConstraint(
-            "course_id", "semester", "year_parity", "modality",
-            name="uq_course_rotation_modality",
-        ),
-    )
+    __table_args__: tuple = ()
 
     id: Mapped[int] = mapped_column(primary_key=True)
     course_id: Mapped[int] = mapped_column(
@@ -52,6 +47,15 @@ class CourseRotation(Base):
     start_time = mapped_column(Time, nullable=True)
     end_time = mapped_column(Time, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    instructor_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("instructors.id", ondelete="SET NULL"), nullable=True
+    )
+    room_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True
+    )
+    session: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     course = relationship("Course", back_populates="rotation_entries")
     time_block = relationship("TimeBlock")
+    instructor = relationship("Instructor")
+    room = relationship("Room")

@@ -10,6 +10,7 @@ import { Sparkline } from "../components/analytics/Sparkline";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StyledSelect } from "@/components/ui/styled-select";
 import { Plus, Trash2 } from "lucide-react";
 import { formatTime, parseDaysOfWeek } from "../lib/utils";
 import { useUndoRedo } from "../hooks/useUndoRedo";
@@ -352,6 +353,7 @@ export function CoursesPage() {
                   type="checkbox"
                   checked={courses.length > 0 && selectedIds.size === courses.length}
                   onChange={toggleAll}
+                  aria-label="Select all courses"
                 />
               </th>
               <th className="px-4 py-3 w-8"></th>
@@ -395,7 +397,8 @@ export function CoursesPage() {
               return (
                 <>
                   <tr key={course.id} className="border-b border-border hover:bg-muted/30 cursor-pointer"
-                    onClick={() => setExpandedCourse(expanded ? null : course.id)}>
+                    onClick={() => setExpandedCourse(expanded ? null : course.id)}
+                    aria-expanded={expanded}>
                     <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -427,6 +430,7 @@ export function CoursesPage() {
                             className="cursor-pointer hover:opacity-70"
                             onClick={() => setTrendCourse(course)}
                             title="View enrollment trend"
+                            aria-label={`View enrollment trend for ${course.department_code} ${course.course_number}`}
                           >
                             <Sparkline data={history} />
                           </button>
@@ -463,13 +467,13 @@ export function CoursesPage() {
 
                                 {/* Meeting info or status */}
                                 {sMeetings.length > 0 ? (
-                                  <span className="text-green-700 dark:text-green-400 flex-1 truncate">
+                                  <span className="text-success flex-1 truncate">
                                     {sMeetings.map((m) => meetingSummary(m)).join(" | ")}
                                   </span>
                                 ) : s.modality === "online_async" && s.status !== "unscheduled" ? (
-                                  <span className="text-green-600 dark:text-green-400 flex-1 capitalize">{s.status}</span>
+                                  <span className="text-success flex-1 capitalize">{s.status}</span>
                                 ) : (
-                                  <span className="text-yellow-600 dark:text-yellow-400 flex-1">Unscheduled</span>
+                                  <span className="text-warning flex-1">Unscheduled</span>
                                 )}
 
                                 {/* Action buttons */}
@@ -488,7 +492,7 @@ export function CoursesPage() {
                                   )}
                                   {selectedTerm && s.modality === "online_async" && s.status !== "unscheduled" && (
                                     <Button
-                                      variant="link" size="sm" className="h-auto px-0 text-yellow-600 dark:text-yellow-400"
+                                      variant="link" size="sm" className="h-auto px-0 text-warning"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         updateSectionMutation.mutate({ id: s.id, data: { status: "unscheduled" } });
@@ -545,7 +549,7 @@ export function CoursesPage() {
                                     return (
                                       <button
                                         type="button"
-                                        className="absolute -bottom-4 left-0 text-[9px] text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+                                        className="absolute -bottom-4 left-0 text-[9px] text-info hover:underline whitespace-nowrap"
                                         onClick={() => setSectionForm({ ...sectionForm, enrollment_cap: perSection })}
                                         title={`Based on ${fc.confidence} confidence forecast (p25: ${fc.p25}, p75: ${fc.p75})`}
                                       >
@@ -554,23 +558,25 @@ export function CoursesPage() {
                                     );
                                   })()}
                                 </div>
-                                <select className="border rounded px-2 py-1 text-xs"
+                                <StyledSelect className="border rounded px-2 py-1 text-xs"
                                   value={sectionForm.modality ?? "in_person"}
-                                  onChange={(e) => setSectionForm({ ...sectionForm, modality: e.target.value })}>
+                                  onChange={(e) => setSectionForm({ ...sectionForm, modality: e.target.value })}
+                                  aria-label="Modality">
                                   <option value="in_person">In Person</option>
                                   <option value="online_sync">Online Sync</option>
                                   <option value="online_async">Online Async</option>
                                   <option value="hybrid">Hybrid</option>
-                                </select>
+                                </StyledSelect>
                                 {selectedTerm && termHasSessions(selectedTerm.type) && termSessions.length > 0 && (
-                                  <select className="border rounded px-2 py-1 text-xs"
+                                  <StyledSelect className="border rounded px-2 py-1 text-xs"
                                     value={sectionForm.term_session_id ?? ""}
-                                    onChange={(e) => setSectionForm({ ...sectionForm, term_session_id: e.target.value ? Number(e.target.value) : null })}>
+                                    onChange={(e) => setSectionForm({ ...sectionForm, term_session_id: e.target.value ? Number(e.target.value) : null })}
+                                    aria-label="Session">
                                     <option value="">No Session</option>
                                     {termSessions.map((ts) => (
                                       <option key={ts.id} value={ts.id}>{ts.name}</option>
                                     ))}
-                                  </select>
+                                  </StyledSelect>
                                 )}
                                 {selectedTerm?.type === "summer" && (
                                   <input type="number" placeholder="Weeks" className="border rounded px-2 py-1 text-xs w-16" min="1"
@@ -578,17 +584,18 @@ export function CoursesPage() {
                                     onChange={(e) => setSectionForm({ ...sectionForm, duration_weeks: e.target.value ? parseInt(e.target.value) : undefined })}
                                   />
                                 )}
-                                <select className="border rounded px-2 py-1 text-xs w-40"
+                                <StyledSelect className="border rounded px-2 py-1 text-xs w-40"
                                   value={sectionForm.instructor_id ?? ""}
                                   onChange={(e) => setSectionForm({
                                     ...sectionForm,
                                     instructor_id: Number(e.target.value) || undefined,
-                                  })}>
+                                  })}
+                                  aria-label="Instructor">
                                   <option value="">Instructor (TBD)</option>
                                   {activeInstructors.map((i) => (
                                     <option key={i.id} value={i.id}>{i.name}</option>
                                   ))}
-                                </select>
+                                </StyledSelect>
                               </div>
                               <div className="flex gap-2 items-center">
                                 <input type="number" step="0.5" min="0" placeholder="Lect Hrs" className="border rounded px-2 py-1 text-xs w-20"

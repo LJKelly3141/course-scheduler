@@ -224,7 +224,7 @@ export function DashboardPage() {
 
           {activeWarnings.length > 0 && (
             <div className="mb-4">
-              <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-2">
+              <p className="text-xs font-semibold text-warning mb-2">
                 Warnings ({activeWarnings.length})
               </p>
               {activeWarnings.map((w, i) => (
@@ -256,12 +256,12 @@ export function DashboardPage() {
 
           {(prereqWarnings?.warnings?.length ?? 0) > 0 && (
             <div className="mt-4 pt-3 border-t border-border">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">
+              <p className="text-xs font-semibold text-warning mb-2">
                 Prerequisite Warnings ({prereqWarnings!.warnings.length})
               </p>
               {prereqWarnings!.warnings.map((w, i) => (
                 <div key={i} className="flex items-start gap-2 py-1 text-xs">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
                   <span>{w.message}</span>
                 </div>
               ))}
@@ -349,8 +349,8 @@ function CourseTable({ sections, forecasts }: { sections: Section[]; forecasts: 
     return "";
   };
   const trendColor = (trend?: string) => {
-    if (trend === "growing") return "text-green-600 dark:text-green-400";
-    if (trend === "declining") return "text-red-500 dark:text-red-400";
+    if (trend === "growing") return "text-success";
+    if (trend === "declining") return "text-destructive";
     return "text-muted-foreground";
   };
 
@@ -437,15 +437,17 @@ function ConflictRow({
   onDismiss?: () => void;
   onRestore?: () => void;
 }) {
-  const bg = variant === "hard" ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800" : variant === "warning" ? "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 opacity-60";
-  const textColor = variant === "hard" ? "text-destructive" : variant === "warning" ? "text-yellow-700 dark:text-yellow-400" : "text-slate-500 dark:text-slate-400";
+  const bg = variant === "hard" ? "bg-destructive/10 border-destructive/30" : variant === "warning" ? "bg-warning/10 border-warning/30" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 opacity-60";
+  const textColor = variant === "hard" ? "text-destructive" : variant === "warning" ? "text-warning" : "text-slate-500 dark:text-slate-400";
+  const Icon = variant === "hard" ? AlertCircle : variant === "warning" ? AlertTriangle : null;
 
   return (
     <div className={`mb-2 p-2 rounded border text-xs group relative ${bg}`}>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="absolute top-1 right-1 text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 text-sm leading-none px-1"
+          className="absolute top-1 right-1 text-warning hover:text-warning-foreground text-sm leading-none px-1"
+          aria-label="Dismiss conflict"
           title="Dismiss"
         >
           &times;
@@ -455,12 +457,14 @@ function ConflictRow({
         <button
           onClick={onRestore}
           className="absolute top-1 right-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 text-xs leading-none px-1"
+          aria-label="Restore conflict"
           title="Restore"
         >
           &#x21A9;
         </button>
       )}
-      <p className={`font-medium capitalize pr-4 ${textColor}`}>
+      <p className={`font-medium capitalize pr-4 flex items-center gap-1 ${textColor}`}>
+        {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
         {item.type.replace(/_/g, " ")}
       </p>
       <p className="text-muted-foreground mt-0.5">{item.description}</p>

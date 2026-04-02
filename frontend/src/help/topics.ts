@@ -7,6 +7,7 @@ import {
   DoorOpen,
   Calendar,
   BarChart3,
+  CalendarRange,
   Upload,
   Settings,
   AlertTriangle,
@@ -21,6 +22,7 @@ import courses from "./content/courses.md?raw";
 import instructors from "./content/instructors.md?raw";
 import rooms from "./content/rooms.md?raw";
 import terms from "./content/terms.md?raw";
+import courseRotation from "./content/course-rotation.md?raw";
 import analytics from "./content/analytics.md?raw";
 import importExport from "./content/import-export.md?raw";
 import settings from "./content/settings.md?raw";
@@ -42,6 +44,7 @@ export const helpTopics: HelpTopic[] = [
   { id: "instructors", label: "Instructors", icon: Users, content: instructors },
   { id: "rooms", label: "Rooms", icon: DoorOpen, content: rooms },
   { id: "terms", label: "Terms", icon: Calendar, content: terms },
+  { id: "course-rotation", label: "Course Rotation", icon: CalendarRange, content: courseRotation },
   { id: "analytics", label: "Analytics", icon: BarChart3, content: analytics },
   { id: "import-export", label: "Import & Export", icon: Upload, content: importExport },
   { id: "settings", label: "Settings", icon: Settings, content: settings },
