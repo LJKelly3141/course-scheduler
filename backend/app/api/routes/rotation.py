@@ -61,6 +61,7 @@ class RotationEntryUpdate(BaseModel):
 
 class ApplyRotationRequest(BaseModel):
     term_id: int
+    include_instructor_ids: Optional[List[int]] = None
 
 
 def _parse_time(t: Optional[str]) -> Optional[datetime.time]:
@@ -266,6 +267,93 @@ def batch_set_rotation(
 
 # ── Apply rotation to term ──
 
+@router.get("/apply/instructors/{term_id}")
+def get_rotation_instructors_for_term(term_id: int, db: Session = Depends(get_db)):
+    """
+    Return instructors referenced by rotation entries that would match the
+    given term (by semester + year parity).  Used by the Apply wizard to let
+    the user choose which instructors to include vs. mark as TBD.
+    """
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if not term:
+        raise HTTPException(404, "Term not found")
+
+    sem_map = {"fall": "fall", "spring": "spring", "summer": "summer", "winter": "winter"}
+    term_semester = sem_map.get(term.type, "fall")
+    year = term.start_date.year if hasattr(term.start_date, 'year') else int(str(term.start_date)[:4])
+    is_even = year % 2 == 0
+
+    matching_entries = (
+        db.query(CourseRotation)
+        .filter(CourseRotation.semester == term_semester)
+        .all()
+    )
+
+    applicable = []
+    for entry in matching_entries:
+        if entry.year_parity == YearParity.every_year:
+            applicable.append(entry)
+        elif entry.year_parity == YearParity.even_years and is_even:
+            applicable.append(entry)
+        elif entry.year_parity == YearParity.odd_years and not is_even:
+            applicable.append(entry)
+
+    # Collect unique instructor IDs and count entries per instructor
+    inst_entries: dict[int, int] = {}
+    for entry in applicable:
+        if entry.instructor_id:
+            inst_entries[entry.instructor_id] = inst_entries.get(entry.instructor_id, 0) + 1
+
+    if not inst_entries:
+        return {
+            "term_id": term.id,
+            "term_name": term.name,
+            "groups": [],
+            "untyped_instructors": [],
+        }
+
+    instructors = (
+        db.query(Instructor)
+        .filter(Instructor.id.in_(list(inst_entries.keys())))
+        .all()
+    )
+
+    typed_groups: dict[str, list] = {}
+    untyped: list = []
+    for inst in instructors:
+        itype = (inst.instructor_type or "").lower().strip()
+        name = f"{inst.last_name}, {inst.first_name}" if inst.last_name else inst.name
+        info = {
+            "id": inst.id,
+            "name": name,
+            "section_count": inst_entries.get(inst.id, 0),
+        }
+        if itype and itype in TYPE_LABELS:
+            typed_groups.setdefault(itype, []).append(info)
+        else:
+            untyped.append(info)
+
+    for group_list in typed_groups.values():
+        group_list.sort(key=lambda x: x["name"])
+    untyped.sort(key=lambda x: x["name"])
+
+    groups = []
+    for t in TYPE_ORDER:
+        if t in typed_groups:
+            groups.append({
+                "instructor_type": t,
+                "label": TYPE_LABELS[t],
+                "instructors": typed_groups[t],
+            })
+
+    return {
+        "term_id": term.id,
+        "term_name": term.name,
+        "groups": groups,
+        "untyped_instructors": untyped,
+    }
+
+
 @router.post("/apply")
 def apply_rotation_to_term(
     body: ApplyRotationRequest,
@@ -302,6 +390,16 @@ def apply_rotation_to_term(
             applicable.append(entry)
         elif entry.year_parity == YearParity.odd_years and not is_even:
             applicable.append(entry)
+
+    # Resolve instructor include list
+    included_ids = set(body.include_instructor_ids) if body.include_instructor_ids is not None else None
+
+    def _resolve_apply_instructor(inst_id):
+        if included_ids is None:
+            return inst_id  # no filtering requested
+        if inst_id and inst_id not in included_ids:
+            return None  # not in include list → TBD
+        return inst_id
 
     # Get existing sections in this term, grouped by course+modality
     existing = db.query(Section).filter(Section.term_id == term.id).all()
@@ -353,6 +451,7 @@ def apply_rotation_to_term(
 
         for i in range(needed):
             section_number = str(total_for_course + already_created_for_course + i + 1).zfill(2)
+            resolved_inst = _resolve_apply_instructor(entry.instructor_id)
             section = Section(
                 course_id=entry.course_id,
                 term_id=term.id,
@@ -361,6 +460,7 @@ def apply_rotation_to_term(
                 modality=modality_val,
                 session="regular",
                 status=SectionStatus.scheduled if has_meeting_info else SectionStatus.unscheduled,
+                instructor_id=resolved_inst,
             )
             db.add(section)
             db.flush()  # get section.id for meeting FK
@@ -373,6 +473,8 @@ def apply_rotation_to_term(
                     start_time=meeting_start,
                     end_time=meeting_end,
                     time_block_id=meeting_tb_id,
+                    instructor_id=resolved_inst,
+                    room_id=entry.room_id,
                 )
                 db.add(meeting)
                 meetings_created += 1
@@ -405,8 +507,99 @@ def apply_rotation_to_term(
 
 # ── Extract rotation from existing term ──
 
+TYPE_LABELS = {"faculty": "Faculty", "ias": "IAS", "adjunct": "Adjunct", "nias": "NIAS"}
+TYPE_ORDER = ["faculty", "ias", "nias", "adjunct"]
+
+
+@router.get("/from-term/{term_id}/instructors")
+def get_term_instructors(term_id: int, db: Session = Depends(get_db)):
+    """
+    Return all instructors assigned to sections in the given term,
+    grouped by instructor_type.  Used by the import wizard to let
+    the user choose which instructors to include vs. mark as TBD.
+    """
+    term = db.query(Term).filter(Term.id == term_id).first()
+    if not term:
+        raise HTTPException(404, "Term not found")
+
+    # Collect instructor IDs from sections and meetings
+    sections = (
+        db.query(Section)
+        .filter(Section.term_id == term_id)
+        .all()
+    )
+    section_ids = [s.id for s in sections]
+    meetings = (
+        db.query(Meeting)
+        .filter(Meeting.section_id.in_(section_ids))
+        .all()
+    ) if section_ids else []
+
+    # Map instructor_id -> set of section_ids they're assigned to
+    inst_sections: dict[int, set[int]] = {}
+    for s in sections:
+        if s.instructor_id:
+            inst_sections.setdefault(s.instructor_id, set()).add(s.id)
+    for m in meetings:
+        if m.instructor_id:
+            inst_sections.setdefault(m.instructor_id, set()).add(m.section_id)
+
+    if not inst_sections:
+        return {
+            "term_id": term.id,
+            "term_name": term.name,
+            "groups": [],
+            "untyped_instructors": [],
+        }
+
+    # Fetch instructor records
+    instructors = (
+        db.query(Instructor)
+        .filter(Instructor.id.in_(list(inst_sections.keys())))
+        .all()
+    )
+
+    # Group by instructor_type
+    typed_groups: dict[str, list] = {}
+    untyped: list = []
+    for inst in instructors:
+        itype = (inst.instructor_type or "").lower().strip()
+        name = f"{inst.last_name}, {inst.first_name}" if inst.last_name else inst.name
+        info = {
+            "id": inst.id,
+            "name": name,
+            "section_count": len(inst_sections.get(inst.id, set())),
+        }
+        if itype and itype in TYPE_LABELS:
+            typed_groups.setdefault(itype, []).append(info)
+        else:
+            untyped.append(info)
+
+    # Sort instructors alphabetically within each group
+    for group_list in typed_groups.values():
+        group_list.sort(key=lambda x: x["name"])
+    untyped.sort(key=lambda x: x["name"])
+
+    # Build ordered groups
+    groups = []
+    for t in TYPE_ORDER:
+        if t in typed_groups:
+            groups.append({
+                "instructor_type": t,
+                "label": TYPE_LABELS[t],
+                "instructors": typed_groups[t],
+            })
+
+    return {
+        "term_id": term.id,
+        "term_name": term.name,
+        "groups": groups,
+        "untyped_instructors": untyped,
+    }
+
+
 @router.get("/from-term/{term_id}")
-def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
+def extract_rotation_from_term(term_id: int, include_instructor_ids: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """
     Analyze an existing term's sections/meetings and return proposed rotation
     entries.  Groups sections by (course, modality, time_block) and returns
@@ -415,6 +608,18 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
     term = db.query(Term).filter(Term.id == term_id).first()
     if not term:
         raise HTTPException(404, "Term not found")
+
+    # Parse optional instructor include list
+    included_ids: Optional[set] = None
+    if include_instructor_ids is not None:
+        stripped = include_instructor_ids.strip()
+        if stripped == "":
+            included_ids = set()  # empty = include nobody (all TBD)
+        else:
+            try:
+                included_ids = {int(x.strip()) for x in stripped.split(",") if x.strip()}
+            except ValueError:
+                raise HTTPException(400, "include_instructor_ids must be comma-separated integers")
 
     sem_map = {"fall": "fall", "spring": "spring", "summer": "summer", "winter": "winter"}
     term_semester = sem_map.get(term.type, "fall")
@@ -461,18 +666,24 @@ def extract_rotation_from_term(term_id: int, db: Session = Depends(get_db)):
             instructors_map[inst.id] = inst
 
     def _resolve_instructor(inst_id):
-        """Return (id, name) for faculty; (None, None) for adjunct/unknown."""
+        """Return (id, name) if instructor should be included; else (None, None)."""
         if not inst_id:
             return None, None
         inst = instructors_map.get(inst_id)
         if not inst:
             return None, None
-        is_adjunct = (
-            (inst.instructor_type or "").lower() == "adjunct"
-            or (getattr(inst, "rank", None) or "").lower() == "adjunct_instructor"
-        )
-        if is_adjunct:
-            return None, None
+        if included_ids is not None:
+            # Explicit include list from wizard — only include if in set
+            if inst_id not in included_ids:
+                return None, None
+        else:
+            # Legacy fallback (no param): exclude adjuncts
+            is_adjunct = (
+                (inst.instructor_type or "").lower() == "adjunct"
+                or (getattr(inst, "rank", None) or "").lower() == "adjunct_instructor"
+            )
+            if is_adjunct:
+                return None, None
         return inst.id, inst.name
 
     # Group by (course_id, modality, session, instructor_id, time_block_id, room_id)

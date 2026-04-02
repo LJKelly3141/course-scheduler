@@ -24,6 +24,8 @@ import {
   Download,
 } from "lucide-react";
 import { StyledSelect } from "@/components/ui/styled-select";
+import { ImportFromTermDialog, type TermExtractEntry } from "@/components/rotation/ImportFromTermDialog";
+import { InstructorSelectionStep, type TermInstructorsResult } from "@/components/rotation/InstructorSelectionStep";
 import type {
   Term,
   Course,
@@ -35,7 +37,7 @@ import type {
 } from "@/api/types";
 
 const SEMESTERS = ["fall", "spring", "summer", "winter"] as const;
-const SEMESTER_LABELS: Record<string, string> = {
+export const SEMESTER_LABELS: Record<string, string> = {
   fall: "Fall",
   spring: "Spring",
   summer: "Summer",
@@ -64,7 +66,7 @@ const MODALITY_OPTIONS = [
   { value: "hybrid", label: "Hybrid" },
   { value: "hyflex", label: "HyFlex" },
 ];
-const MODALITY_LABELS: Record<string, string> = {
+export const MODALITY_LABELS: Record<string, string> = {
   in_person: "In Person",
   online: "Online",
   online_sync: "Online Sync",
@@ -89,13 +91,13 @@ const SESSION_OPTIONS = [
 ];
 
 /** Unique key for a cell: courseId:semester */
-type CellKey = `${number}:${string}`;
-function cellKey(courseId: number, semester: string): CellKey {
+export type CellKey = `${number}:${string}`;
+export function cellKey(courseId: number, semester: string): CellKey {
   return `${courseId}:${semester}`;
 }
 
 /** One offering group within a cell */
-interface OfferingGroup {
+export interface OfferingGroup {
   id?: number;
   year_parity: string;
   num_sections: number;
@@ -114,7 +116,7 @@ interface OfferingGroup {
   session: string | null;
 }
 
-type CellData = OfferingGroup[];
+export type CellData = OfferingGroup[];
 
 export function CourseRotationPage() {
   const queryClient = useQueryClient();
@@ -494,8 +496,11 @@ export function CourseRotationPage() {
   // ── Apply to term ──
 
   const applyMutation = useMutation({
-    mutationFn: (termId: number) =>
-      api.post<ApplyRotationResult>("/rotation/apply", { term_id: termId }),
+    mutationFn: (params: { termId: number; includeInstructorIds?: number[] }) =>
+      api.post<ApplyRotationResult>("/rotation/apply", {
+        term_id: params.termId,
+        include_instructor_ids: params.includeInstructorIds ?? null,
+      }),
     onSuccess: (result) => {
       setApplyResult(result);
       queryClient.invalidateQueries({ queryKey: ["sections"] });
@@ -1655,333 +1660,6 @@ function AddCourseDialog({
   );
 }
 
-// ─── Import from Term Dialog ────────────────────────────────────────────────
-
-interface TermExtractEntry {
-  course_id: number;
-  department_code: string;
-  course_number: string;
-  title: string;
-  credits: number;
-  semester: string;
-  year_parity: string;
-  num_sections: number;
-  enrollment_cap: number;
-  modality: string;
-  time_block_id: number | null;
-  time_block_label: string | null;
-  days_of_week: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  notes: string | null;
-  instructor_id: number | null;
-  instructor_name: string | null;
-  room_id: number | null;
-  room_label: string | null;
-  session: string | null;
-}
-
-interface TermExtractResult {
-  term_id: number;
-  term_name: string;
-  semester: string;
-  entries: TermExtractEntry[];
-}
-
-function ImportFromTermDialog({
-  open,
-  onOpenChange,
-  terms,
-  onImport,
-  localGrid,
-  courseMap,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  terms: Term[];
-  onImport: (entries: TermExtractEntry[]) => void;
-  localGrid: Map<CellKey, CellData>;
-  courseMap: Map<number, Course>;
-}) {
-  const [selectedTermId, setSelectedTermId] = useState<string>("");
-  const [preview, setPreview] = useState<TermExtractResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [selectedEntries, setSelectedEntries] = useState<Set<number>>(
-    new Set()
-  );
-  const [duplicateWarning, setDuplicateWarning] = useState<{
-    duplicates: { courseLabel: string; semester: string }[];
-    entriesToImport: TermExtractEntry[];
-  } | null>(null);
-
-  const handleFetch = async () => {
-    if (!selectedTermId) return;
-    setLoading(true);
-    try {
-      const result = await api.get<TermExtractResult>(
-        `/rotation/from-term/${selectedTermId}`
-      );
-      setPreview(result);
-      // Select all by default
-      setSelectedEntries(new Set(result.entries.map((_, i) => i)));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImport = () => {
-    if (!preview) return;
-    const entriesToImport = preview.entries.filter((_, i) =>
-      selectedEntries.has(i)
-    );
-
-    // Check for duplicates against existing grid
-    const duplicates: { courseLabel: string; semester: string }[] = [];
-    const seen = new Set<string>();
-    for (const e of entriesToImport) {
-      const key = cellKey(e.course_id, e.semester);
-      const dedupKey = `${e.course_id}:${e.semester}`;
-      if (localGrid.has(key) && !seen.has(dedupKey)) {
-        seen.add(dedupKey);
-        const course = courseMap.get(e.course_id);
-        duplicates.push({
-          courseLabel: course
-            ? `${course.department_code} ${course.course_number}`
-            : `Course #${e.course_id}`,
-          semester: SEMESTER_LABELS[e.semester] || e.semester,
-        });
-      }
-    }
-
-    if (duplicates.length > 0) {
-      setDuplicateWarning({ duplicates, entriesToImport });
-      return;
-    }
-
-    onImport(entriesToImport);
-    handleClose();
-  };
-
-  const confirmImportWithDuplicates = () => {
-    if (!duplicateWarning) return;
-    onImport(duplicateWarning.entriesToImport);
-    setDuplicateWarning(null);
-    handleClose();
-  };
-
-  const handleClose = () => {
-    onOpenChange(false);
-    setSelectedTermId("");
-    setPreview(null);
-    setSelectedEntries(new Set());
-    setDuplicateWarning(null);
-  };
-
-  const toggleEntry = (index: number) => {
-    setSelectedEntries((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (!preview) return;
-    if (selectedEntries.size === preview.entries.length) {
-      setSelectedEntries(new Set());
-    } else {
-      setSelectedEntries(new Set(preview.entries.map((_, i) => i)));
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Import from Term Schedule</DialogTitle>
-          <DialogDescription>
-            Extract section patterns from an existing term and add them to the
-            rotation plan. Sections are grouped by course, modality, and time
-            block.
-          </DialogDescription>
-        </DialogHeader>
-
-        {preview ? (
-          <div className="space-y-3">
-            <div className="bg-muted/50 rounded-lg px-3 py-2 text-sm">
-              <strong>{preview.term_name}</strong> — {preview.entries.length}{" "}
-              offering group{preview.entries.length !== 1 ? "s" : ""} found,
-              mapped to <strong>{SEMESTER_LABELS[preview.semester]}</strong>{" "}
-              semester
-            </div>
-
-            {preview.entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No sections found in this term.
-              </p>
-            ) : (
-              <div className="max-h-72 overflow-y-auto border border-border rounded-md">
-                <table className="text-sm w-full">
-                  <thead className="bg-muted/30 sticky top-0">
-                    <tr className="border-b">
-                      <th className="py-1.5 px-2 text-left w-8">
-                        <input
-                          type="checkbox"
-                          checked={
-                            selectedEntries.size === preview.entries.length
-                          }
-                          onChange={toggleAll}
-                          className="rounded"
-                          aria-label="Select all entries"
-                        />
-                      </th>
-                      <th className="py-1.5 px-2 text-left">Course</th>
-                      <th className="py-1.5 px-2 text-left">Sec</th>
-                      <th className="py-1.5 px-2 text-left">Modality</th>
-                      <th className="py-1.5 px-2 text-left">Time</th>
-                      <th className="py-1.5 px-2 text-left">Instructor</th>
-                      <th className="py-1.5 px-2 text-left">Room</th>
-                      <th className="py-1.5 px-2 text-left">Cap</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.entries.map((entry, i) => (
-                      <tr
-                        key={i}
-                        className={`border-b border-border/30 cursor-pointer hover:bg-muted/30 ${
-                          selectedEntries.has(i) ? "" : "opacity-40"
-                        }`}
-                        onClick={() => toggleEntry(i)}
-                      >
-                        <td className="py-1.5 px-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedEntries.has(i)}
-                            onChange={() => toggleEntry(i)}
-                            className="rounded"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 font-medium">
-                          {entry.department_code} {entry.course_number}
-                        </td>
-                        <td className="py-1.5 px-2">{entry.num_sections}</td>
-                        <td className="py-1.5 px-2">
-                          {MODALITY_LABELS[entry.modality] || entry.modality}
-                        </td>
-                        <td className="py-1.5 px-2 text-muted-foreground">
-                          {entry.time_block_label || "—"}
-                        </td>
-                        <td className="py-1.5 px-2 text-muted-foreground">
-                          {entry.instructor_name || <span className="italic">TBD</span>}
-                        </td>
-                        <td className="py-1.5 px-2 text-muted-foreground">
-                          {entry.room_label || "—"}
-                        </td>
-                        <td className="py-1.5 px-2">{entry.enrollment_cap}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setPreview(null)}>
-                Back
-              </Button>
-              <Button
-                onClick={handleImport}
-                disabled={selectedEntries.size === 0}
-              >
-                <Download className="size-4 mr-1" />
-                Import {selectedEntries.size} Offering
-                {selectedEntries.size !== 1 ? "s" : ""}
-              </Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label htmlFor="import-term-select" className="text-sm font-medium">Select Term</label>
-              <StyledSelect
-                id="import-term-select"
-                className="w-full h-9 text-sm"
-                value={selectedTermId}
-                onChange={(e) => setSelectedTermId(e.target.value)}
-              >
-                <option value="">Choose a term...</option>
-                {terms.map((t) => (
-                  <option key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </option>
-                ))}
-              </StyledSelect>
-              {terms.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No terms available.
-                </p>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleFetch}
-                disabled={!selectedTermId || loading}
-              >
-                {loading ? "Loading..." : "Preview"}
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-
-      {/* Duplicate confirmation dialog */}
-      <Dialog
-        open={duplicateWarning !== null}
-        onOpenChange={(open) => {
-          if (!open) setDuplicateWarning(null);
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Duplicate Entries</DialogTitle>
-            <DialogDescription>
-              The following courses already have offerings in the rotation plan
-              for the same semester. Importing will add additional entries
-              alongside the existing ones.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-48 overflow-y-auto border border-border rounded-md">
-            <ul className="text-sm divide-y divide-border/30">
-              {duplicateWarning?.duplicates.map((d, i) => (
-                <li key={i} className="px-3 py-1.5">
-                  <span className="font-medium">{d.courseLabel}</span>
-                  <span className="text-muted-foreground"> — {d.semester}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDuplicateWarning(null)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={confirmImportWithDuplicates}>
-              Import Anyway
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Dialog>
-  );
-}
-
 // ─── Apply to Term Dialog ────────────────────────────────────────────────────
 
 function ApplyToTermDialog({
@@ -1997,45 +1675,207 @@ function ApplyToTermDialog({
   onOpenChange: (open: boolean) => void;
   terms: Term[];
   applyMutation: ReturnType<
-    typeof useMutation<ApplyRotationResult, Error, number>
+    typeof useMutation<
+      ApplyRotationResult,
+      Error,
+      { termId: number; includeInstructorIds?: number[] }
+    >
   >;
   result: ApplyRotationResult | null;
   onClearResult: () => void;
   hasUnsavedChanges: boolean;
 }) {
   const [selectedTermId, setSelectedTermId] = useState<string>("");
+  const [step, setStep] = useState<"select" | "instructors" | "result">(
+    result ? "result" : "select"
+  );
+  const [instructorData, setInstructorData] =
+    useState<TermInstructorsResult | null>(null);
+  const [includedInstructorIds, setIncludedInstructorIds] = useState<
+    Set<number>
+  >(new Set());
+  const [loading, setLoading] = useState(false);
+
+  // When result arrives from mutation, show result step
+  const prevResult = useRef(result);
+  if (result && result !== prevResult.current) {
+    prevResult.current = result;
+    if (step !== "result") {
+      setStep("result");
+    }
+  }
+
+  const goToInstructors = async () => {
+    if (!selectedTermId) return;
+    setLoading(true);
+    try {
+      const data = await api.get<TermInstructorsResult>(
+        `/rotation/apply/instructors/${selectedTermId}`
+      );
+      setInstructorData(data);
+      setIncludedInstructorIds(new Set()); // default: all TBD
+      setStep("instructors");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleApply = () => {
     if (!selectedTermId) return;
-    applyMutation.mutate(parseInt(selectedTermId));
+    applyMutation.mutate({
+      termId: parseInt(selectedTermId),
+      includeInstructorIds: Array.from(includedInstructorIds),
+    });
+  };
+
+  const toggleInstructor = (id: number) => {
+    setIncludedInstructorIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleGroup = (ids: number[], include: boolean) => {
+    setIncludedInstructorIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (include) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
   };
 
   const handleClose = () => {
     onOpenChange(false);
     onClearResult();
     setSelectedTermId("");
+    setStep("select");
+    setInstructorData(null);
+    setIncludedInstructorIds(new Set());
+    prevResult.current = null;
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Apply Rotation to Term</DialogTitle>
+          <DialogTitle>
+            {step === "select" && "Apply Rotation to Term"}
+            {step === "instructors" && "Select Instructors to Include"}
+            {step === "result" && "Apply Rotation to Term"}
+          </DialogTitle>
           <DialogDescription>
-            Create sections in a term based on the saved rotation plan. Only
-            matching semester and year parity entries will be applied. Existing
-            sections are preserved.
+            {step === "select" &&
+              "Create sections in a term based on the saved rotation plan. Only matching semester and year parity entries will be applied."}
+            {step === "instructors" &&
+              "Choose which instructors to include by name. Unchecked instructors will appear as TBD in the new sections."}
+            {step === "result" && "Results of applying the rotation plan."}
           </DialogDescription>
         </DialogHeader>
 
-        {hasUnsavedChanges && (
+        {hasUnsavedChanges && step !== "result" && (
           <div className="bg-warning border border-warning rounded-lg px-3 py-2 text-sm text-warning-foreground">
             You have unsaved changes. Save the plan first to apply the latest
             version.
           </div>
         )}
 
-        {result ? (
+        {/* Step 1: Select term */}
+        {step === "select" && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="apply-term-select"
+                className="text-sm font-medium"
+              >
+                Select Term
+              </label>
+              <StyledSelect
+                id="apply-term-select"
+                className="w-full h-9 text-sm"
+                value={selectedTermId}
+                onChange={(e) => setSelectedTermId(e.target.value)}
+              >
+                <option value="">Choose a term...</option>
+                {terms.map((t) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </option>
+                ))}
+              </StyledSelect>
+              {terms.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No draft terms available. Create a term first.
+                </p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button
+                onClick={goToInstructors}
+                disabled={!selectedTermId || loading}
+              >
+                {loading ? "Loading..." : "Next"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* Step 2: Select instructors */}
+        {step === "instructors" && instructorData && (
+          <div className="space-y-3">
+            <div className="bg-muted/50 rounded-lg px-3 py-2 text-sm">
+              <strong>{instructorData.term_name}</strong> &mdash;{" "}
+              {instructorData.groups.reduce(
+                (sum, g) => sum + g.instructors.length,
+                0
+              ) + instructorData.untyped_instructors.length}{" "}
+              instructor
+              {instructorData.groups.reduce(
+                (sum, g) => sum + g.instructors.length,
+                0
+              ) +
+                instructorData.untyped_instructors.length !==
+                1 && "s"}{" "}
+              in rotation plan.{" "}
+              <span className="text-muted-foreground">
+                Check instructors to include by name; unchecked will be TBD.
+              </span>
+            </div>
+
+            <InstructorSelectionStep
+              data={instructorData}
+              includedIds={includedInstructorIds}
+              onToggleInstructor={toggleInstructor}
+              onToggleGroup={toggleGroup}
+              emptyMessage="No instructors assigned in the rotation plan for this term."
+            />
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setStep("select")}
+              >
+                Back
+              </Button>
+              <Button
+                onClick={handleApply}
+                disabled={applyMutation.isPending}
+              >
+                {applyMutation.isPending ? "Applying..." : "Apply"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* Step 3: Results */}
+        {step === "result" && result && (
           <div className="space-y-3">
             <div className="bg-success border border-success rounded-lg p-3">
               <p className="text-sm font-medium text-success-foreground">
@@ -2069,7 +1909,7 @@ function ApplyToTermDialog({
                         <td className="py-1 px-2">{d.enrollment_cap}</td>
                         <td className="py-1 px-2">{d.modality}</td>
                         <td className="py-1 px-2 text-muted-foreground">
-                          {d.time || "—"}
+                          {d.time || "\u2014"}
                         </td>
                       </tr>
                     ))}
@@ -2084,42 +1924,6 @@ function ApplyToTermDialog({
             )}
             <DialogFooter>
               <Button onClick={handleClose}>Done</Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label htmlFor="apply-term-select" className="text-sm font-medium">Select Term</label>
-              <StyledSelect
-                id="apply-term-select"
-                className="w-full h-9 text-sm"
-                value={selectedTermId}
-                onChange={(e) => setSelectedTermId(e.target.value)}
-              >
-                <option value="">Choose a term...</option>
-                {terms.map((t) => (
-                  <option key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </option>
-                ))}
-              </StyledSelect>
-              {terms.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No draft terms available. Create a term first.
-                </p>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleApply}
-                disabled={!selectedTermId || applyMutation.isPending}
-              >
-                {applyMutation.isPending ? "Applying..." : "Apply"}
-              </Button>
             </DialogFooter>
           </div>
         )}
