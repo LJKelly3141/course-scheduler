@@ -363,6 +363,37 @@ export function SchedulePage() {
                 >
                   Push to GitHub Pages
                 </button>
+                <div className="border-t border-border my-1" />
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    const base = window.location.protocol === "file:" ? "http://127.0.0.1:8000/api" : "/api";
+                    window.open(`${base}/terms/${selectedTerm.id}/export/print?view=room`, "_blank");
+                  }}
+                >
+                  Print — By Room
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    const base = window.location.protocol === "file:" ? "http://127.0.0.1:8000/api" : "/api";
+                    window.open(`${base}/terms/${selectedTerm.id}/export/print?view=instructor`, "_blank");
+                  }}
+                >
+                  Print — By Instructor
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    const base = window.location.protocol === "file:" ? "http://127.0.0.1:8000/api" : "/api";
+                    window.open(`${base}/terms/${selectedTerm.id}/export/print?view=master`, "_blank");
+                  }}
+                >
+                  Print — Master Grid
+                </button>
               </div>
             )}
           </div>
