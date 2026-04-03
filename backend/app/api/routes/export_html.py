@@ -97,25 +97,42 @@ def download_instructor_ics(
 
 
 @router.get("/terms/{term_id}/export/ics")
-def download_bulk_ics(
+def download_bulk_ics_zip(
     term_id: int,
     instructor_ids: str = Query(..., description="Comma-separated instructor IDs"),
     db: Session = Depends(get_db),
 ):
-    """Download a single ICS file with events for multiple instructors."""
+    """Download a ZIP containing individual .ics files per instructor."""
+    import io
+    import zipfile
+
     try:
         ids = [int(x.strip()) for x in instructor_ids.split(",") if x.strip()]
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid instructor IDs")
     if not ids:
         raise HTTPException(status_code=400, detail="No instructor IDs provided")
-    try:
-        ics_bytes = generate_ics_for_instructors(db, term_id, ids)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+
+    instructors = db.query(Instructor).filter(Instructor.id.in_(ids)).all()
+    inst_map = {i.id: i for i in instructors}
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for inst_id in ids:
+            inst = inst_map.get(inst_id)
+            if not inst:
+                continue
+            try:
+                ics_bytes = generate_ics_for_instructor(db, term_id, inst_id)
+            except ValueError:
+                continue
+            last = inst.last_name or "Instructor"
+            first = inst.first_name or ""
+            filename = f"{last}-{first}-schedule.ics".replace(" ", "-")
+            zf.writestr(filename, ics_bytes)
 
     return Response(
-        content=ics_bytes,
-        media_type="text/calendar",
-        headers={"Content-Disposition": 'attachment; filename="schedules.ics"'},
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="instructor-calendars.zip"'},
     )
