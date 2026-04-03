@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalendarDays } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Instructor } from "../../api/types";
@@ -94,6 +95,53 @@ export function InstructorScheduleDialog({
     window.open(`mailto:${emails.join(",")}?subject=${subject}&body=${body}`);
   }
 
+  const [downloadFeedback, setDownloadFeedback] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
+  async function downloadIcs(instructorId: number, name: string) {
+    setDownloadingId(instructorId);
+    try {
+      const res = await api.getRaw(`/terms/${termId}/export/ics/${instructorId}`);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name.replace(/\s+/g, "-")}-schedule.ics`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setDownloadFeedback(`Downloaded ${name}'s calendar`);
+    } catch (e: unknown) {
+      setDownloadFeedback(`Download failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+    } finally {
+      setDownloadingId(null);
+      setTimeout(() => setDownloadFeedback(null), 3000);
+    }
+  }
+
+  async function downloadAllIcs() {
+    if (idsToFetch.length === 0) return;
+    setDownloadingAll(true);
+    try {
+      const res = await api.getRaw(`/terms/${termId}/export/ics?instructor_ids=${idsToFetch.join(",")}`);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "schedules.ics";
+      a.click();
+      URL.revokeObjectURL(url);
+      setDownloadFeedback(`Downloaded ${idsToFetch.length} calendar(s)`);
+    } catch (e: unknown) {
+      setDownloadFeedback(`Download failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+    } finally {
+      setDownloadingAll(false);
+      setTimeout(() => setDownloadFeedback(null), 3000);
+    }
+  }
+
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-[800px] max-h-[85vh] flex flex-col p-0 gap-0">
@@ -183,6 +231,18 @@ export function InstructorScheduleDialog({
                           </svg>
                         </button>
                       )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const s = schedules.find((s) => s.instructor_id === inst.id);
+                          if (s) downloadIcs(inst.id, s.instructor_name);
+                        }}
+                        className="p-1 rounded hover:bg-accent-foreground/10"
+                        title="Download calendar (.ics)"
+                        disabled={downloadingId === inst.id}
+                      >
+                        <CalendarDays className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -223,6 +283,11 @@ export function InstructorScheduleDialog({
                 {copyFeedback}
               </span>
             )}
+            {downloadFeedback && (
+              <span className="text-sm text-emerald-600 font-medium">
+                {downloadFeedback}
+              </span>
+            )}
             <p className="text-xs text-muted-foreground">
               Note: Very long schedules may be truncated in email clients.
             </p>
@@ -230,6 +295,13 @@ export function InstructorScheduleDialog({
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={copyAll} disabled={schedules.length === 0}>
               Copy All Selected
+            </Button>
+            <Button
+              variant="outline"
+              onClick={downloadAllIcs}
+              disabled={schedules.length === 0 || downloadingAll}
+            >
+              {downloadingAll ? "Downloading..." : "Download All Calendars"}
             </Button>
             <Button onClick={emailAll} disabled={schedules.length === 0}>
               Email All Selected
