@@ -57,7 +57,7 @@ Click any conflict to see details. Click **dismiss** on soft warnings you've rev
 
 ## Export Options
 
-The **Export** dropdown in the header provides four options:
+The **Export** dropdown in the header provides:
 
 | Option | What It Does |
 |--------|-------------|
@@ -65,6 +65,9 @@ The **Export** dropdown in the header provides four options:
 | Download HTML | Downloads a printable HTML page |
 | Save to Local Directory | Saves HTML to the directory configured in Settings |
 | Push to GitHub Pages | Publishes HTML to your GitHub Pages site with a shareable link |
+| Print — By Room | Opens a printable schedule grouped by room in a new tab |
+| Print — By Instructor | Opens a printable schedule grouped by instructor in a new tab |
+| Print — Master Grid | Opens a printable master grid (rooms as rows, times as columns) in a new tab |
 
 ## Online / Async Sections
 
@@ -80,4 +83,27 @@ Click the **+ Add Meeting** button to open the Meeting Dialog. Select a section,
 
 > **Tip:** Use the **Compare Schedule** button to see a side-by-side diff between this term and a previous term.
 
-> **Tip:** The **Email Schedules** button generates per-instructor schedule summaries you can send via email.
+## Email Schedules & Calendar Export
+
+The **Email Schedules** button opens a dialog for sending instructor schedules and downloading calendar files.
+
+1. Select instructors from the list on the left (use **Select All** or check individually)
+2. Click an instructor name to preview their schedule in the right panel
+3. Per-instructor actions appear next to each selected instructor:
+   - **Copy** — Copy the schedule text to clipboard
+   - **Email** — Open an email draft with the schedule in the body and download the instructor's .ics calendar file
+   - **Calendar** — Download the instructor's .ics calendar file only
+4. Bulk actions at the bottom:
+   - **Copy All Selected** — Copy all selected schedules to clipboard
+   - **Download All Selected Calendars** — Download a ZIP file containing individual .ics files for each selected instructor
+   - **Email All Selected** — Open an email to all selected instructors and download the ZIP of calendar files
+
+### ICS Calendar Files
+
+The .ics files are compatible with Microsoft Outlook, Apple Calendar, and Google Calendar. Each file contains recurring weekly events for the instructor's classes with:
+- Course name and section number
+- Room and building location
+- Meeting days and times
+- Recurrence through the end of the term
+
+> **Tip:** When you click Email, the .ics file downloads automatically alongside the email draft. Attach the downloaded .ics file to the email before sending.

@@ -71,9 +71,10 @@ If you try to navigate away with unsaved changes, the browser will prompt you to
 
 Click **Apply to Term** to auto-generate sections in a draft term based on the saved rotation plan.
 
-1. Select a draft term from the dropdown (finalized terms are not listed)
-2. Click **Apply**
-3. The system matches rotation entries to the term's semester type and the year's parity, then creates sections accordingly
+1. Select a draft term from the dropdown (finalized terms are not listed) and click **Next**
+2. **Select Instructors** — Choose which instructors to include by name. Instructors are grouped by type (Faculty, IAS, NIAS, Adjunct). All default to TBD. Use the group-level "Include All" button or check individual instructors.
+3. Click **Apply**
+4. The system matches rotation entries to the term's semester type and the year's parity, then creates sections with instructor and room assignments based on your selections
 
 The results dialog shows:
 - How many rotation entries matched the term
@@ -85,17 +86,17 @@ Existing sections in the term are preserved — Apply does not duplicate or over
 
 > **Tip:** If you have unsaved changes, a warning appears in the Apply dialog reminding you to save first so the latest plan is used.
 
+> **Tip:** Instructors not checked in the selection step will appear as TBD in the created sections. You can assign them later on the Schedule Grid.
+
 ## Import from Term
 
-Click **Import from Term** to pull section patterns from an existing term schedule into the rotation plan.
+Click **Import from Term** to pull section patterns from an existing term schedule into the rotation plan. This is a 3-step wizard:
 
-1. Select any term from the dropdown
-2. Click **Preview** to see the extracted offering groups
-3. Review the table — sections are grouped by course, modality, and time block
-4. Use checkboxes to select or deselect individual entries (all are selected by default)
-5. Click **Import** to add the selected offerings to the plan
+1. **Select Term** — Choose any term from the dropdown and click **Next**
+2. **Select Instructors** — Choose which instructors to include by name. Instructors from the term are grouped by type (Faculty, IAS, NIAS, Adjunct). All default to TBD. Use group-level toggles or check individual instructors, then click **Next**.
+3. **Preview** — Review the extracted offering groups. Sections are grouped by course, modality, and time block. Instructors you selected in step 2 appear by name; others show as TBD. Use checkboxes to select or deselect entries, then click **Import**.
 
-The imported entries are mapped to the appropriate semester column (Fall, Spring, Summer, or Winter) based on the source term's type. Imported course cards are automatically expanded.
+The imported entries are mapped to the appropriate semester column (Fall, Spring, Summer, or Winter) based on the source term's type. Imported course cards are automatically expanded. Use the **Back** button to return to previous steps without losing your selections.
 
 > **Tip:** Import from Term is useful when you want to base your rotation plan on an existing schedule rather than building it from scratch.
 

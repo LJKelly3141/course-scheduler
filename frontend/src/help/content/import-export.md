@@ -101,6 +101,19 @@ On the **Schedule Grid** page, the Export dropdown provides:
 | **Download HTML** | Downloads a printable HTML page with your department name in the header |
 | **Save to Local Directory** | Saves the HTML file to the export directory configured in Settings |
 | **Push to GitHub Pages** | Publishes the HTML to your GitHub Pages site and provides a shareable URL |
+| **Print — By Room** | Opens a printable schedule grouped by room in a new browser tab |
+| **Print — By Instructor** | Opens a printable schedule grouped by instructor in a new browser tab |
+| **Print — Master Grid** | Opens a master grid view (rooms as rows, time blocks as columns) in a new tab |
+
+## Calendar Export (ICS)
+
+The **Email Schedules** button on the Schedule Grid page provides calendar export alongside the email feature:
+
+- **Per-instructor download** — Click the calendar icon next to any selected instructor to download their .ics file
+- **Bulk download** — Click **Download All Selected Calendars** to get a ZIP file containing individual .ics files for each selected instructor
+- **Email + calendar** — The Email button automatically downloads the .ics file alongside opening the email draft
+
+ICS files contain recurring weekly events compatible with Microsoft Outlook, Apple Calendar, and Google Calendar. Events include course name, section, room/building location, and meeting times with weekly recurrence through the term end date.
 
 ## Tips
 
