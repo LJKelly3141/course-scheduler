@@ -126,18 +126,27 @@ export function InstructorScheduleDialog({
     if (schedules.length === 0) return;
     setDownloadingAll(true);
     try {
+      // Fetch all blobs first, then trigger downloads with delay to avoid browser throttling
+      const blobs: { name: string; blob: Blob }[] = [];
       for (const s of schedules) {
         const res = await api.getRaw(`/terms/${termId}/export/ics/${s.instructor_id}`);
         if (!res.ok) continue;
-        const blob = await res.blob();
+        blobs.push({
+          name: `${s.instructor_name.replace(/\s+/g, "-")}-schedule.ics`,
+          blob: await res.blob(),
+        });
+      }
+      for (let i = 0; i < blobs.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 500));
+        const { name, blob } = blobs[i];
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${s.instructor_name.replace(/\s+/g, "-")}-schedule.ics`;
+        a.download = name;
         a.click();
         URL.revokeObjectURL(url);
       }
-      setDownloadFeedback(`Downloaded ${schedules.length} calendar(s)`);
+      setDownloadFeedback(`Downloaded ${blobs.length} calendar(s)`);
     } catch (e: unknown) {
       setDownloadFeedback(`Download failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
