@@ -108,6 +108,7 @@ a = Analysis(
         'app.services.schedule_compare',
         'app.services.workload',
         'app.services.workload_export',
+        'app.services.ics_export',
         'app.seed',
     ],
     hookspath=[],
