@@ -84,6 +84,7 @@ export function InstructorScheduleDialog({
     const subject = encodeURIComponent(`Your Teaching Schedule`);
     const body = encodeURIComponent(schedule.schedule_text);
     window.open(`mailto:${schedule.instructor_email}?subject=${subject}&body=${body}`);
+    downloadIcs(schedule.instructor_id, schedule.instructor_name);
   }
 
   function emailAll() {
@@ -93,6 +94,7 @@ export function InstructorScheduleDialog({
       schedules.map((s) => s.schedule_text).join("\n---\n\n")
     );
     window.open(`mailto:${emails.join(",")}?subject=${subject}&body=${body}`);
+    downloadAllIcs();
   }
 
   const [downloadFeedback, setDownloadFeedback] = useState<string | null>(null);
@@ -121,19 +123,21 @@ export function InstructorScheduleDialog({
   }
 
   async function downloadAllIcs() {
-    if (idsToFetch.length === 0) return;
+    if (schedules.length === 0) return;
     setDownloadingAll(true);
     try {
-      const res = await api.getRaw(`/terms/${termId}/export/ics?instructor_ids=${idsToFetch.join(",")}`);
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "schedules.ics";
-      a.click();
-      URL.revokeObjectURL(url);
-      setDownloadFeedback(`Downloaded ${idsToFetch.length} calendar(s)`);
+      for (const s of schedules) {
+        const res = await api.getRaw(`/terms/${termId}/export/ics/${s.instructor_id}`);
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${s.instructor_name.replace(/\s+/g, "-")}-schedule.ics`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      setDownloadFeedback(`Downloaded ${schedules.length} calendar(s)`);
     } catch (e: unknown) {
       setDownloadFeedback(`Download failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
@@ -301,7 +305,7 @@ export function InstructorScheduleDialog({
               onClick={downloadAllIcs}
               disabled={schedules.length === 0 || downloadingAll}
             >
-              {downloadingAll ? "Downloading..." : "Download All Calendars"}
+              {downloadingAll ? "Downloading..." : "Download All Selected Calendars"}
             </Button>
             <Button onClick={emailAll} disabled={schedules.length === 0}>
               Email All Selected
