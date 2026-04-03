@@ -50,6 +50,8 @@ a = Analysis(
         'jinja2',
         'openpyxl',
         'requests',
+        'icalendar',
+        'pytz',
         'app',
         'app.main',
         'app.database',
