@@ -1,6 +1,6 @@
 {
   "name": "chairsdesk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "The Chair's Desk - Desktop Application",
   "main": "electron/main.cjs",
   "private": true,
