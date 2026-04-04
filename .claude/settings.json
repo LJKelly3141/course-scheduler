@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/logankelly/Sync/UWRF/course-scheduler/docs/superpowers",
+      "/Users/logankelly/Sync/UWRF/course-scheduler/.claude/skills"
+    ],
+    "allow": [
+      "Edit(/.claude/skills/release/**)"
+    ]
+  }
+}

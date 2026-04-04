@@ -1,0 +1,55 @@
+name: Build & Release (Windows)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv backend\venv
+          backend\venv\Scripts\pip install -e "backend[dev]"
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          cd frontend && npm ci
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Build backend
+        run: npm run build:backend:win
+
+      - name: Build Electron (Windows)
+        run: npx electron-builder --win --publish never
+
+      - name: Create portable ZIP
+        run: Compress-Archive -Path "dist-electron/win-unpacked/*" -DestinationPath "dist-electron/TheChairsDesk-windows-portable.zip"
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist-electron/*.exe
+            dist-electron/TheChairsDesk-windows-portable.zip

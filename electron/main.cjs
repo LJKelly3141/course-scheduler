@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 const http = require("http");
 
 let backendProcess = null;
@@ -25,6 +26,32 @@ function getBackendPath() {
 function getDatabasePath() {
   const userDataPath = app.getPath("userData");
   return path.join(userDataPath, "scheduler.db");
+}
+
+function migrateDatabase() {
+  const newDbPath = getDatabasePath();
+  if (fs.existsSync(newDbPath)) return; // already migrated or fresh install
+
+  // Determine old path based on platform
+  let oldDbPath;
+  if (process.platform === "darwin") {
+    oldDbPath = path.join(app.getPath("home"), "Library", "Application Support", "course-scheduler", "scheduler.db");
+  } else if (process.platform === "win32") {
+    oldDbPath = path.join(app.getPath("appData"), "course-scheduler", "scheduler.db");
+  } else {
+    oldDbPath = path.join(app.getPath("home"), ".config", "course-scheduler", "scheduler.db");
+  }
+
+  if (!fs.existsSync(oldDbPath)) return; // no old database to migrate
+
+  // Ensure the new directory exists
+  const newDir = path.dirname(newDbPath);
+  if (!fs.existsSync(newDir)) {
+    fs.mkdirSync(newDir, { recursive: true });
+  }
+
+  console.log(`[electron] Migrating database from ${oldDbPath} to ${newDbPath}`);
+  fs.copyFileSync(oldDbPath, newDbPath);
 }
 
 function startBackend() {
@@ -101,7 +128,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: "Course Scheduler",
+    title: "The Chair's Desk",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -211,6 +238,7 @@ function setupMenu() {
 
 app.whenReady().then(async () => {
   isDev = !app.isPackaged;
+  migrateDatabase();
   startBackend();
 
   try {

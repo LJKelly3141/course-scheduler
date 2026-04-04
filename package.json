@@ -1,19 +1,20 @@
 {
-  "name": "course-scheduler",
+  "name": "chairsdesk",
   "version": "1.0.0",
-  "description": "Course Scheduler - Desktop Application",
+  "description": "The Chair's Desk - Desktop Application",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
     "electron:dev": "electron electron/main.cjs",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && ./venv/bin/pyinstaller course_scheduler.spec --noconfirm",
+    "build:backend:win": "cd backend && venv\\Scripts\\pyinstaller course_scheduler.spec --noconfirm",
     "build:app": "npm run build:frontend && npm run build:backend && electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "appId": "app.coursescheduler",
-    "productName": "Course Scheduler",
+    "appId": "app.chairsdesk",
+    "productName": "The Chair's Desk",
     "directories": {
       "output": "dist-electron"
     },
@@ -34,8 +35,20 @@
       "target": "dmg",
       "category": "public.app-category.education"
     },
+    "win": {
+      "target": ["nsis", "dir"],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
     "dmg": {
-      "title": "Course Scheduler",
+      "title": "The Chair's Desk",
       "contents": [
         { "x": 130, "y": 220 },
         { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
