@@ -106,6 +106,7 @@ export interface Section {
   lecture_hours: number | null;
   special_course_fee: number | null;
   notes: string | null;
+  instruction_type: string | null;
   course?: Course;
   instructor?: Instructor;
   term_session?: TermSession;

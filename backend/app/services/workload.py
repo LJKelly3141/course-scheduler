@@ -114,6 +114,7 @@ def compute_instructor_workload(db: Session, term_id: int) -> dict:
             "enrollment_cap": section.enrollment_cap,
             "sch": sch,
             "modality": section.modality.value if hasattr(section.modality, 'value') else str(section.modality),
+            "instruction_type": section.instruction_type.value if section.instruction_type else "LEC",
             "schedule_info": schedule_info,
             "status": section.status.value if hasattr(section.status, 'value') else str(section.status),
             "counts_toward_load": course.counts_toward_load,

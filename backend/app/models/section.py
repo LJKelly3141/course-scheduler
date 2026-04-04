@@ -22,6 +22,12 @@ class Session(str, enum.Enum):
     session_d = "session_d"
 
 
+class InstructionType(str, enum.Enum):
+    LEC = "LEC"
+    LAB = "LAB"
+    FLD = "FLD"
+
+
 class SectionStatus(str, enum.Enum):
     unscheduled = "unscheduled"
     scheduled = "scheduled"
@@ -53,6 +59,9 @@ class Section(Base):
     equivalent_credits: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     lecture_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     special_course_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    instruction_type: Mapped[Optional[InstructionType]] = mapped_column(
+        Enum(InstructionType), nullable=True
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     course = relationship("Course", back_populates="sections")
