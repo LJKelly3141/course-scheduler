@@ -1,10 +1,12 @@
 # Instructors
 
+This reference covers the faculty roster, availability grid, instructor detail pages, and load reports. For a hands-on walkthrough of managing instructor workloads, see [Tracking Instructor Workloads](?page=tutorial-workload).
+
 The Instructors page manages your faculty roster, including contact information, teaching constraints, availability, and workload tracking.
 
 ## Getting There
 
-Click **Instructors** in the sidebar. Click any instructor's **name** to open their detail page.
+Navigate to **Instructors** in the app sidebar. Select any instructor's **name** to open their detail page.
 
 ## Key Concepts
 
@@ -17,7 +19,7 @@ Click **Instructors** in the sidebar. Click any instructor's **name** to open th
 
 ### Add an Instructor
 
-Click **+ Add Instructor** at the top. Fill in:
+Select **+ Add Instructor** at the top. Fill in:
 - **Name** — Full name
 - **Email** — Email address
 - **Department** — Department code
@@ -26,7 +28,7 @@ Click **+ Add Instructor** at the top. Fill in:
 
 ### Edit an Instructor
 
-The actions column provides **Detail**, **Availability**, and **Delete** links for each instructor. Click **Detail** or the instructor's **name** to open the full detail page.
+The actions column provides **Detail**, **Availability**, and **Delete** links for each instructor. Select **Detail** or the instructor's **name** to open the full detail page.
 
 ### Active / Inactive
 
@@ -38,7 +40,7 @@ Use the checkboxes to select multiple instructors, then click **Delete Selected*
 
 ### Sorting
 
-Click any column header to sort the roster by that column.
+Select any column header to sort the roster by that column.
 
 ### Search
 
@@ -46,9 +48,9 @@ Use the search bar to filter by name, email, or department.
 
 ## Availability Grid
 
-Click the **Availability** link in the actions column to toggle the instructor's weekly availability grid (Monday–Friday, 7 AM – 8 PM).
+Select the **Availability** link in the actions column to toggle the instructor's weekly availability grid (Monday–Friday, 7 AM – 8 PM).
 
-Click any cell to cycle through states:
+Select any cell to cycle through states:
 - **Green checkmark (Available)** — Can be scheduled at this time
 - **Red X (Unavailable)** — Cannot teach at this time; scheduling here creates a hard conflict
 - **Yellow triangle (Prefer Avoid)** — Can teach but prefers not to; scheduling here creates a soft warning
@@ -57,7 +59,7 @@ Changes save automatically.
 
 ## Instructor Detail Page
 
-Click an instructor's **name** to open their detail page with three tabs:
+Select an instructor's **name** to open their detail page with three tabs:
 
 ### Profile Tab
 
@@ -87,7 +89,7 @@ On the Profile tab, the Notes section lets you record important information:
 
 ### Add a Note
 
-Click **+ Add Note**. Fill in:
+Select **+ Add Note**. Fill in:
 - **Category** — General, Availability, Preference, Performance, or Other
 - **Term** — Optionally associate the note with a specific term
 - **Content** — The note text
@@ -103,7 +105,7 @@ The **Load Report** button in the Instructors page toolbar downloads a faculty l
 ### Downloading
 
 1. Select a **term** from the term selector in the header
-2. Click **Load Report** in the toolbar (next to Add Instructor)
+2. Select **Load Report** in the toolbar (next to Add Instructor)
 3. The file downloads automatically with a name like `faculty_load_Fall_2025.xlsx`
 
 The same report is also available from **Analytics → Workload → Export to Excel**.
@@ -137,13 +139,13 @@ To get an accurate load report, you need to enter reassigned time for instructor
 **To add reassigned time:**
 
 1. Go to **Analytics → Workload** tab
-2. Click an instructor's row to expand it
-3. Click **+ Add Release / ADHOC** at the bottom of the expanded section
+2. Select an instructor's row to expand it
+3. Select **+ Add Release / ADHOC** at the bottom of the expanded section
 4. Fill in:
    - **Description** — What the reassignment is for (e.g., "Research Reassigned Time", "Department Chair", "Assessment Committee Chair")
    - **Type** — Choose the category: Research Release, Admin Release, Course Release, ADHOC, Overload, or Other
    - **Credits** — The number of equivalent credits (e.g., 3)
-5. Click **Save**
+5. Select **Save**
 
 Repeat for each reassignment. These entries appear in the load report under the instructor's courses with the description in the "Class Name" column and the type in the "Reassignment/Suggestion" column.
 

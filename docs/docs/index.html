@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — The Chair's Desk</title>
+  <meta name="description" content="Full documentation and tutorials for The Chair's Desk course scheduling application.">
+  <link rel="icon" href="../icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a href="../" class="topbar-brand">
+      <img src="../icon.png" alt="">
+      The Chair's Desk
+    </a>
+    <nav class="topbar-nav">
+      <a href="../">Home</a>
+      <a href="./" class="active">Docs</a>
+    </nav>
+    <div class="topbar-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search" placeholder="Search docs..." aria-label="Search documentation">
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <nav id="sidebar-nav" aria-label="Documentation navigation"></nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+      <div class="content-wrap">
+        <div class="breadcrumbs" id="breadcrumbs"></div>
+        <div class="article" id="article">
+          <div class="loading">Loading documentation...</div>
+        </div>
+        <div class="page-nav" id="page-nav"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="marked.min.js"></script>
+  <script src="docs.js"></script>
+</body>
+</html>

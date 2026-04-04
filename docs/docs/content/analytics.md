@@ -1,10 +1,12 @@
 # Analytics
 
+This reference covers the Analytics page's enrollment trends, schedule efficiency metrics, prerequisite graphs, and workload management. For a hands-on walkthrough of instructor workloads, see [Tracking Instructor Workloads](?page=tutorial-workload).
+
 The Analytics page provides data-driven insights into enrollment trends, schedule efficiency, and instructor workloads using historical and current-term data.
 
 ## Getting There
 
-Click **Analytics** in the sidebar.
+Navigate to **Analytics** in the app sidebar.
 
 ## Key Concepts
 
@@ -65,7 +67,7 @@ Instructor load analysis and management:
 
 #### Adding Reassigned Time
 
-Click an instructor's row to expand it, then click **+ Add Release / ADHOC** to enter reassigned time (research release, admin release, course release, etc.). Each entry includes a description, type, and credit value. These appear in the exported load report alongside teaching assignments. See the **Instructors** help topic for a detailed walkthrough.
+Select an instructor's row to expand it, then select **+ Add Release / ADHOC** to enter reassigned time (research release, admin release, course release, etc.). Each entry includes a description, type, and credit value. These appear in the exported load report alongside teaching assignments. See the **Instructors** help topic for a detailed walkthrough.
 
 ## Tips
 
