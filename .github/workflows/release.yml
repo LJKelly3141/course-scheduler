@@ -25,9 +25,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m venv backend\venv
-          backend\venv\Scripts\pip install "backend[dev]"
-          backend\venv\Scripts\pip list
-        shell: cmd
+          backend\venv\Scripts\pip install ".\backend[dev]"
 
       - name: Install Node dependencies
         run: |
