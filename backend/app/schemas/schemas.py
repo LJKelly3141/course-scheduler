@@ -224,6 +224,7 @@ class SectionBase(BaseModel):
     equivalent_credits: Optional[int] = None
     lecture_hours: Optional[float] = None
     special_course_fee: Optional[float] = None
+    instruction_type: Optional[str] = None
     notes: Optional[str] = None
 
 class SectionCreate(SectionBase):
@@ -241,6 +242,7 @@ class SectionUpdate(BaseModel):
     equivalent_credits: Optional[int] = None
     lecture_hours: Optional[float] = None
     special_course_fee: Optional[float] = None
+    instruction_type: Optional[str] = None
     notes: Optional[str] = None
 
 class SectionRead(SectionBase):
@@ -257,6 +259,7 @@ class SectionRead(SectionBase):
     equivalent_credits: Optional[int] = None
     lecture_hours: Optional[float] = None
     special_course_fee: Optional[float] = None
+    instruction_type: Optional[str] = None
     notes: Optional[str] = None
     model_config = {"from_attributes": True}
 
@@ -443,6 +446,7 @@ class WorkloadSectionRow(BaseModel):
     enrollment_cap: int
     sch: int
     modality: str
+    instruction_type: str = "LEC"
     schedule_info: str
     status: str
     counts_toward_load: bool

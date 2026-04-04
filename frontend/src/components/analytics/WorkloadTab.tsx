@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { WorkloadResponse, InstructorWorkload, LoadAdjustment } from "@/api/types";
+import { downloadWorkloadReport } from "@/utils/downloadExport";
 import { Button } from "@/components/ui/button";
 import { StyledSelect } from "@/components/ui/styled-select";
 import {
@@ -84,19 +85,7 @@ export function WorkloadTab({ termId }: { termId: number }) {
     });
   };
 
-  const handleExport = async () => {
-    const res = await api.getRaw(
-      `/analytics/instructor-workload/export?term_id=${termId}`
-    );
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "workload_report.xlsx";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const handleExport = () => downloadWorkloadReport(termId);
 
   if (isLoading) {
     return (

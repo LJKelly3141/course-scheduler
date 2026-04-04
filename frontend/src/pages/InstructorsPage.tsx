@@ -7,7 +7,8 @@ import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StyledSelect } from "@/components/ui/styled-select";
-import { Plus, Trash2, X, AlertTriangle, Check } from "lucide-react";
+import { Plus, Trash2, X, AlertTriangle, Check, Download } from "lucide-react";
+import { downloadWorkloadReport } from "@/utils/downloadExport";
 import { useUndoRedo } from "../hooks/useUndoRedo";
 import { useSort } from "../hooks/useSort";
 import { SortableHeader } from "@/components/ui/sortable-header";
@@ -164,6 +165,15 @@ export function InstructorsPage() {
               Delete Selected ({selectedIds.size})
             </Button>
           )}
+          <Button
+            variant="outline"
+            disabled={!selectedTerm}
+            onClick={() => selectedTerm && downloadWorkloadReport(selectedTerm.id)}
+            title={selectedTerm ? "Download faculty load report" : "Select a term first"}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Load Report
+          </Button>
           <Button onClick={() => setShowAdd(!showAdd)}>
             <Plus className="h-4 w-4" />
             Add Instructor

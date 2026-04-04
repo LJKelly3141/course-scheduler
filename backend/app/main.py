@@ -37,6 +37,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(academic_years.router, prefix="/api/academic-years", tags=["academic-years"])
@@ -90,6 +91,7 @@ def _ensure_schema_current():
                 ("equivalent_credits", "INTEGER"),
                 ("lecture_hours", "REAL"),
                 ("special_course_fee", "REAL"),
+                ("instruction_type", "VARCHAR(3)"),
                 ("notes", "TEXT"),
             ]:
                 if col not in section_cols:

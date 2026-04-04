@@ -185,12 +185,15 @@ def instructor_workload_export(
     from fastapi.responses import StreamingResponse
     import io
 
-    xlsx_bytes = export_workload_xlsx(db, term_id)
+    xlsx_bytes, filename = export_workload_xlsx(db, term_id)
 
     return StreamingResponse(
         io.BytesIO(xlsx_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=workload_report.xlsx"},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
     )
 
 
