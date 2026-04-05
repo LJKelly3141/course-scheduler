@@ -73,7 +73,19 @@ The CI workflow creates the release as a draft. Publish it:
 gh release edit vX.Y.Z --draft=false
 ```
 
-## Step 7: Return Download URLs
+## Step 7: Update Landing Page
+
+Update `docs/index.html` to reference the new version:
+
+1. Replace all occurrences of the old version string (e.g., `v1.0.0`) with the new version (`vX.Y.Z`) — this covers the hero badge, download URLs, and DMG/EXE filenames.
+2. Commit and push:
+   ```bash
+   git add docs/index.html
+   git commit -m "Update landing page download links to vX.Y.Z"
+   git push origin main
+   ```
+
+## Step 8: Return Download URLs
 
 Fetch and display all release asset URLs:
 ```bash
@@ -82,8 +94,8 @@ gh release view vX.Y.Z --json assets -q '.assets[].browserDownloadUrl'
 
 Display the URLs to the user, labeled by platform:
 - **macOS:** the `.dmg` URL
-- **Windows Installer:** the `.exe` URL
-- **Windows Portable:** the `.zip` URL
+- **Windows Installer:** the `Setup` `.exe` URL
+- **Windows Portable:** the `portable` `.exe` URL
 
 Also display the release page URL:
 ```bash
