@@ -36,8 +36,11 @@
       "category": "public.app-category.education"
     },
     "win": {
-      "target": ["nsis", "dir"],
+      "target": ["nsis", "portable"],
       "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "TheChairsDesk-${version}-portable.${ext}"
     },
     "nsis": {
       "oneClick": false,
