@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu } = require("electron");
+const { app, BrowserWindow, Menu, dialog } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -23,13 +23,67 @@ function getBackendPath() {
   return path.join(resourcesPath, "backend", binaryName);
 }
 
-function getDatabasePath() {
-  const userDataPath = app.getPath("userData");
-  return path.join(userDataPath, "scheduler.db");
+function getDefaultDatabasePath() {
+  return path.join(app.getPath("userData"), "scheduler.db");
 }
 
-function migrateDatabase() {
-  const newDbPath = getDatabasePath();
+function getConfigPath() {
+  return path.join(app.getPath("userData"), "config.json");
+}
+
+function readConfig() {
+  const configPath = getConfigPath();
+  try {
+    const raw = fs.readFileSync(configPath, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function writeConfig(config) {
+  const configPath = getConfigPath();
+  const dir = path.dirname(configPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+}
+
+function showFirstLaunchDialog() {
+  const defaultDir = app.getPath("userData");
+  const result = dialog.showSaveDialogSync({
+    title: "Choose Database Location",
+    defaultPath: path.join(defaultDir, "scheduler.db"),
+    filters: [{ name: "SQLite Database", extensions: ["db"] }],
+  });
+  return result || getDefaultDatabasePath();
+}
+
+function resolveDatabasePath() {
+  const config = readConfig();
+
+  // If config already has a databasePath, use it
+  if (config.databasePath) {
+    return config.databasePath;
+  }
+
+  const defaultPath = getDefaultDatabasePath();
+
+  // If database exists at default path (existing install), record it in config
+  if (fs.existsSync(defaultPath)) {
+    writeConfig({ ...config, databasePath: defaultPath });
+    return defaultPath;
+  }
+
+  // First launch — show dialog
+  const chosenPath = showFirstLaunchDialog();
+  writeConfig({ ...config, databasePath: chosenPath });
+  return chosenPath;
+}
+
+function migrateDatabase(resolvedDbPath) {
+  const newDbPath = resolvedDbPath;
   if (fs.existsSync(newDbPath)) return; // already migrated or fresh install
 
   // Determine old path based on platform
@@ -54,14 +108,13 @@ function migrateDatabase() {
   fs.copyFileSync(oldDbPath, newDbPath);
 }
 
-function startBackend() {
+function startBackend(dbPath) {
   const backendPath = getBackendPath();
   if (!backendPath) {
     console.log("[electron] Dev mode: assuming backend is running externally.");
     return;
   }
 
-  const dbPath = getDatabasePath();
   const dbDir = path.dirname(dbPath);
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
@@ -73,7 +126,8 @@ function startBackend() {
   backendProcess = spawn(backendPath, [], {
     env: {
       ...process.env,
-      DATABASE_PATH: getDatabasePath(),
+      DATABASE_PATH: dbPath,
+      CONFIG_PATH: getConfigPath(),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -244,15 +298,22 @@ function setupMenu() {
 
 app.whenReady().then(async () => {
   isDev = !app.isPackaged;
-  migrateDatabase();
-  startBackend();
+
+  // Resolve database path: dev uses default, production may show dialog
+  const dbPath = isDev ? getDefaultDatabasePath() : resolveDatabasePath();
+
+  migrateDatabase(dbPath);
+  startBackend(dbPath);
 
   try {
     await pollBackendHealth();
   } catch (err) {
     console.error("[electron]", err.message);
-    // In dev mode, backend might just be slow — continue anyway
     if (!isDev) {
+      dialog.showErrorBox(
+        "Backend Failed to Start",
+        "The application backend did not start in time. Please try again or check the logs."
+      );
       app.quit();
       return;
     }
