@@ -61,8 +61,14 @@ function startBackend() {
     return;
   }
 
+  const dbPath = getDatabasePath();
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+
   console.log(`[electron] Starting backend: ${backendPath}`);
-  console.log(`[electron] Database path: ${getDatabasePath()}`);
+  console.log(`[electron] Database path: ${dbPath}`);
 
   backendProcess = spawn(backendPath, [], {
     env: {
