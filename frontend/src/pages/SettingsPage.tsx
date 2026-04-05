@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { StyledSelect } from "@/components/ui/styled-select";
+import { FolderOpen } from "lucide-react";
 
 interface DirectoryEntry {
   name: string;
@@ -323,6 +324,10 @@ export function SettingsPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
   const [githubDialogOpen, setGithubDialogOpen] = useState(false);
+  const [showRelocate, setShowRelocate] = useState(false);
+  const [relocatePath, setRelocatePath] = useState("");
+  const [relocateCopy, setRelocateCopy] = useState(true);
+  const [relocateStatus, setRelocateStatus] = useState<string | null>(null);
 
   const { data: settings } = useQuery({
     queryKey: ["settings"],
@@ -348,6 +353,18 @@ export function SettingsPage() {
       setForm((prev) => ({ ...prev, ...map }));
     }
   }, [settings]);
+
+  const relocateMutation = useMutation({
+    mutationFn: (payload: { new_path: string; copy_existing: boolean }) =>
+      api.post("/settings/database-relocate", payload),
+    onSuccess: () => {
+      setRelocateStatus("Database location updated. Please restart the app to use the new location.");
+      setShowRelocate(false);
+    },
+    onError: () => {
+      setRelocateStatus("Failed to relocate database. Check the path and try again.");
+    },
+  });
 
   const saveMutation = useMutation({
     mutationFn: (items: AppSetting[]) =>
@@ -517,6 +534,77 @@ export function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               Downloads a portable copy of the database file. Keep this as a backup or transfer to another machine.
             </p>
+
+            <div className="border-t border-border pt-4 mt-4 space-y-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRelocate(!showRelocate);
+                  setRelocatePath(dbInfo?.path || "");
+                  setRelocateStatus(null);
+                }}
+              >
+                <FolderOpen className="h-4 w-4 mr-1" />
+                Change Location
+              </Button>
+
+              {relocateStatus && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                  {relocateStatus}
+                </p>
+              )}
+
+              {showRelocate && (
+                <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border">
+                  <label htmlFor="relocate-path" className="text-sm font-medium">
+                    New database path
+                  </label>
+                  <input
+                    id="relocate-path"
+                    type="text"
+                    className="w-full border border-border rounded px-3 py-2 text-sm font-mono"
+                    value={relocatePath}
+                    onChange={(e) => setRelocatePath(e.target.value)}
+                    placeholder="/path/to/scheduler.db"
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="relocate-copy"
+                      type="checkbox"
+                      checked={relocateCopy}
+                      onChange={(e) => setRelocateCopy(e.target.checked)}
+                    />
+                    <label htmlFor="relocate-copy" className="text-sm">
+                      Copy existing database to new location
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={!relocatePath.trim() || relocateMutation.isPending}
+                      onClick={() =>
+                        relocateMutation.mutate({
+                          new_path: relocatePath,
+                          copy_existing: relocateCopy,
+                        })
+                      }
+                    >
+                      {relocateMutation.isPending ? "Moving..." : "Confirm"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowRelocate(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The app will need to be restarted after changing the database location.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
