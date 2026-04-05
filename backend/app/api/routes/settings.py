@@ -219,6 +219,17 @@ class DatabaseInfoResponse(BaseModel):
     size_display: str
 
 
+class DatabaseRelocateRequest(BaseModel):
+    new_path: str
+    copy_existing: bool = True
+
+
+class DatabaseRelocateResponse(BaseModel):
+    success: bool
+    new_path: str
+    copied: bool
+
+
 def _format_size(size_bytes: int) -> str:
     if size_bytes < 1024:
         return f"{size_bytes} B"
@@ -264,4 +275,53 @@ def database_backup():
         path=db_path,
         filename="scheduler-backup.db",
         media_type="application/octet-stream",
+    )
+
+
+@router.post("/database-relocate", response_model=DatabaseRelocateResponse)
+def database_relocate(payload: DatabaseRelocateRequest):
+    """Relocate the database to a new path. Requires app restart."""
+    import json
+    import shutil
+
+    new_path = os.path.abspath(os.path.expanduser(payload.new_path))
+
+    # Ensure new directory exists
+    new_dir = os.path.dirname(new_path)
+    if not os.path.isdir(new_dir):
+        try:
+            os.makedirs(new_dir, exist_ok=True)
+        except OSError as e:
+            raise HTTPException(status_code=400, detail=f"Cannot create directory: {e}")
+
+    # Copy existing database if requested
+    copied = False
+    if payload.copy_existing:
+        current_db = os.environ.get("DATABASE_PATH", "./scheduler.db")
+        current_db = os.path.abspath(current_db)
+        if os.path.isfile(current_db) and os.path.abspath(new_path) != current_db:
+            try:
+                shutil.copy2(current_db, new_path)
+                copied = True
+            except OSError as e:
+                raise HTTPException(status_code=400, detail=f"Failed to copy database: {e}")
+
+    # Update config.json
+    config_path = os.environ.get("CONFIG_PATH", "")
+    if config_path:
+        config = {}
+        if os.path.isfile(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                config = {}
+        config["databasePath"] = new_path
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+
+    return DatabaseRelocateResponse(
+        success=True,
+        new_path=new_path,
+        copied=copied,
     )
