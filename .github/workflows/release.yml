@@ -46,7 +46,20 @@ jobs:
         run: npx electron-builder --win --publish never
 
       - name: Create portable ZIP
-        run: Compress-Archive -Path "dist-electron/win-unpacked/*" -DestinationPath "dist-electron/TheChairsDesk-windows-portable.zip"
+        run: |
+          # Create a launcher that strips Zone Identifiers (Mark of the Web)
+          # before running the app. Without this, Windows blocks DLLs
+          # extracted from internet-downloaded ZIPs.
+          $launcher = @'
+          @echo off
+          echo Preparing The Chair's Desk...
+          pushd "%~dp0"
+          powershell -Command "Get-ChildItem -Recurse | Unblock-File" >nul 2>&1
+          start "" "The Chair's Desk.exe"
+          popd
+          '@
+          Set-Content -Path "dist-electron/win-unpacked/Start The Chairs Desk.bat" -Value $launcher
+          Compress-Archive -Path "dist-electron/win-unpacked/*" -DestinationPath "dist-electron/TheChairsDesk-windows-portable.zip"
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -54,6 +67,16 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
+          body: |
+            ## Installation
+
+            **macOS:** Download the `.dmg` file, open it, and drag The Chair's Desk to Applications.
+
+            **Windows Installer:** Download the `.exe` installer and run it.
+
+            **Windows Portable:** Download the `.zip` file. Before extracting: **right-click the ZIP → Properties → check "Unblock" → OK**, then extract. Alternatively, use the included `Start The Chairs Desk.bat` launcher which handles this automatically.
+
+            > **Note:** If you see a "ffmpeg.dll is missing" error, the ZIP was not unblocked before extraction. Re-extract after unblocking, or use the `.bat` launcher.
           files: |
             dist-electron/*.exe
             dist-electron/TheChairsDesk-windows-portable.zip
