@@ -20,6 +20,10 @@ Thumbs.db
 # Database
 *.db
 
+# User data — real scheduling/enrollment files
+import_data/
+LoadExample/
+
 # Build output
 dist/
 build/
