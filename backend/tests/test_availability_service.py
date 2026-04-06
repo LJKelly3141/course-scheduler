@@ -18,6 +18,7 @@ from app.models.instructor import (
 from app.models.availability_template import InstructorAvailabilityTemplate
 from app.models.term import Term, TermStatus, TermType
 from app.models.time_block import BlockPattern, TimeBlock
+from app.services.availability_service import apply_templates_to_term
 
 
 @pytest.fixture
@@ -142,9 +143,25 @@ def time_blocks(db: Session) -> list:
     return blocks
 
 
+@pytest.fixture
+def instructor(db: Session) -> Instructor:
+    """A generic instructor for tests that only need one."""
+    inst = Instructor(
+        name="Test, Instructor",
+        first_name="Instructor",
+        last_name="Test",
+        email="test.instructor@uwrf.edu",
+        department="Accounting",
+        available_summer=True,
+        available_winter=True,
+    )
+    db.add(inst)
+    db.flush()
+    return inst
+
+
 def test_apply_fall_templates_to_fall_term(db, instructor_a, fall_term):
     """Fall templates should be copied to a fall term."""
-    from app.services.availability_service import apply_templates_to_term
 
     # Create fall templates for instructor_a
     t1 = InstructorAvailabilityTemplate(
@@ -181,7 +198,6 @@ def test_apply_fall_templates_to_fall_term(db, instructor_a, fall_term):
 
 def test_spring_templates_not_applied_to_fall_term(db, instructor_a, fall_term):
     """Spring templates should NOT be copied when applying to a fall term."""
-    from app.services.availability_service import apply_templates_to_term
 
     # Create spring-only template
     t1 = InstructorAvailabilityTemplate(
@@ -210,7 +226,6 @@ def test_summer_unavailable_creates_blanket_blocks(
     db, instructor_b, summer_term, time_blocks
 ):
     """Instructor with available_summer=False gets unavailable records for all time block day slots."""
-    from app.services.availability_service import apply_templates_to_term
 
     count = apply_templates_to_term(db, summer_term)
 
@@ -232,7 +247,6 @@ def test_summer_available_instructor_gets_no_records(
     db, instructor_a, summer_term, time_blocks
 ):
     """Instructor with available_summer=True gets no records."""
-    from app.services.availability_service import apply_templates_to_term
 
     count = apply_templates_to_term(db, summer_term)
     assert count == 0
@@ -249,7 +263,6 @@ def test_winter_unavailable_creates_blanket_blocks(
     db, instructor_b, winter_term, time_blocks
 ):
     """Instructor with available_winter=False gets unavailable records for all time block day slots."""
-    from app.services.availability_service import apply_templates_to_term
 
     count = apply_templates_to_term(db, winter_term)
 
@@ -267,7 +280,6 @@ def test_winter_unavailable_creates_blanket_blocks(
 
 def test_no_templates_means_no_records(db, instructor_a, fall_term):
     """An instructor with no templates for the term type gets no availability records."""
-    from app.services.availability_service import apply_templates_to_term
 
     count = apply_templates_to_term(db, fall_term)
     assert count == 0
@@ -282,7 +294,6 @@ def test_no_templates_means_no_records(db, instructor_a, fall_term):
 
 def test_multiple_instructors(db, instructor_a, instructor_b, spring_term):
     """Templates are applied for ALL instructors with matching term_type templates."""
-    from app.services.availability_service import apply_templates_to_term
 
     # Spring templates for instructor_a
     t1 = InstructorAvailabilityTemplate(
@@ -329,3 +340,28 @@ def test_multiple_instructors(db, instructor_a, instructor_b, spring_term):
         .all()
     )
     assert len(records_b) == 2
+
+
+def test_apply_is_idempotent(db, instructor, time_blocks):
+    """Calling apply_templates_to_term twice returns 0 the second time (no duplicates)."""
+    db.add(InstructorAvailabilityTemplate(
+        instructor_id=instructor.id, term_type="fall",
+        day_of_week="T", start_time=time(9, 30), end_time=time(10, 45),
+        type=AvailabilityType.unavailable,
+    ))
+    db.flush()
+
+    term = Term(name="Fall 2026", type=TermType.fall,
+                start_date=date(2026, 9, 1), end_date=date(2026, 12, 15),
+                status=TermStatus.draft)
+    db.add(term)
+    db.flush()
+
+    count1 = apply_templates_to_term(db, term)
+    count2 = apply_templates_to_term(db, term)
+    assert count1 == 1
+    assert count2 == 0  # idempotent — no new records
+
+    records = db.query(InstructorAvailability).filter_by(
+        instructor_id=instructor.id, term_id=term.id).all()
+    assert len(records) == 1  # no duplicates

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -31,6 +30,15 @@ def apply_templates_to_term(db: Session, term: Term) -> int:
     Returns the number of records created.  Calls ``db.flush()`` (not commit)
     so the caller controls the transaction.
     """
+    # Idempotency guard: skip if per-term records already exist
+    existing = (
+        db.query(InstructorAvailability)
+        .filter(InstructorAvailability.term_id == term.id)
+        .first()
+    )
+    if existing:
+        return 0
+
     if term.type in (TermType.fall, TermType.spring):
         count = _apply_regular_templates(db, term)
     elif term.type == TermType.summer:
@@ -48,7 +56,7 @@ def apply_templates_to_term(db: Session, term: Term) -> int:
 
 def _apply_regular_templates(db: Session, term: Term) -> int:
     """Copy matching templates for fall/spring terms."""
-    templates: List[InstructorAvailabilityTemplate] = (
+    templates: list[InstructorAvailabilityTemplate] = (
         db.query(InstructorAvailabilityTemplate)
         .filter(InstructorAvailabilityTemplate.term_type == term.type.value)
         .all()
@@ -78,7 +86,7 @@ def _apply_seasonal_blanket(db: Session, term: Term, season: str) -> int:
     records so that conflict detection works per-day.
     """
     if season == "summer":
-        unavailable_instructors: List[Instructor] = (
+        unavailable_instructors: list[Instructor] = (
             db.query(Instructor)
             .filter(Instructor.available_summer.is_(False))
             .all()
@@ -93,15 +101,24 @@ def _apply_seasonal_blanket(db: Session, term: Term, season: str) -> int:
     if not unavailable_instructors:
         return 0
 
-    time_blocks: List[TimeBlock] = db.query(TimeBlock).all()
+    time_blocks: list[TimeBlock] = db.query(TimeBlock).all()
     if not time_blocks:
         return 0
+
+    # Parse time block days once, outside the instructor loop
+    block_days: dict[int, list[str]] = {}
+    for block in time_blocks:
+        try:
+            days = json.loads(block.days_of_week)
+            if isinstance(days, list):
+                block_days[block.id] = days
+        except (json.JSONDecodeError, TypeError):
+            block_days[block.id] = []
 
     count = 0
     for instructor in unavailable_instructors:
         for block in time_blocks:
-            days: List[str] = json.loads(block.days_of_week)
-            for day in days:
+            for day in block_days.get(block.id, []):
                 avail = InstructorAvailability(
                     instructor_id=instructor.id,
                     term_id=term.id,
