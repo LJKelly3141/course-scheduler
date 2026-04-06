@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Meeting, Section, Room, Instructor, TimeBlock, Term } from "../../api/types";
+import type { InstructorAvailability } from "../../api/types";
 import { parseDaysOfWeek } from "../../lib/utils";
 import {
   Dialog,
@@ -45,6 +47,52 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
   const [endTime, setEndTime] = useState(meeting?.end_time ?? "");
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Fetch settings to check if availability warnings are disabled
+  const { data: settingsList } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => api.get<{ key: string; value: string }[]>("/settings"),
+  });
+  const warningsDisabled = settingsList?.find(
+    (s) => s.key === "disable_availability_warnings"
+  )?.value === "true";
+
+  // Fetch per-term availability for the selected meeting instructor
+  const { data: availability } = useQuery({
+    queryKey: ["instructor-availability", instructorId, termId],
+    queryFn: () =>
+      api.get<InstructorAvailability[]>(
+        `/instructors/${instructorId}/availability?term_id=${termId}`
+      ),
+    enabled: !!instructorId && !warningsDisabled,
+  });
+
+  // Compute availability warnings based on selected time slot
+  const availabilityWarnings = useMemo(() => {
+    if (!availability || !daysOfWeek.length || !startTime || !endTime) return [];
+    const warnings: string[] = [];
+    const instructor = instructors.find((i) => i.id === instructorId);
+    const name = instructor?.name ?? "Instructor";
+
+    for (const block of availability) {
+      if (!daysOfWeek.includes(block.day_of_week)) continue;
+      // Time overlap check: meeting [startTime, endTime) vs block [start_time, end_time)
+      const bStart = block.start_time.slice(0, 5);
+      const bEnd = block.end_time.slice(0, 5);
+      if (startTime < bEnd && endTime > bStart) {
+        if (block.type === "unavailable") {
+          warnings.push(
+            `${name} is unavailable ${block.day_of_week} ${bStart}\u2013${bEnd}`
+          );
+        } else if (block.type === "prefer_avoid") {
+          warnings.push(
+            `${name} prefers to avoid ${block.day_of_week} ${bStart}\u2013${bEnd}`
+          );
+        }
+      }
+    }
+    return warnings;
+  }, [availability, daysOfWeek, startTime, endTime, instructorId, instructors]);
 
   const currentSection = section ?? sections.find((s) => s.id === sectionId) ?? null;
   const [sectionNumber, setSectionNumber] = useState(currentSection?.section_number ?? "");
@@ -403,6 +451,13 @@ export function MeetingDialog({ termId, meeting, section, sections, rooms, instr
                   ))}
                 </StyledSelect>
               </div>
+              {availabilityWarnings.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded p-2 space-y-1">
+                  {availabilityWarnings.map((w, i) => (
+                    <p key={i} className="text-xs text-amber-700 dark:text-amber-300">{w}</p>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
