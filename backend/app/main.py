@@ -120,6 +120,17 @@ def _ensure_schema_current():
                     )
                     logger.info("Added missing column instructors.%s", col)
 
+            for col, col_type in [
+                ("emergency_contact", "VARCHAR(30)"),
+                ("available_summer", "BOOLEAN DEFAULT 1"),
+                ("available_winter", "BOOLEAN DEFAULT 1"),
+            ]:
+                if col not in instructor_cols:
+                    conn.execute(
+                        sa.text(f"ALTER TABLE instructors ADD COLUMN {col} {col_type}")
+                    )
+                    logger.info("Added missing column instructors.%s", col)
+
             # Data migration: split existing name into first_name/last_name
             if "first_name" not in instructor_cols:
                 rows = conn.execute(sa.text(

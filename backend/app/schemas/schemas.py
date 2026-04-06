@@ -122,6 +122,9 @@ class InstructorBase(BaseModel):
     rank: Optional[str] = None
     tenure_status: Optional[str] = None
     hire_date: Optional[date] = None
+    emergency_contact: Optional[str] = None
+    available_summer: bool = True
+    available_winter: bool = True
 
 class InstructorCreate(InstructorBase):
     pass
@@ -141,6 +144,9 @@ class InstructorUpdate(BaseModel):
     rank: Optional[str] = None
     tenure_status: Optional[str] = None
     hire_date: Optional[date] = None
+    emergency_contact: Optional[str] = None
+    available_summer: Optional[bool] = None
+    available_winter: Optional[bool] = None
 
 class InstructorRead(InstructorBase):
     id: int

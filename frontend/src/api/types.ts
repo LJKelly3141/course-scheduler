@@ -59,6 +59,9 @@ export interface Instructor {
   rank: string | null;
   tenure_status: string | null;
   hire_date: string | null;
+  emergency_contact: string | null;
+  available_summer: boolean;
+  available_winter: boolean;
 }
 
 export interface InstructorNote {

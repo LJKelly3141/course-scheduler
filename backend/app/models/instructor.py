@@ -61,6 +61,9 @@ class Instructor(Base):
     rank: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     tenure_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     hire_date: Mapped[Optional[str]] = mapped_column(Date, nullable=True)
+    emergency_contact: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    available_summer: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    available_winter: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     availabilities = relationship("InstructorAvailability", back_populates="instructor")
     meetings = relationship("Meeting", back_populates="instructor")
