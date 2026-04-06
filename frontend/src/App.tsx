@@ -7,8 +7,7 @@ import { UndoRedoProvider } from "./hooks/useUndoRedo";
 import { AppLayout } from "./components/layout/AppLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SchedulePage } from "./pages/SchedulePage";
-import { InstructorsPage } from "./pages/InstructorsPage";
-import { InstructorDetailPage } from "./pages/InstructorDetailPage";
+import { InstructorHubPage } from "./pages/InstructorHub";
 import { RoomsPage } from "./pages/RoomsPage";
 import { CoursesPage } from "./pages/CoursesPage";
 import { ImportPage } from "./pages/ImportPage";
@@ -37,8 +36,7 @@ export default function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/schedule" element={<SchedulePage />} />
-              <Route path="/instructors" element={<InstructorsPage />} />
-              <Route path="/instructors/:id" element={<InstructorDetailPage />} />
+              <Route path="/instructors" element={<InstructorHubPage />} />
               <Route path="/rooms" element={<RoomsPage />} />
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/terms" element={<TermsPage />} />
