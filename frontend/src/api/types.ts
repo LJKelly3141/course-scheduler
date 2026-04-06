@@ -82,6 +82,16 @@ export interface InstructorAvailability {
   type: string;
 }
 
+export interface AvailabilityTemplate {
+  id: number;
+  instructor_id: number;
+  term_type: "fall" | "spring";
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+}
+
 export interface Course {
   id: number;
   department_code: string;
