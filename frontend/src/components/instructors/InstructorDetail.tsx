@@ -95,7 +95,7 @@ export function InstructorDetail({
       {activeTab === "profile" && <ProfileTab instructor={instructor} />}
       {activeTab === "availability" && <AvailabilityTab instructor={instructor} />}
       {activeTab === "workload" && (
-        <WorkloadTab workload={workload} isLoading={workloadLoading} />
+        <WorkloadTab workload={workload} isLoading={workloadLoading} instructorId={instructor.id} termId={selectedTermId} />
       )}
       {activeTab === "notes" && (
         <NotesTab
