@@ -19,6 +19,7 @@ from app.schemas.schemas import (
     BatchDeleteRequest, TermCreate, TermRead, TermSessionCreate, TermSessionRead,
     TermUpdate, ValidationResult,
 )
+from app.services.availability_service import apply_templates_to_term
 from app.services.term_validation import finalize_term, validate_term
 
 # Default UWRF summer sessions: (name, week_offset, duration_weeks)
@@ -79,6 +80,7 @@ def create_term(payload: TermCreate, db: Session = Depends(get_db)):
     auto_link_term_to_academic_year(db, term)
     if payload.type == "summer":
         _auto_create_sessions(db, term)
+    apply_templates_to_term(db, term)
     db.commit()
     db.refresh(term)
     return term
