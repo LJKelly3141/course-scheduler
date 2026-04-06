@@ -9,6 +9,13 @@ import {
   useUpdateInstructor,
 } from "@/hooks/useInstructorHub";
 
+const MODALITY_OPTIONS = [
+  { value: "any", label: "Any", desc: "No day or modality restrictions" },
+  { value: "online_only", label: "Online Only", desc: "Remote teaching only" },
+  { value: "mwf_only", label: "MWF Only", desc: "Monday / Wednesday / Friday only" },
+  { value: "tth_only", label: "TTh Only", desc: "Tuesday / Thursday only" },
+];
+
 const TERM_TYPES = ["fall", "spring", "summer", "winter"] as const;
 const TERM_TYPE_LABELS: Record<string, string> = {
   fall: "Fall",
@@ -99,8 +106,44 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
     setLocalSlots(allUnavailable);
   };
 
+  const handleModalityChange = (value: string) => {
+    updateInstructorMutation.mutate(
+      { id: instructor.id, modality_constraint: value },
+      {
+        onSuccess: () => toast.success(`Scheduling preference set to ${MODALITY_OPTIONS.find((m) => m.value === value)?.label}`),
+      }
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
+      {/* Scheduling Preferences */}
+      <section className="mb-6">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          Scheduling Preference
+        </h4>
+        <div className="grid grid-cols-4 gap-2">
+          {MODALITY_OPTIONS.map((m) => (
+            <button
+              key={m.value}
+              onClick={() => handleModalityChange(m.value)}
+              className={`text-left rounded-lg p-3 border-2 transition-all ${
+                instructor.modality_constraint === m.value
+                  ? "bg-primary/10 border-primary"
+                  : "bg-card border-border hover:border-border"
+              }`}
+            >
+              <div className={`text-sm font-medium ${instructor.modality_constraint === m.value ? "text-foreground" : "text-foreground"}`}>{m.label}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{m.desc}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Term Type Availability */}
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+        Term Availability
+      </h4>
       <div className="flex gap-0 border-b border-border mb-5">
         {TERM_TYPES.map((tt) => (
           <button
