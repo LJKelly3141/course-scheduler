@@ -17,6 +17,7 @@ from app.api.routes import (
     academic_years, terms, buildings, rooms, instructors, courses, sections,
     meetings, time_blocks, import_export, suggestions,
     settings, export_html, analytics, load_adjustments, prerequisites, rotation,
+    availability_templates,
 )
 from app.database import engine, SessionLocal
 from app.models import Base
@@ -57,6 +58,11 @@ app.include_router(analytics.router, prefix="/api", tags=["analytics"])
 app.include_router(load_adjustments.router, prefix="/api/load-adjustments", tags=["load-adjustments"])
 app.include_router(prerequisites.router, prefix="/api", tags=["prerequisites"])
 app.include_router(rotation.router, prefix="/api/rotation", tags=["rotation"])
+app.include_router(
+    availability_templates.router,
+    prefix="/api/instructors",
+    tags=["availability-templates"],
+)
 
 
 def _ensure_schema_current():
@@ -147,6 +153,28 @@ def _ensure_schema_current():
                     ), {"first": first, "last": last, "id": row[0]})
                 if rows:
                     logger.info("Migrated %d instructor names to first_name/last_name", len(rows))
+
+            # ── instructor_availability_templates table ──
+            result = conn.execute(
+                sa.text(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='instructor_availability_templates'"
+                )
+            )
+            if not result.fetchone():
+                conn.execute(sa.text("""
+                    CREATE TABLE instructor_availability_templates (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        instructor_id INTEGER NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
+                        term_type VARCHAR(10) NOT NULL,
+                        day_of_week VARCHAR(3) NOT NULL,
+                        start_time TIME NOT NULL,
+                        end_time TIME NOT NULL,
+                        type VARCHAR(20) NOT NULL,
+                        UNIQUE(instructor_id, term_type, day_of_week, start_time)
+                    )
+                """))
+                logger.info("Created missing table instructor_availability_templates")
 
             # ── courses table patches ──
             result = conn.execute(sa.text("PRAGMA table_info(courses)"))

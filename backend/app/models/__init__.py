@@ -16,6 +16,7 @@ from app.models.load_adjustment import LoadAdjustment, AdjustmentType
 from app.models.instructor_note import InstructorNote
 from app.models.course_prerequisite import CoursePrerequisite
 from app.models.course_rotation import CourseRotation, YearParity, RotationSemester
+from app.models.availability_template import InstructorAvailabilityTemplate
 
 __all__ = [
     "Base",
@@ -43,4 +44,5 @@ __all__ = [
     "CourseRotation",
     "YearParity",
     "RotationSemester",
+    "InstructorAvailabilityTemplate",
 ]

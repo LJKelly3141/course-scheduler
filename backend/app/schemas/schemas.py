@@ -193,6 +193,24 @@ class InstructorAvailabilityRead(InstructorAvailabilityBase):
     model_config = {"from_attributes": True}
 
 
+# --- Availability Templates ---
+class AvailabilityTemplateCreate(BaseModel):
+    day_of_week: str
+    start_time: time
+    end_time: time
+    type: str
+
+class AvailabilityTemplateRead(BaseModel):
+    id: int
+    instructor_id: int
+    term_type: str
+    day_of_week: str
+    start_time: time
+    end_time: time
+    type: str
+    model_config = {"from_attributes": True}
+
+
 # --- Course ---
 class CourseBase(BaseModel):
     department_code: str
