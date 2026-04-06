@@ -85,10 +85,10 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
     profile.instructor_type;
 
   const inputClass =
-    "w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent";
+    "w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
   const requiredInputClass =
-    "w-full bg-surface border border-accent/50 rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent";
-  const labelClass = "text-xs text-secondary mb-1 block";
+    "w-full bg-background border border-primary/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
+  const labelClass = "text-xs text-muted-foreground mb-1 block";
 
   const saveInstructor = async (): Promise<number> => {
     if (createdId) return createdId;
@@ -162,7 +162,7 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-surface-alt border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+      <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="flex justify-center gap-10 py-6 relative">
           <div className="absolute top-[27px] left-[calc(50%-80px)] w-[160px] h-0.5 bg-border" />
           {[
@@ -176,15 +176,15 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
                   step > n
                     ? "bg-emerald-600 text-white"
                     : step === n
-                      ? "bg-accent text-white"
-                      : "bg-surface text-secondary"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {step > n ? "✓" : n}
               </div>
               <span
                 className={`text-xs ${
-                  step >= n ? "text-accent font-medium" : "text-secondary"
+                  step >= n ? "text-primary font-medium" : "text-muted-foreground"
                 }`}
               >
                 {label}
@@ -253,37 +253,37 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-6">
-                <button onClick={onClose} className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface">Cancel</button>
-                <button onClick={() => setStep(2)} disabled={!profileValid} className="px-4 py-1.5 text-sm text-white bg-accent rounded-md hover:bg-accent/90 disabled:opacity-50">Next: Scheduling →</button>
+                <button onClick={onClose} className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50">Cancel</button>
+                <button onClick={() => setStep(2)} disabled={!profileValid} className="px-4 py-1.5 text-sm text-primary-foreground bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50">Next: Scheduling →</button>
               </div>
             </>
           )}
 
           {step === 2 && (
             <>
-              <h4 className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">Modality Constraint</h4>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Modality Constraint</h4>
               <div className="grid grid-cols-2 gap-2 mb-6">
                 {MODALITY_CARDS.map((m) => (
                   <button key={m.value} onClick={() => setModality(m.value)}
-                    className={`text-left rounded-lg p-3 border-2 transition-all ${modality === m.value ? "bg-accent/10 border-accent" : "bg-surface border-border hover:border-border-hover"}`}>
-                    <div className="text-sm text-primary font-medium">{m.label}</div>
-                    <div className="text-xs text-secondary mt-0.5">{m.desc}</div>
+                    className={`text-left rounded-lg p-3 border-2 transition-all ${modality === m.value ? "bg-primary/10 border-primary" : "bg-card border-border hover:border-border"}`}>
+                    <div className="text-sm text-foreground font-medium">{m.label}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{m.desc}</div>
                   </button>
                 ))}
               </div>
 
-              <h4 className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">Initial Note (optional)</h4>
-              <textarea className="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-primary placeholder:text-tertiary min-h-[80px] resize-y mb-4" placeholder="Any scheduling preferences, contract details, or notes to record..." value={initialNote} onChange={(e) => setInitialNote(e.target.value)} />
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Initial Note (optional)</h4>
+              <textarea className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground min-h-[80px] resize-y mb-4" placeholder="Any scheduling preferences, contract details, or notes to record..." value={initialNote} onChange={(e) => setInitialNote(e.target.value)} />
 
               <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-3 mb-6">
                 <p className="text-xs text-blue-300">You can set detailed per-day availability in the next step, or skip and add it later.</p>
               </div>
 
               <div className="flex justify-between">
-                <button onClick={() => setStep(1)} className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface">← Back</button>
+                <button onClick={() => setStep(1)} className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50">← Back</button>
                 <div className="flex gap-2">
-                  <button onClick={handleSkipAndSave} className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface">Skip & Save</button>
-                  <button onClick={() => setStep(3)} className="px-4 py-1.5 text-sm text-white bg-accent rounded-md hover:bg-accent/90">Next: Availability →</button>
+                  <button onClick={handleSkipAndSave} className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50">Skip & Save</button>
+                  <button onClick={() => setStep(3)} className="px-4 py-1.5 text-sm text-primary-foreground bg-primary rounded-md hover:bg-primary/90">Next: Availability →</button>
                 </div>
               </div>
             </>
@@ -294,7 +294,7 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
               <div className="flex gap-0 border-b border-border mb-4">
                 {(["fall", "spring", "summer", "winter"] as const).map((tt) => (
                   <button key={tt} onClick={() => setAvailTermType(tt)}
-                    className={`px-5 py-2 text-sm ${availTermType === tt ? "text-accent border-b-2 border-accent font-medium" : "text-secondary hover:text-primary"}`}>
+                    className={`px-5 py-2 text-sm ${availTermType === tt ? "text-primary border-b-2 border-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                     {tt.charAt(0).toUpperCase() + tt.slice(1)}
                   </button>
                 ))}
@@ -303,10 +303,10 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
               {(availTermType === "fall" || availTermType === "spring") && (
                 <>
                   <div className="flex gap-3 items-center mb-3 text-xs">
-                    <span className="text-secondary">Quick:</span>
-                    <button onClick={() => availTermType === "fall" ? setFallSlots([]) : setSpringSlots([])} className="text-accent hover:underline">Set all available</button>
+                    <span className="text-muted-foreground">Quick:</span>
+                    <button onClick={() => availTermType === "fall" ? setFallSlots([]) : setSpringSlots([])} className="text-primary hover:underline">Set all available</button>
                     {availTermType === "spring" && (
-                      <button onClick={() => setSpringSlots([...fallSlots])} className="text-accent hover:underline">Copy Fall → Spring</button>
+                      <button onClick={() => setSpringSlots([...fallSlots])} className="text-primary hover:underline">Copy Fall → Spring</button>
                     )}
                   </div>
                   <AvailabilityGrid slots={availTermType === "fall" ? fallSlots : springSlots} onChange={availTermType === "fall" ? setFallSlots : setSpringSlots} />
@@ -318,9 +318,9 @@ export function NewInstructorWizard({ onClose, onCreated }: NewInstructorWizardP
               )}
 
               <div className="flex justify-between mt-6">
-                <button onClick={() => setStep(2)} className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface">← Back</button>
+                <button onClick={() => setStep(2)} className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50">← Back</button>
                 <div className="flex gap-2">
-                  <button onClick={handleSkipAndSave} className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface">Skip & Save</button>
+                  <button onClick={handleSkipAndSave} className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50">Skip & Save</button>
                   <button onClick={handleFinalSave} disabled={createMutation.isPending} className="px-4 py-1.5 text-sm text-white bg-emerald-600 rounded-md hover:bg-emerald-500 disabled:opacity-50">
                     {createMutation.isPending ? "Saving..." : "✓ Save Instructor"}
                   </button>

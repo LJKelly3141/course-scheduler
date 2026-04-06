@@ -52,8 +52,8 @@ export function InstructorRoster({
   return (
     <div className="w-[300px] border-r border-border flex flex-col flex-shrink-0">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <span className="font-semibold text-sm text-primary">Instructors</span>
-        <span className="bg-accent text-white text-xs px-2 py-0.5 rounded-full">
+        <span className="font-semibold text-sm text-foreground">Instructors</span>
+        <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
           {instructors.length}
         </span>
       </div>
@@ -64,7 +64,7 @@ export function InstructorRoster({
           placeholder="Search instructors..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-surface border border-border rounded-md px-3 py-1.5 text-sm text-primary placeholder:text-tertiary focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
 
@@ -75,8 +75,8 @@ export function InstructorRoster({
             onClick={() => setTypeFilter(f.value)}
             className={`px-2 py-0.5 rounded ${
               typeFilter === f.value
-                ? "bg-accent text-white"
-                : "text-secondary hover:text-primary"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {f.label}
@@ -98,22 +98,22 @@ export function InstructorRoster({
               onClick={() => onSelect(inst.id)}
               className={`w-full text-left px-4 py-2.5 border-l-[3px] transition-colors ${
                 isSelected
-                  ? "bg-surface-alt border-l-accent"
-                  : "border-l-transparent hover:bg-surface-alt/50"
+                  ? "bg-muted/50 border-l-primary"
+                  : "border-l-transparent hover:bg-muted/25"
               }`}
             >
               <div
                 className={`text-sm ${
                   isSelected
-                    ? "font-semibold text-primary"
+                    ? "font-semibold text-foreground"
                     : inst.is_active
-                    ? "text-primary"
-                    : "text-tertiary italic"
+                    ? "text-foreground"
+                    : "text-muted-foreground italic"
                 }`}
               >
                 {inst.last_name ? `${inst.last_name}, ${inst.first_name}` : inst.name}
               </div>
-              <div className="text-xs text-secondary mt-0.5">
+              <div className="text-xs text-muted-foreground mt-0.5">
                 {inst.instructor_type
                   ? inst.instructor_type.charAt(0).toUpperCase() + inst.instructor_type.slice(1)
                   : "—"}
@@ -126,7 +126,7 @@ export function InstructorRoster({
                       {eqCredits}/{inst.max_credits} cr
                     </span>
                     {" · "}
-                    <span className={sectionCount === 0 ? "text-tertiary" : "text-emerald-400"}>
+                    <span className={sectionCount === 0 ? "text-muted-foreground" : "text-emerald-400"}>
                       {sectionCount} section{sectionCount !== 1 ? "s" : ""}
                     </span>
                     {isOverloaded && " ⚠"}
@@ -137,7 +137,7 @@ export function InstructorRoster({
           );
         })}
         {filtered.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-tertiary">
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             No instructors found
           </div>
         )}
@@ -152,7 +152,7 @@ export function InstructorRoster({
         </button>
         <button
           onClick={onNewInstructor}
-          className="w-full bg-accent hover:bg-accent/90 text-white text-sm font-medium py-2 rounded-md transition-colors"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 rounded-md transition-colors"
         >
           + New Instructor
         </button>

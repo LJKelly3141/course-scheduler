@@ -80,7 +80,7 @@ export function AvailabilityGrid({ slots, onChange, readOnly }: AvailabilityGrid
   return (
     <div>
       {/* Legend */}
-      <div className="flex gap-4 mb-3 text-xs text-secondary">
+      <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
         <span>Click to toggle:</span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-sm bg-emerald-800 inline-block" /> Available
@@ -99,9 +99,9 @@ export function AvailabilityGrid({ slots, onChange, readOnly }: AvailabilityGrid
         style={{ gridTemplateColumns: `60px repeat(${DAYS.length}, 1fr)`, gap: "1px", background: "var(--color-border)" }}
       >
         {/* Header row */}
-        <div className="bg-surface-alt p-2" />
+        <div className="bg-muted/50 p-2" />
         {DAYS.map((day) => (
-          <div key={day} className="bg-surface-alt p-2 text-center font-semibold text-secondary">
+          <div key={day} className="bg-muted/50 p-2 text-center font-semibold text-muted-foreground">
             {DAY_LABELS[day]}
           </div>
         ))}
@@ -109,7 +109,7 @@ export function AvailabilityGrid({ slots, onChange, readOnly }: AvailabilityGrid
         {/* Time rows */}
         {HOURS.map((hour) => (
           <>
-            <div key={`label-${hour}`} className="bg-surface-alt px-2 py-1.5 text-right text-secondary">
+            <div key={`label-${hour}`} className="bg-muted/50 px-2 py-1.5 text-right text-muted-foreground">
               {hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? "PM" : "AM"}
             </div>
             {DAYS.map((day) => {

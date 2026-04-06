@@ -95,13 +95,13 @@ export function ProfileTab({ instructor }: ProfileTabProps) {
   };
 
   const inputClass =
-    "w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent";
-  const labelClass = "text-xs text-secondary mb-1 block";
+    "w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
+  const labelClass = "text-xs text-muted-foreground mb-1 block";
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <section className="mb-6">
-        <h4 className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           Contact Information
         </h4>
         <div className="grid grid-cols-2 gap-3">
@@ -133,7 +133,7 @@ export function ProfileTab({ instructor }: ProfileTabProps) {
       </section>
 
       <section className="mb-6">
-        <h4 className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">Employment</h4>
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Employment</h4>
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className={labelClass}>Department</label>
@@ -164,7 +164,7 @@ export function ProfileTab({ instructor }: ProfileTabProps) {
           <div>
             <label className={labelClass}>Active</label>
             <div className="flex items-center h-[38px]">
-              <label className="flex items-center gap-2 text-sm text-primary cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                 <input type="checkbox" checked={form.is_active ?? true} onChange={(e) => set("is_active", e.target.checked)} className="rounded" />
                 Active
               </label>
@@ -174,7 +174,7 @@ export function ProfileTab({ instructor }: ProfileTabProps) {
       </section>
 
       <section className="mb-6">
-        <h4 className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">Scheduling Preferences</h4>
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Scheduling Preferences</h4>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Modality Constraint</label>
@@ -190,8 +190,8 @@ export function ProfileTab({ instructor }: ProfileTabProps) {
       </section>
 
       <div className="flex justify-end gap-2 pt-3 border-t border-border">
-        <button onClick={handleCancel} className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface-alt">Cancel</button>
-        <button onClick={handleSave} disabled={updateMutation.isPending} className="px-4 py-1.5 text-sm text-white bg-accent rounded-md hover:bg-accent/90 disabled:opacity-50">
+        <button onClick={handleCancel} className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50">Cancel</button>
+        <button onClick={handleSave} disabled={updateMutation.isPending} className="px-4 py-1.5 text-sm text-primary-foreground bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50">
           {updateMutation.isPending ? "Saving..." : "Save Changes"}
         </button>
       </div>

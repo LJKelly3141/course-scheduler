@@ -69,7 +69,7 @@ export function InstructorHubPage() {
           onDeleted={() => setSelectedId(null)}
         />
       ) : (
-        <div className="flex-1 flex items-center justify-center text-secondary">
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <p className="text-lg mb-1">Select an instructor</p>
             <p className="text-sm">Choose from the roster or add a new one</p>

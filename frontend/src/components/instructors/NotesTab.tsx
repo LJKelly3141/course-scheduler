@@ -64,12 +64,12 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <div className="bg-surface border border-border rounded-lg p-4 mb-5">
+      <div className="bg-card border border-border rounded-lg p-4 mb-5">
         <div className="flex gap-3 mb-3">
           <div className="flex-1">
-            <label className="text-xs text-secondary mb-1 block">Category</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Category</label>
             <select
-              className="w-full bg-surface-alt border border-border rounded-md px-3 py-1.5 text-sm text-primary"
+              className="w-full bg-muted/50 border border-border rounded-md px-3 py-1.5 text-sm text-foreground"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
             >
@@ -79,9 +79,9 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
             </select>
           </div>
           <div className="flex-1">
-            <label className="text-xs text-secondary mb-1 block">Term (optional)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Term (optional)</label>
             <select
-              className="w-full bg-surface-alt border border-border rounded-md px-3 py-1.5 text-sm text-primary"
+              className="w-full bg-muted/50 border border-border rounded-md px-3 py-1.5 text-sm text-foreground"
               value={newTermId ?? ""}
               onChange={(e) => setNewTermId(e.target.value ? Number(e.target.value) : null)}
             >
@@ -94,7 +94,7 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
         </div>
         <textarea
           placeholder="Add a note..."
-          className="w-full bg-surface-alt border border-border rounded-md px-3 py-2 text-sm text-primary placeholder:text-tertiary min-h-[60px] resize-y mb-3"
+          className="w-full bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground min-h-[60px] resize-y mb-3"
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
         />
@@ -102,7 +102,7 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
           <button
             onClick={handleAdd}
             disabled={!newContent.trim() || createMutation.isPending}
-            className="px-4 py-1.5 text-sm text-white bg-accent rounded-md hover:bg-accent/90 disabled:opacity-50"
+            className="px-4 py-1.5 text-sm text-primary-foreground bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50"
           >
             Save Note
           </button>
@@ -114,8 +114,8 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
           onClick={() => setFilterCategory("all")}
           className={`px-2.5 py-1 rounded ${
             filterCategory === "all"
-              ? "bg-surface-alt text-primary"
-              : "text-secondary border border-border hover:text-primary"
+              ? "bg-muted/50 text-foreground"
+              : "text-muted-foreground border border-border hover:text-foreground"
           }`}
         >
           All
@@ -126,8 +126,8 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
             onClick={() => setFilterCategory(c.value)}
             className={`px-2.5 py-1 rounded ${
               filterCategory === c.value
-                ? "bg-surface-alt text-primary"
-                : "text-secondary border border-border hover:text-primary"
+                ? "bg-muted/50 text-foreground"
+                : "text-muted-foreground border border-border hover:text-foreground"
             }`}
           >
             {c.label}
@@ -139,25 +139,25 @@ export function NotesTab({ instructor, termId, terms }: NotesTabProps) {
         {filteredNotes.map((note: InstructorNote) => {
           const cat = CATEGORY_MAP[note.category] ?? CATEGORY_MAP.general;
           return (
-            <div key={note.id} className="bg-surface border border-border rounded-lg px-4 py-3">
+            <div key={note.id} className="bg-card border border-border rounded-lg px-4 py-3">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex gap-2 items-center">
                   <span className={`text-xs px-2 py-0.5 rounded ${cat.color}`}>{cat.label}</span>
-                  <span className="text-xs text-secondary">{termName(note.term_id)}</span>
+                  <span className="text-xs text-muted-foreground">{termName(note.term_id)}</span>
                 </div>
                 <button
                   onClick={() => handleDelete(note.id)}
-                  className="text-xs text-secondary hover:text-red-400 transition-colors"
+                  className="text-xs text-muted-foreground hover:text-red-400 transition-colors"
                 >
                   ✕
                 </button>
               </div>
-              <p className="text-sm text-primary leading-relaxed">{note.content}</p>
+              <p className="text-sm text-foreground leading-relaxed">{note.content}</p>
             </div>
           );
         })}
         {filteredNotes.length === 0 && (
-          <div className="text-center text-sm text-secondary py-8">No notes found</div>
+          <div className="text-center text-sm text-muted-foreground py-8">No notes found</div>
         )}
       </div>
     </div>

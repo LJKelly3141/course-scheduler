@@ -108,8 +108,8 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
             onClick={() => setActiveTermType(tt)}
             className={`px-5 py-2 text-sm transition-colors ${
               activeTermType === tt
-                ? "text-accent border-b-2 border-accent font-medium"
-                : "text-secondary hover:text-primary"
+                ? "text-primary border-b-2 border-primary font-medium"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {TERM_TYPE_LABELS[tt]}
@@ -120,11 +120,11 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
       {isGridType ? (
         <>
           <div className="flex gap-3 items-center mb-3 text-xs">
-            <span className="text-secondary">Quick:</span>
-            <button onClick={handleSetAllAvailable} className="text-accent hover:underline">
+            <span className="text-muted-foreground">Quick:</span>
+            <button onClick={handleSetAllAvailable} className="text-primary hover:underline">
               Set all available
             </button>
-            <button onClick={handleClearAll} className="text-accent hover:underline">
+            <button onClick={handleClearAll} className="text-primary hover:underline">
               Clear all
             </button>
             {activeTermType === "spring" && (
@@ -132,7 +132,7 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
                 onClick={() => {
                   toast.info("Switch to Fall tab first to set Fall availability, then use this to copy");
                 }}
-                className="text-accent hover:underline"
+                className="text-primary hover:underline"
               >
                 Copy Fall → Spring
               </button>
@@ -153,14 +153,14 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
                   }))
                 )
               }
-              className="px-4 py-1.5 text-sm text-secondary border border-border rounded-md hover:bg-surface-alt"
+              className="px-4 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted/50"
             >
               Undo
             </button>
             <button
               onClick={handleSaveGrid}
               disabled={saveMutation.isPending}
-              className="px-4 py-1.5 text-sm text-white bg-accent rounded-md hover:bg-accent/90 disabled:opacity-50"
+              className="px-4 py-1.5 text-sm text-primary-foreground bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
               {saveMutation.isPending ? "Saving..." : "Save Availability"}
             </button>
@@ -179,16 +179,16 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
       )}
 
       <div className="mt-6">
-        <h4 className="text-xs font-semibold text-secondary uppercase tracking-wide mb-3">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           All Term Types
         </h4>
         <div className="grid grid-cols-4 gap-3">
           {TERM_TYPES.map((tt) => (
-            <div key={tt} className="bg-surface border border-border rounded-lg p-3">
+            <div key={tt} className="bg-card border border-border rounded-lg p-3">
               <div className="flex justify-between items-center">
                 <span
                   className={`text-sm font-medium ${
-                    activeTermType === tt ? "text-accent" : "text-secondary"
+                    activeTermType === tt ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
                   {TERM_TYPE_LABELS[tt]}
@@ -206,7 +206,7 @@ export function AvailabilityTab({ instructor }: AvailabilityTabProps) {
                       : "✗ Not available"}
                   </span>
                 ) : (
-                  <span className="text-xs text-secondary">
+                  <span className="text-xs text-muted-foreground">
                     {templates.length > 0 && activeTermType === tt
                       ? "✓ Set"
                       : "Default"}
