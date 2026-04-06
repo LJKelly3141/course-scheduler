@@ -1,0 +1,14 @@
+{"type":"server-started","port":54663,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:54663","screen_dir":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content","state_dir":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/state"}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/hub-availability-tab.html"}
+{"source":"user-event","type":"click","text":"✓\n    \n      Availability tab looks good — next tab","choice":"approve-avail","id":null,"timestamp":1775434117601}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/hub-workload-tab.html"}
+{"source":"user-event","type":"click","text":"✎\n    \n      Feedback on this tab\n      Tell me in the terminal","choice":"feedback-workload","id":null,"timestamp":1775434487767}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/hub-notes-tab.html"}
+{"source":"user-event","type":"click","text":"✓\n    \n      Notes tab looks good — show me the onboarding wizard","choice":"approve-notes","id":null,"timestamp":1775435002588}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/hub-onboarding-wizard.html"}
+{"source":"user-event","type":"click","text":"✎\n    \n      Feedback on the wizard\n      Tell me in the terminal","choice":"feedback-wizard","id":null,"timestamp":1775435229380}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/hub-wizard-availability-v2.html"}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/hub-wizard-availability-v3.html"}
+{"source":"user-event","type":"click","text":"✓\n    \n      This works — design is complete","choice":"approve-wizard-v3","id":null,"timestamp":1775435521108}
+{"type":"screen-added","file":"/Users/logankelly/Sync/UWRF/course-scheduler/.superpowers/brainstorm/91522-1775434082/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

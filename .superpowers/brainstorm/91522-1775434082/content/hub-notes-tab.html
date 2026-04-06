@@ -1,0 +1,177 @@
+<h2>Instructor Hub — Notes Tab</h2>
+<p class="subtitle">Categorized communication log per instructor, optionally scoped to a term</p>
+
+<div class="mockup">
+  <div class="mockup-header">Notes Tab — Sarah Anderson · All Terms</div>
+  <div class="mockup-body" style="padding:0;min-height:480px;display:flex;background:#0f172a;">
+
+    <!-- Left Panel: Roster (abbreviated) -->
+    <div style="width:300px;border-right:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;">
+      <div style="padding:12px 16px;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-weight:600;font-size:14px;color:#e2e8f0;">Instructors</span>
+        <span style="background:#3b82f6;color:white;font-size:11px;padding:2px 8px;border-radius:10px;">14</span>
+      </div>
+      <div style="padding:8px 12px;border-bottom:1px solid #334155;">
+        <div style="background:#1e293b;border:1px solid #475569;border-radius:6px;padding:6px 10px;font-size:13px;color:#64748b;">🔍 Search instructors...</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;">
+        <div style="padding:10px 16px;background:#1e293b;border-left:3px solid #3b82f6;cursor:pointer;">
+          <div style="font-size:13px;font-weight:600;color:#e2e8f0;">Anderson, Sarah</div>
+          <div style="font-size:11px;color:#64748b;">Faculty · 9/12 cr</div>
+        </div>
+        <div style="padding:10px 16px;border-left:3px solid transparent;cursor:pointer;">
+          <div style="font-size:13px;color:#cbd5e1;">Chen, Michael</div>
+          <div style="font-size:11px;color:#64748b;">IAS · 6/9 cr</div>
+        </div>
+        <div style="padding:10px 16px;border-left:3px solid transparent;cursor:pointer;">
+          <div style="font-size:13px;color:#cbd5e1;">Garcia, Maria</div>
+          <div style="font-size:11px;color:#64748b;">Faculty · 15/12 cr</div>
+        </div>
+      </div>
+      <div style="padding:12px;border-top:1px solid #334155;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#059669;color:white;text-align:center;padding:8px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">📥 Export All — XLSX</div>
+        <div style="background:#3b82f6;color:white;text-align:center;padding:8px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">+ New Instructor</div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Notes -->
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+      <div style="padding:16px 24px;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#f1f5f9;">Sarah Anderson</div>
+          <div style="font-size:13px;color:#64748b;margin-top:2px;">Faculty · Professor · Tenured</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <span style="font-size:12px;color:#94a3b8;border:1px solid #475569;padding:4px 12px;border-radius:6px;">Term: All Terms ▾</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:0;border-bottom:1px solid #334155;padding:0 24px;">
+        <span style="padding:10px 16px;font-size:13px;color:#94a3b8;">Profile</span>
+        <span style="padding:10px 16px;font-size:13px;color:#94a3b8;">Availability</span>
+        <span style="padding:10px 16px;font-size:13px;color:#94a3b8;">Workload</span>
+        <span style="padding:10px 16px;font-size:13px;color:#3b82f6;border-bottom:2px solid #3b82f6;font-weight:500;">Notes</span>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:24px;">
+        <!-- Add note form -->
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:20px;">
+          <div style="display:flex;gap:12px;margin-bottom:12px;">
+            <div style="flex:1;">
+              <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Category</div>
+              <div style="background:#0f172a;border:1px solid #475569;border-radius:6px;padding:6px 10px;font-size:13px;color:#e2e8f0;">General ▾</div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Term (optional)</div>
+              <div style="background:#0f172a;border:1px solid #475569;border-radius:6px;padding:6px 10px;font-size:13px;color:#64748b;">None — general note ▾</div>
+            </div>
+          </div>
+          <div style="background:#0f172a;border:1px solid #475569;border-radius:6px;padding:8px 10px;font-size:13px;color:#64748b;min-height:60px;margin-bottom:12px;">
+            Add a note...
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <span style="font-size:13px;color:white;background:#3b82f6;padding:6px 16px;border-radius:6px;cursor:pointer;">Save Note</span>
+          </div>
+        </div>
+
+        <!-- Category filter -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;font-size:12px;">
+          <span style="background:#334155;color:#e2e8f0;padding:3px 10px;border-radius:4px;">All</span>
+          <span style="color:#94a3b8;padding:3px 10px;border-radius:4px;border:1px solid #334155;">Scheduling</span>
+          <span style="color:#94a3b8;padding:3px 10px;border-radius:4px;border:1px solid #334155;">Contract</span>
+          <span style="color:#94a3b8;padding:3px 10px;border-radius:4px;border:1px solid #334155;">Performance</span>
+          <span style="color:#94a3b8;padding:3px 10px;border-radius:4px;border:1px solid #334155;">General</span>
+        </div>
+
+        <!-- Notes list -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <!-- Note 1 -->
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;background:#1e3a5f;color:#60a5fa;padding:2px 8px;border-radius:4px;">Scheduling</span>
+                <span style="font-size:11px;color:#64748b;">Fall 2026</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;color:#64748b;">Mar 15, 2026</span>
+                <span style="font-size:11px;color:#64748b;cursor:pointer;">✕</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:#cbd5e1;line-height:1.5;">Prefers MWF schedule for Fall. Has committee meetings Tuesday afternoons — marked as unavailable TTh 2–4pm.</div>
+          </div>
+
+          <!-- Note 2 -->
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;background:#1a2e05;color:#84cc16;padding:2px 8px;border-radius:4px;">Contract</span>
+                <span style="font-size:11px;color:#64748b;">General</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;color:#64748b;">Jan 8, 2026</span>
+                <span style="font-size:11px;color:#64748b;cursor:pointer;">✕</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:#cbd5e1;line-height:1.5;">Chair release approved through AY 2026–27. Will need renewal discussion Spring 2027.</div>
+          </div>
+
+          <!-- Note 3 -->
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;background:#3b1c06;color:#fb923c;padding:2px 8px;border-radius:4px;">Performance</span>
+                <span style="font-size:11px;color:#64748b;">Spring 2026</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;color:#64748b;">Dec 2, 2025</span>
+                <span style="font-size:11px;color:#64748b;cursor:pointer;">✕</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:#cbd5e1;line-height:1.5;">Student evals consistently strong. Consider for mentoring new adjuncts in the department.</div>
+          </div>
+
+          <!-- Note 4 -->
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;background:#1c1917;color:#a8a29e;padding:2px 8px;border-radius:4px;">General</span>
+                <span style="font-size:11px;color:#64748b;">General</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;color:#64748b;">Sep 1, 2025</span>
+                <span style="font-size:11px;color:#64748b;cursor:pointer;">✕</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:#cbd5e1;line-height:1.5;">Office moved to South Hall 210 as of Fall 2025.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;">
+  <h3>Design Notes</h3>
+  <ul style="color:#94a3b8;font-size:14px;line-height:1.8;">
+    <li><strong>Add note form</strong> at top — category dropdown + optional term scoping + text area. Always visible, no extra click to start writing.</li>
+    <li><strong>Category filter pills</strong> — quickly filter to Scheduling, Contract, Performance, or General notes</li>
+    <li><strong>Term selector</strong> in header — "All Terms" shows everything; selecting a specific term filters to notes tagged to that term + general notes</li>
+    <li><strong>Chronological list</strong> — newest first, each note shows category badge (color-coded), term scope, date, and delete button</li>
+    <li><strong>Same categories</strong> as current app: General, Contract, Performance, Scheduling</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top:24px;">
+  <div class="option" data-choice="approve-notes" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Notes tab looks good — show me the onboarding wizard</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="feedback-notes" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Feedback on this tab</h3>
+      <p>Tell me in the terminal</p>
+    </div>
+  </div>
+</div>

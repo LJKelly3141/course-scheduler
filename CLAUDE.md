@@ -41,6 +41,11 @@ Stateless functions that take `db: Session` + args. Key interaction pattern:
 - `@dnd-kit/core` for drag-and-drop rescheduling on the schedule grid
 - Path alias: `@/` maps to `src/` (configured in tsconfig and vite)
 
+### Directory Notes
+
+- **`docs/`**: GitHub Pages directory — contains the landing page and documentation site. Do NOT use for general project files or internal docs.
+- **`docs/superpowers/`**: Design specs and implementation plans generated during development sessions.
+
 ### Key API Patterns
 
 - **Inline conflict validation**: Creating/updating a meeting checks conflicts before persisting; returns `MeetingCreateResponse` with both the meeting and any detected conflicts

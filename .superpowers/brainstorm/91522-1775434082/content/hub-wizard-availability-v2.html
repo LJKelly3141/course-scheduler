@@ -1,0 +1,190 @@
+<h2>Instructor Hub — Wizard Step 3 (Updated)</h2>
+<p class="subtitle">Separate availability grids for Fall, Spring, and Summer</p>
+
+<!-- Step indicators -->
+<div style="display:flex;justify-content:center;gap:40px;margin:24px 0 32px;position:relative;">
+  <div style="position:absolute;top:15px;left:calc(50% - 120px);width:240px;height:2px;background:#3b82f6;z-index:0;"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1;">
+    <div style="width:30px;height:30px;border-radius:50%;background:#22c55e;color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">✓</div>
+    <span style="font-size:12px;color:#22c55e;font-weight:500;">Profile</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1;">
+    <div style="width:30px;height:30px;border-radius:50%;background:#22c55e;color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">✓</div>
+    <span style="font-size:12px;color:#22c55e;font-weight:500;">Scheduling</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1;">
+    <div style="width:30px;height:30px;border-radius:50%;background:#3b82f6;color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">3</div>
+    <span style="font-size:12px;color:#3b82f6;font-weight:500;">Availability</span>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Step 3 — Availability by Term Type</div>
+  <div class="mockup-body" style="background:#0f172a;padding:20px;">
+
+    <!-- Term type tabs -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #334155;margin-bottom:20px;">
+      <span style="padding:8px 20px;font-size:13px;color:#3b82f6;border-bottom:2px solid #3b82f6;font-weight:500;">Fall</span>
+      <span style="padding:8px 20px;font-size:13px;color:#94a3b8;cursor:pointer;">Spring</span>
+      <span style="padding:8px 20px;font-size:13px;color:#94a3b8;cursor:pointer;">Summer</span>
+    </div>
+
+    <!-- Quick actions -->
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;font-size:12px;">
+      <span style="color:#64748b;">Quick:</span>
+      <span style="color:#3b82f6;cursor:pointer;text-decoration:underline;">Copy from existing instructor</span>
+      <span style="color:#3b82f6;cursor:pointer;text-decoration:underline;">Copy Fall → Spring</span>
+      <span style="color:#3b82f6;cursor:pointer;text-decoration:underline;">Set all available</span>
+      <span style="color:#3b82f6;cursor:pointer;text-decoration:underline;">Clear all</span>
+    </div>
+
+    <!-- Fall grid -->
+    <div style="display:grid;grid-template-columns:50px repeat(5,1fr);gap:1px;background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden;font-size:11px;">
+      <div style="background:#0f172a;padding:6px;"></div>
+      <div style="background:#0f172a;padding:6px;text-align:center;color:#94a3b8;font-weight:600;">M</div>
+      <div style="background:#0f172a;padding:6px;text-align:center;color:#94a3b8;font-weight:600;">T</div>
+      <div style="background:#0f172a;padding:6px;text-align:center;color:#94a3b8;font-weight:600;">W</div>
+      <div style="background:#0f172a;padding:6px;text-align:center;color:#94a3b8;font-weight:600;">Th</div>
+      <div style="background:#0f172a;padding:6px;text-align:center;color:#94a3b8;font-weight:600;">F</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">8:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">9:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">10:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">11:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#854d0e;padding:4px;text-align:center;color:#fde68a;cursor:pointer;">~</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">12:00</div>
+      <div style="background:#854d0e;padding:4px;text-align:center;color:#fde68a;cursor:pointer;">~</div>
+      <div style="background:#854d0e;padding:4px;text-align:center;color:#fde68a;cursor:pointer;">~</div>
+      <div style="background:#854d0e;padding:4px;text-align:center;color:#fde68a;cursor:pointer;">~</div>
+      <div style="background:#854d0e;padding:4px;text-align:center;color:#fde68a;cursor:pointer;">~</div>
+      <div style="background:#854d0e;padding:4px;text-align:center;color:#fde68a;cursor:pointer;">~</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">1:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">2:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">3:00</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#166534;padding:4px;text-align:center;color:#86efac;cursor:pointer;">✓</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+
+      <div style="background:#0f172a;padding:4px 6px;color:#64748b;text-align:right;">4:00</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+      <div style="background:#991b1b;padding:4px;text-align:center;color:#fca5a5;cursor:pointer;">✗</div>
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#94a3b8;">
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:#166534;border-radius:2px;display:inline-block;"></span> Available</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:#991b1b;border-radius:2px;display:inline-block;"></span> Unavailable</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:#854d0e;border-radius:2px;display:inline-block;"></span> Prefer to Avoid</span>
+    </div>
+
+    <!-- Info box -->
+    <div style="padding:12px 16px;background:#172554;border:1px solid #1e40af;border-radius:8px;margin-top:16px;">
+      <div style="font-size:12px;color:#93c5fd;">💡 Set availability for each term type. When a new Fall 2027 term is created, this instructor's Fall availability will be pre-populated. You can always adjust per-term later.</div>
+    </div>
+
+    <!-- Summary of all three -->
+    <div style="margin-top:20px;">
+      <div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Status</div>
+      <div style="display:flex;gap:12px;">
+        <div style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#3b82f6;font-weight:500;">Fall</span>
+            <span style="font-size:11px;color:#22c55e;">✓ Set</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">32/50 slots available</div>
+        </div>
+        <div style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#94a3b8;font-weight:500;">Spring</span>
+            <span style="font-size:11px;color:#64748b;">Not set</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">Defaults to all available</div>
+        </div>
+        <div style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#94a3b8;font-weight:500;">Summer</span>
+            <span style="font-size:11px;color:#64748b;">Not set</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">Defaults to all available</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:24px;">
+      <span style="font-size:13px;color:#94a3b8;border:1px solid #475569;padding:6px 16px;border-radius:6px;cursor:pointer;">← Back</span>
+      <div style="display:flex;gap:8px;">
+        <span style="font-size:13px;color:#94a3b8;border:1px solid #475569;padding:6px 16px;border-radius:6px;cursor:pointer;">Skip & Save</span>
+        <span style="font-size:13px;color:white;background:#22c55e;padding:6px 16px;border-radius:6px;cursor:pointer;">✓ Save Instructor</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;">
+  <h3>How Term-Type Availability Works</h3>
+  <ul style="color:#94a3b8;font-size:14px;line-height:1.8;">
+    <li><strong>Three tabs: Fall / Spring / Summer</strong> — each has its own availability grid</li>
+    <li><strong>Pre-population:</strong> When a new term is created (e.g., Fall 2027), the instructor's Fall availability template auto-populates. Editable per-term afterward.</li>
+    <li><strong>"Copy Fall → Spring"</strong> quick action — since Fall and Spring are often similar</li>
+    <li><strong>Status cards</strong> at bottom — at-a-glance view of which term types have been configured</li>
+    <li><strong>Not set = all available</strong> — unset term types default to fully available (no restrictions)</li>
+    <li><strong>Also applies to the Availability tab</strong> in the hub — same Fall/Spring/Summer sub-tabs when editing availability on the detail view</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top:24px;">
+  <div class="option" data-choice="approve-wizard-v2" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>This works — design is complete</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="feedback-wizard-v2" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Feedback</h3>
+      <p>Tell me in the terminal</p>
+    </div>
+  </div>
+</div>

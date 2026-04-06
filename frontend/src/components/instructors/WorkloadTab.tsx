@@ -80,12 +80,12 @@ export function WorkloadTab({ workload, isLoading }: WorkloadTabProps) {
                     {s.department_code} {s.course_number}-{s.section_number}
                   </td>
                   <td className="px-3 py-2.5 text-primary">{s.title}</td>
-                  <td className="px-3 py-2.5 text-primary text-center">{s.credits}</td>
+                  <td className="px-3 py-2.5 text-primary text-center">{s.actual_credits}</td>
                   <td className="px-3 py-2.5 text-primary text-center">
-                    {s.equivalent_credits ?? s.credits}
+                    {s.equivalent_credits ?? s.actual_credits}
                   </td>
                   <td className="px-3 py-2.5 text-primary text-center">{s.enrollment_cap}</td>
-                  <td className="px-3 py-2.5 text-secondary">{s.schedule_display ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-secondary">{s.schedule_info ?? "—"}</td>
                   <td className="px-3 py-2.5 text-secondary">{s.modality ?? "—"}</td>
                 </tr>
               ))}

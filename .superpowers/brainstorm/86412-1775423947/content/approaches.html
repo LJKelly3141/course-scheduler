@@ -1,0 +1,61 @@
+<h2>Instructor UI Redesign — Three Approaches</h2>
+<p class="subtitle">Click the approach that feels right for your workflow</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Instructor Hub (Recommended)</h3>
+      <p><strong>One unified page with smart sections</strong></p>
+      <p>Replace the scattered list page + detail page with a single <strong>Instructor Hub</strong>. Left panel shows the instructor roster; right panel shows the selected instructor's full profile, availability, notes, and workload — all in one view without tab-switching.</p>
+      <ul style="margin-top:8px;color:#94a3b8;font-size:14px;">
+        <li>Master-detail layout (list ↔ detail side by side)</li>
+        <li>Guided "Add Instructor" wizard for onboarding</li>
+        <li>Inline load report preview with "Export for Dean" button</li>
+        <li>Term selector filters availability + workload contextually</li>
+      </ul>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Everything in one place — no navigation</li><li>Natural flow: select → review → edit → export</li><li>Scales well as instructor count grows</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More complex to build</li><li>Needs responsive handling for smaller screens</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Polished Current Pattern</h3>
+      <p><strong>Keep list + detail pages, but streamline and connect them</strong></p>
+      <p>Keep the two-page structure but fix the inconsistencies. Better list page with clear actions, improved detail page with logical sections, and a dedicated Load Report page/tab.</p>
+      <ul style="margin-top:8px;color:#94a3b8;font-size:14px;">
+        <li>Clean up the list page (remove embedded availability)</li>
+        <li>Reorganize detail page tabs for logical flow</li>
+        <li>Add "New Instructor" guided form (modal or page)</li>
+        <li>Separate Load Report view with preview + export</li>
+      </ul>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Less disruptive — familiar patterns</li><li>Simpler implementation</li><li>Works well on any screen size</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Still requires navigating between pages</li><li>Doesn't fully solve the "scattered" feeling</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Workflow-Oriented Sections</h3>
+      <p><strong>Organize by task rather than by entity</strong></p>
+      <p>Instead of an "Instructors" page, create workflow-specific views: an <strong>Onboarding</strong> flow, a <strong>Roster Management</strong> view, a <strong>Term Assignment</strong> view, and a <strong>Load Reports</strong> view — each optimized for its specific task.</p>
+      <ul style="margin-top:8px;color:#94a3b8;font-size:14px;">
+        <li>Each view shows only what's relevant to that task</li>
+        <li>Onboarding wizard walks through profile → availability → done</li>
+        <li>Assignment view shows instructors alongside schedule grid</li>
+        <li>Load report view with live preview and export</li>
+      </ul>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Each workflow is focused and clean</li><li>Reduces cognitive load per task</li><li>Assignment view could integrate with scheduling</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Biggest redesign — most work</li><li>Instructor data split across multiple views</li><li>"Where do I go to change X?" problem</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
