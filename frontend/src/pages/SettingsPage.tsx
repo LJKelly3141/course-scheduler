@@ -320,6 +320,7 @@ export function SettingsPage() {
     export_directory: "",
     github_pages_url: "",
     academic_year_start_month: "7",
+    disable_availability_warnings: "false",
   });
   const [toast, setToast] = useState<string | null>(null);
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
@@ -423,6 +424,38 @@ export function SettingsPage() {
             </span>
           )}
         </div>
+      </section>
+
+      {/* Scheduling */}
+      <section className="bg-card rounded-lg border border-border p-6 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Scheduling
+        </h3>
+
+        <div className="flex items-center gap-3">
+          <input
+            id="settings-disable-avail-warnings"
+            type="checkbox"
+            checked={form.disable_availability_warnings === "true"}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                disable_availability_warnings: e.target.checked ? "true" : "false",
+              })
+            }
+          />
+          <label htmlFor="settings-disable-avail-warnings" className="text-sm font-medium">
+            Disable inline availability warnings
+          </label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Turn off warnings when assigning instructors to time slots that conflict with their availability preferences.
+          Hard and soft conflicts in term validation are always checked regardless of this setting.
+        </p>
+
+        <Button onClick={handleSave} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? "Saving..." : "Save"}
+        </Button>
       </section>
 
       {/* Academic Year */}

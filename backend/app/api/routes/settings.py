@@ -22,6 +22,7 @@ KNOWN_KEYS = {
     "github_pages_url": "",
     "department_name": "",
     "academic_year_start_month": "7",
+    "disable_availability_warnings": "false",
 }
 
 # --- .env file for secrets ---
