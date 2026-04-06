@@ -12,6 +12,7 @@ from app.models.term import Term
 from app.schemas.schemas import (
     AvailabilityTemplateCreate,
     AvailabilityTemplateRead,
+    InstructorAvailabilityRead,
 )
 
 router = APIRouter()
@@ -116,3 +117,23 @@ def apply_template_to_term(
         created.append(avail)
     db.commit()
     return [{"id": a.id, "day_of_week": a.day_of_week} for a in created]
+
+
+@router.get(
+    "/{instructor_id}/availability",
+    response_model=list[InstructorAvailabilityRead],
+)
+def get_instructor_availability(
+    instructor_id: int,
+    term_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Get per-term availability records for an instructor."""
+    instructor = db.get(Instructor, instructor_id)
+    if not instructor:
+        raise HTTPException(404, "Instructor not found")
+    return (
+        db.query(InstructorAvailability)
+        .filter_by(instructor_id=instructor_id, term_id=term_id)
+        .all()
+    )
