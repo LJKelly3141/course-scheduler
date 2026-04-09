@@ -68,6 +68,7 @@ class Instructor(Base):
     availabilities = relationship("InstructorAvailability", back_populates="instructor")
     meetings = relationship("Meeting", back_populates="instructor")
     load_adjustments = relationship("LoadAdjustment", back_populates="instructor")
+    release_rotation_entries = relationship("ReleaseRotation", back_populates="instructor", cascade="all, delete-orphan")
     notes = relationship("InstructorNote", back_populates="instructor", cascade="all, delete-orphan")
 
 

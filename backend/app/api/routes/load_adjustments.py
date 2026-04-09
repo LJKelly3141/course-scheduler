@@ -15,11 +15,14 @@ router = APIRouter()
 
 @router.get("", response_model=list[LoadAdjustmentRead])
 def list_adjustments(
-    term_id: int = Query(...),
+    term_ids: str = Query(..., description="Comma-separated term IDs"),
     instructor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    q = db.query(LoadAdjustment).filter(LoadAdjustment.term_id == term_id)
+    ids = [int(t.strip()) for t in term_ids.split(",") if t.strip()]
+    if not ids:
+        return []
+    q = db.query(LoadAdjustment).filter(LoadAdjustment.term_id.in_(ids))
     if instructor_id is not None:
         q = q.filter(LoadAdjustment.instructor_id == instructor_id)
     return q.all()

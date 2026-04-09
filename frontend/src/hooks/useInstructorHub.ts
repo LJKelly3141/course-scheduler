@@ -6,6 +6,10 @@ import type {
   InstructorAvailability,
   InstructorNote,
   InstructorWorkload,
+  LoadAdjustment,
+  ReleaseRotationEntry,
+  ApplyReleaseRotationResult,
+  ExtractReleaseRotationResult,
 } from "@/api/types";
 
 export function useInstructors() {
@@ -198,5 +202,89 @@ export function useInstructorWorkload(termId: number | null) {
     queryFn: () =>
       api.get(`/analytics/instructor-workload?term_id=${termId}`),
     enabled: termId !== null,
+  });
+}
+
+export function useMultiTermAdjustments(
+  instructorId: number | null,
+  termIds: number[]
+) {
+  const termIdsParam = termIds.join(",");
+  return useQuery<LoadAdjustment[]>({
+    queryKey: ["multi-term-adjustments", instructorId, termIdsParam],
+    queryFn: () => {
+      const params = new URLSearchParams({ term_ids: termIdsParam });
+      if (instructorId !== null) params.set("instructor_id", String(instructorId));
+      return api.get(`/load-adjustments?${params}`);
+    },
+    enabled: termIds.length > 0,
+  });
+}
+
+// ── Release Rotation (reassignment templates) ──
+
+export function useReleaseRotation(semester?: string) {
+  const params = semester ? `?semester=${semester}` : "";
+  return useQuery<ReleaseRotationEntry[]>({
+    queryKey: ["release-rotation", semester],
+    queryFn: () => api.get(`/release-rotation${params}`),
+  });
+}
+
+export function useCreateReleaseRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      instructor_id: number;
+      semester: string;
+      year_parity?: string;
+      description: string;
+      equivalent_credits: number;
+      adjustment_type: string;
+    }) => api.post<ReleaseRotationEntry>("/release-rotation", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["release-rotation"] }),
+  });
+}
+
+export function useDeleteReleaseRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/release-rotation/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["release-rotation"] }),
+  });
+}
+
+export function useApplyReleaseRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (termId: number) =>
+      api.post<ApplyReleaseRotationResult>("/release-rotation/apply", { term_id: termId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["multi-term-adjustments"] });
+      qc.invalidateQueries({ queryKey: ["instructor-workload"] });
+    },
+  });
+}
+
+export function useExtractReleaseRotation(termId: number | null) {
+  return useQuery<ExtractReleaseRotationResult>({
+    queryKey: ["release-rotation-extract", termId],
+    queryFn: () => api.get(`/release-rotation/from-term/${termId}`),
+    enabled: termId !== null,
+  });
+}
+
+export function useBatchReleaseRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (entries: Array<{
+      instructor_id: number;
+      semester: string;
+      year_parity?: string;
+      description: string;
+      equivalent_credits: number;
+      adjustment_type: string;
+    }>) => api.post<ReleaseRotationEntry[]>("/release-rotation/batch", entries),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["release-rotation"] }),
   });
 }

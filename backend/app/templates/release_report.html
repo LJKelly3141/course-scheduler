@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reassignment Planning Report</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 24px;
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 12px; margin-bottom: 20px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #d0d0d0;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #d9e1f2;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    th.term-group {
+      background: #c5d3e8;
+      text-align: center;
+    }
+    tr:nth-child(even) { background: #f8f9fa; }
+    .name-col { white-space: nowrap; }
+    .num { text-align: right; }
+    .negative { color: #dc2626; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      margin: 1px 0;
+    }
+    .badge-research { background: #dbeafe; color: #1d4ed8; }
+    .badge-admin { background: #dcfce7; color: #15803d; }
+    .badge-course { background: #ffedd5; color: #c2410c; }
+    .badge-adhoc { background: #f3e8ff; color: #7c3aed; }
+    .badge-overload { background: #fef3c7; color: #b45309; }
+    .badge-other { background: #f1f5f9; color: #475569; }
+    .adj-item { margin-bottom: 3px; }
+    .adj-item:last-child { margin-bottom: 0; }
+    .bold { font-weight: 600; }
+    .overload-row { background: #fff2cc !important; }
+
+    @media print {
+      body { padding: 12px; font-size: 11px; }
+      table { font-size: 10px; }
+      th, td { padding: 3px 5px; }
+      .badge { font-size: 9px; }
+      @page { size: landscape; margin: 0.5in; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Reassignment Planning Report</h1>
+  <p class="subtitle">Generated {{ generation_date }}</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2" class="name-col">Last Name</th>
+        <th rowspan="2" class="name-col">First Name</th>
+        <th rowspan="2">Type</th>
+        <th rowspan="2" class="num">Max Cr</th>
+        {% for term in terms %}
+        <th colspan="4" class="term-group">{{ term }}</th>
+        {% endfor %}
+        <th rowspan="2" class="num">Total<br>Reassign Cr</th>
+      </tr>
+      <tr>
+        {% for term in terms %}
+        <th>Reassignments</th>
+        <th class="num">Reassign Cr</th>
+        <th class="num">Teaching Cr</th>
+        <th class="num">Net Avail</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for inst in instructors %}
+      <tr{% if inst.total_release != 0 %} class="{% if inst.term_cells | selectattr('net_available', 'lt', 0) | list %}overload-row{% endif %}"{% endif %}>
+        <td class="name-col">{{ inst.last_name }}</td>
+        <td class="name-col">{{ inst.first_name }}</td>
+        <td>{{ inst.status }}</td>
+        <td class="num">{{ inst.max_credits }}</td>
+        {% for cell in inst.term_cells %}
+        <td>
+          {% for adj in cell.adjustments %}
+          <div class="adj-item">
+            {% set atype = adj.adjustment_type %}
+            <span class="badge badge-{{ atype.replace('_release', '').replace('_', '-') }}">
+              {{ adj_type_labels.get(atype, atype) }}
+            </span>
+            {{ adj.description }} ({{ adj.equivalent_credits }})
+          </div>
+          {% endfor %}
+        </td>
+        <td class="num">{{ cell.release_credits if cell.release_credits else "" }}</td>
+        <td class="num">{{ cell.teaching_credits if cell.teaching_credits else "" }}</td>
+        <td class="num{% if cell.net_available < 0 %} negative{% endif %}">{{ cell.net_available }}</td>
+        {% endfor %}
+        <td class="num bold">{{ inst.total_release if inst.total_release else "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

@@ -3,6 +3,7 @@ import type { Instructor, InstructorWorkload, Term } from "@/api/types";
 import { ProfileTab } from "./ProfileTab";
 import { AvailabilityTab } from "./AvailabilityTab";
 import { WorkloadTab } from "./WorkloadTab";
+import { ReleasesTab } from "./ReleasesTab";
 import { NotesTab } from "./NotesTab";
 import { useDeleteInstructor } from "@/hooks/useInstructorHub";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ const TABS = [
   { key: "profile", label: "Profile" },
   { key: "availability", label: "Availability" },
   { key: "workload", label: "Workload" },
+  { key: "releases", label: "Reassignments" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -96,6 +98,9 @@ export function InstructorDetail({
       {activeTab === "availability" && <AvailabilityTab instructor={instructor} />}
       {activeTab === "workload" && (
         <WorkloadTab workload={workload} isLoading={workloadLoading} instructorId={instructor.id} termId={selectedTermId} />
+      )}
+      {activeTab === "releases" && (
+        <ReleasesTab instructor={instructor} terms={terms} selectedTermId={selectedTermId} />
       )}
       {activeTab === "notes" && (
         <NotesTab

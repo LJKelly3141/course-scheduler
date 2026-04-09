@@ -198,6 +198,47 @@ def instructor_workload_export(
 
 
 # ---------------------------------------------------------------------------
+# GET /analytics/release-report/export-xlsx
+# ---------------------------------------------------------------------------
+@router.get("/analytics/release-report/export-xlsx")
+def release_report_xlsx(
+    term_ids: str = Query(..., description="Comma-separated term IDs"),
+    db: Session = Depends(get_db),
+):
+    from app.services.release_report import export_release_report_xlsx
+    from fastapi.responses import StreamingResponse
+    import io
+
+    ids = [int(t.strip()) for t in term_ids.split(",") if t.strip()]
+    xlsx_bytes, filename = export_release_report_xlsx(db, ids)
+
+    return StreamingResponse(
+        io.BytesIO(xlsx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /analytics/release-report/export-html
+# ---------------------------------------------------------------------------
+@router.get("/analytics/release-report/export-html")
+def release_report_html(
+    term_ids: str = Query(..., description="Comma-separated term IDs"),
+    db: Session = Depends(get_db),
+):
+    from app.services.release_report import export_release_report_html
+    from fastapi.responses import HTMLResponse
+
+    ids = [int(t.strip()) for t in term_ids.split(",") if t.strip()]
+    html = export_release_report_html(db, ids)
+    return HTMLResponse(content=html)
+
+
+# ---------------------------------------------------------------------------
 # GET /analytics/annual-workload
 # ---------------------------------------------------------------------------
 @router.get("/analytics/annual-workload")

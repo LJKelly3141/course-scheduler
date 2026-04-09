@@ -542,7 +542,7 @@ export function CourseRotationPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold">Course Rotation Plan</h2>
+        <h2 className="text-xl font-bold">Course Plan</h2>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

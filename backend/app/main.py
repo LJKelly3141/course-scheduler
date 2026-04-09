@@ -17,7 +17,7 @@ from app.api.routes import (
     academic_years, terms, buildings, rooms, instructors, courses, sections,
     meetings, time_blocks, import_export, suggestions,
     settings, export_html, analytics, load_adjustments, prerequisites, rotation,
-    availability_templates,
+    availability_templates, release_rotation,
 )
 from app.database import engine, SessionLocal
 from app.models import Base
@@ -63,6 +63,7 @@ app.include_router(
     prefix="/api/instructors",
     tags=["availability-templates"],
 )
+app.include_router(release_rotation.router, prefix="/api/release-rotation", tags=["release-rotation"])
 
 
 def _ensure_schema_current():
@@ -234,6 +235,27 @@ def _ensure_schema_current():
                           AND sections.term_session_id IS NULL
                     """), {"name": name, "enum_val": enum_val})
                 logger.info("Migrated session enum values to term_session_id")
+
+            # ── release_rotations table ──
+            result = conn.execute(
+                sa.text(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='release_rotations'"
+                )
+            )
+            if not result.fetchone():
+                conn.execute(sa.text("""
+                    CREATE TABLE release_rotations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        instructor_id INTEGER NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
+                        semester VARCHAR(6) NOT NULL,
+                        year_parity VARCHAR(10) NOT NULL DEFAULT 'every_year',
+                        description VARCHAR(200) NOT NULL,
+                        equivalent_credits REAL NOT NULL DEFAULT 3.0,
+                        adjustment_type VARCHAR(20) NOT NULL DEFAULT 'admin_release'
+                    )
+                """))
+                logger.info("Created missing table release_rotations")
 
             # ── course_rotations table patches ──
             try:

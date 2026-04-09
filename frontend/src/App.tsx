@@ -15,6 +15,7 @@ import { TermsPage } from "./pages/TermsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CourseRotationPage } from "./pages/CourseRotationPage";
+import { ReassignmentPlanPage } from "./pages/ReassignmentPlanPage";
 import { HelpPage } from "./pages/HelpPage";
 
 const queryClient = new QueryClient({
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/rotation" element={<CourseRotationPage />} />
+              <Route path="/reassignment-plan" element={<ReassignmentPlanPage />} />
               <Route path="/import" element={<ImportPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/help" element={<HelpPage />} />

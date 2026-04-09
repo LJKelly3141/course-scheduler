@@ -482,6 +482,51 @@ export interface LoadAdjustment {
   adjustment_type: string;
 }
 
+export interface ReleaseRotationEntry {
+  id: number;
+  instructor_id: number;
+  instructor_name: string | null;
+  instructor_last_name: string;
+  instructor_first_name: string;
+  instructor_type: string;
+  semester: string;
+  year_parity: string;
+  description: string;
+  equivalent_credits: number;
+  adjustment_type: string;
+}
+
+export interface ApplyReleaseRotationResult {
+  term_id: number;
+  term_name: string;
+  entries_matched: number;
+  adjustments_created: number;
+  skipped_duplicates: number;
+  details: Array<{
+    instructor_name: string;
+    description: string;
+    equivalent_credits: number;
+    adjustment_type: string;
+  }>;
+}
+
+export interface ExtractReleaseRotationResult {
+  term_id: number;
+  term_name: string;
+  semester: string;
+  entries: Array<{
+    instructor_id: number;
+    instructor_name: string;
+    instructor_last_name: string;
+    instructor_first_name: string;
+    semester: string;
+    year_parity: string;
+    description: string;
+    equivalent_credits: number;
+    adjustment_type: string;
+  }>;
+}
+
 export interface WorkloadSectionRow {
   section_id: number;
   department_code: string;

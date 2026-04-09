@@ -5,9 +5,9 @@ import { api } from "@/api/client";
 import type { InstructorWorkload, LoadAdjustment } from "@/api/types";
 
 const ADJUSTMENT_TYPES = [
-  { value: "research_release", label: "Research Release" },
-  { value: "admin_release", label: "Admin Release" },
-  { value: "course_release", label: "Course Release" },
+  { value: "research_release", label: "Research Reassignment" },
+  { value: "admin_release", label: "Admin Reassignment" },
+  { value: "course_release", label: "Course Reassignment" },
   { value: "adhoc", label: "ADHOC" },
   { value: "overload", label: "Overload" },
   { value: "other", label: "Other" },
@@ -159,7 +159,7 @@ export function WorkloadTab({ workload, isLoading, instructorId, termId }: Workl
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Load Adjustments
+            Load Reassignments
           </h4>
           {termId && !showAddForm && (
             <button
@@ -254,7 +254,7 @@ export function WorkloadTab({ workload, isLoading, instructorId, termId }: Workl
               {workload.adjustments.length === 0 && !showAddForm && (
                 <tr>
                   <td colSpan={4} className="px-3 py-4 text-center text-muted-foreground text-sm">
-                    No load adjustments
+                    No reassignments
                   </td>
                 </tr>
               )}

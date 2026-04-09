@@ -1,6 +1,6 @@
 ---
 name: release
-description: Build macOS DMG, push tag to trigger Windows CI build, upload DMG to GitHub Release, publish, and return download URLs.
+description: Bump version, push tag to trigger CI builds (macOS + Windows), publish release, and update landing page.
 ---
 
 This skill automates the full release process for The Chair's Desk. Execute the steps below sequentially. Stop and report to the user if any step fails.
@@ -12,21 +12,7 @@ This skill automates the full release process for The Chair's Desk. Execute the 
 3. Use `AskUserQuestion` to present the auto-bumped version and let the user confirm or provide a different version string.
 4. Edit `package.json` to set the confirmed version.
 
-## Step 2: Build macOS DMG
-
-1. Run the full build:
-   ```bash
-   npm run build:app
-   ```
-   This runs `build:frontend` + `build:backend` + `electron-builder` and produces a DMG in `dist-electron/`.
-2. After the build completes, find the DMG file:
-   ```bash
-   ls dist-electron/*.dmg
-   ```
-3. If no DMG file is found, stop and report the error.
-4. Store the DMG filename for later upload.
-
-## Step 3: Commit, Tag, Push
+## Step 2: Commit, Tag, Push
 
 1. Stage and commit the version bump:
    ```bash
@@ -41,9 +27,9 @@ This skill automates the full release process for The Chair's Desk. Execute the 
    ```bash
    git push origin main --tags
    ```
-   The tag push triggers `.github/workflows/release.yml` which builds Windows NSIS installer + portable ZIP and creates a **draft** GitHub Release.
+   The tag push triggers `.github/workflows/release.yml` which builds both macOS DMG and Windows installers, then creates a **draft** GitHub Release with all artifacts.
 
-## Step 4: Wait for Windows CI
+## Step 3: Wait for CI
 
 1. Find the triggered workflow run:
    ```bash
@@ -59,21 +45,14 @@ This skill automates the full release process for The Chair's Desk. Execute the 
    gh run view <run-id> --web
    ```
 
-## Step 5: Upload DMG to Release
-
-Upload the locally-built DMG to the GitHub Release:
-```bash
-gh release upload vX.Y.Z "dist-electron/<dmg-filename>"
-```
-
-## Step 6: Publish the Release
+## Step 4: Publish the Release
 
 The CI workflow creates the release as a draft. Publish it:
 ```bash
 gh release edit vX.Y.Z --draft=false
 ```
 
-## Step 7: Update Landing Page
+## Step 5: Update Landing Page
 
 Update `docs/index.html` to reference the new version:
 
@@ -85,7 +64,7 @@ Update `docs/index.html` to reference the new version:
    git push origin main
    ```
 
-## Step 8: Return Download URLs
+## Step 6: Return Download URLs
 
 Fetch and display all release asset URLs:
 ```bash

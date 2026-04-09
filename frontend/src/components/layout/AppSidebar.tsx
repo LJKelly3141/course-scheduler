@@ -7,6 +7,7 @@ import {
   DoorOpen,
   BarChart3,
   CalendarRange,
+  ClipboardList,
   FileUp,
   Calendar,
   Settings,
@@ -57,10 +58,16 @@ const navGroups = [
     ],
   },
   {
+    label: "Planning",
+    items: [
+      { to: "/rotation", label: "Course Plan", icon: CalendarRange },
+      { to: "/reassignment-plan", label: "Reassignment Plan", icon: ClipboardList },
+    ],
+  },
+  {
     label: "Analyze",
     items: [
       { to: "/analytics", label: "Analytics", icon: BarChart3 },
-      { to: "/rotation", label: "Course Rotation", icon: CalendarRange },
       { to: "/import", label: "Import / Export", icon: FileUp },
     ],
   },

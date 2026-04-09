@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 
 const ADJUSTMENT_TYPES = [
-  { value: "research_release", label: "Research Release" },
-  { value: "admin_release", label: "Admin Release" },
-  { value: "course_release", label: "Course Release" },
+  { value: "research_release", label: "Research Reassignment" },
+  { value: "admin_release", label: "Admin Reassignment" },
+  { value: "course_release", label: "Course Reassignment" },
   { value: "adhoc", label: "ADHOC" },
   { value: "overload", label: "Overload" },
   { value: "other", label: "Other" },
@@ -474,7 +474,7 @@ function InstructorRow({
                 className="text-xs text-primary hover:underline flex items-center gap-1"
               >
                 <Plus className="h-3 w-3" />
-                Add Release / ADHOC
+                Add Reassignment / ADHOC
               </button>
             </td>
           </tr>

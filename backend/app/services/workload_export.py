@@ -71,9 +71,9 @@ _STATUS_MAP = {
 }
 
 _ADJ_TYPE_LABELS = {
-    "research_release": "Research Release",
-    "admin_release": "Admin Release",
-    "course_release": "Course Release",
+    "research_release": "Research Reassignment",
+    "admin_release": "Admin Reassignment",
+    "course_release": "Course Reassignment",
     "adhoc": "ADHOC",
     "overload": "Overload",
     "other": "Other",
