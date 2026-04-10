@@ -114,4 +114,4 @@ The report downloads as an Excel file (e.g., `faculty_load_Fall_2025.xlsx`) with
 
 ## What's Next
 
-To plan which courses your department offers each semester on a multi-year basis, see [Planning Course Rotation](?page=tutorial-rotation).
+To plan which courses your department offers each semester on a multi-year basis, see [Planning Your Course Plan](?page=tutorial-rotation).

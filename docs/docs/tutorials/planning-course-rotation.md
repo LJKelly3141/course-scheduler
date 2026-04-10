@@ -1,4 +1,4 @@
-# Planning Course Rotation
+# Planning Your Course Plan
 
 Build a multi-semester plan that defines which courses your department offers each term, how many sections to run, and on what schedule -- then apply it to generate sections automatically.
 
@@ -7,9 +7,9 @@ Build a multi-semester plan that defines which courses your department offers ea
 - Courses imported into the system (see [Importing Schedule Data](?page=tutorial-import))
 - At least one draft term to apply the plan to
 
-## Step 1: Open the Course Rotation Page
+## Step 1: Open the Course Plan Page
 
-Click **Course Rotation** in the sidebar. The page shows a list of course cards, each with semester rows for Fall, Spring, Summer, and Winter. If this is your first time here, the plan will be empty.
+Click **Course Plan** under **Planning** in the sidebar. The page shows a list of course cards, each with semester rows for Fall, Spring, Summer, and Winter. If this is your first time here, the plan will be empty.
 
 ## Step 2: Add Courses to the Rotation
 

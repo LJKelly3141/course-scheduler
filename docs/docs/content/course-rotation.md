@@ -1,12 +1,12 @@
-# Course Rotation
+# Course Plan
 
-This reference covers building and applying rotation plans, importing from existing terms, and managing offerings. For a hands-on walkthrough, see [Planning Course Rotations](?page=tutorial-rotation).
+This reference covers building and applying course plans, importing from existing terms, and managing offerings. For a hands-on walkthrough, see [Planning Your Course Plan](?page=tutorial-rotation).
 
-The Course Rotation page lets you build a multi-semester plan that defines which courses your department offers each semester, how many sections to run, and with what modality and time preferences. Once your plan is set, you can apply it to a term to auto-generate sections.
+The Course Plan page lets you build a multi-semester plan that defines which courses your department offers each semester, how many sections to run, and with what modality and time preferences. Once your plan is set, you can apply it to a term to auto-generate sections.
 
 ## Getting There
 
-Navigate to **Course Rotation** in the app sidebar.
+Navigate to **Course Plan** under **Planning** in the app sidebar.
 
 ## Key Concepts
 

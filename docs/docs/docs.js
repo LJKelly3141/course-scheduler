@@ -14,7 +14,8 @@ const pages = [
   { slug: "tutorial-workload", title: "Managing Instructor Workload", group: "tutorials", path: "tutorials/managing-instructor-workload.md", time: "10 min", difficulty: "Beginner" },
   { slug: "tutorial-conflicts", title: "Resolving Conflicts", group: "tutorials", path: "tutorials/resolving-conflicts.md", time: "10 min", difficulty: "Intermediate" },
   { slug: "tutorial-export", title: "Exporting & Sharing", group: "tutorials", path: "tutorials/exporting-and-sharing.md", time: "10 min", difficulty: "Beginner" },
-  { slug: "tutorial-rotation", title: "Planning Course Rotation", group: "tutorials", path: "tutorials/planning-course-rotation.md", time: "15 min", difficulty: "Intermediate" },
+  { slug: "tutorial-rotation", title: "Planning Your Course Plan", group: "tutorials", path: "tutorials/planning-course-rotation.md", time: "15 min", difficulty: "Intermediate" },
+  { slug: "tutorial-reassignment", title: "Planning Reassignment Rotations", group: "tutorials", path: "tutorials/planning-reassignment-rotation.md", time: "15 min", difficulty: "Intermediate" },
   { slug: "tutorial-copy-term", title: "Copying a Term", group: "tutorials", path: "tutorials/copying-a-term.md", time: "5 min", difficulty: "Beginner" },
 
   // Reference
@@ -24,7 +25,8 @@ const pages = [
   { slug: "instructors", title: "Instructors", group: "reference", path: "content/instructors.md" },
   { slug: "rooms", title: "Rooms", group: "reference", path: "content/rooms.md" },
   { slug: "terms", title: "Terms", group: "reference", path: "content/terms.md" },
-  { slug: "course-rotation", title: "Course Rotation", group: "reference", path: "content/course-rotation.md" },
+  { slug: "course-rotation", title: "Course Plan", group: "reference", path: "content/course-rotation.md" },
+  { slug: "reassignment-plan", title: "Reassignment Plan", group: "reference", path: "content/reassignment-plan.md" },
   { slug: "analytics", title: "Analytics", group: "reference", path: "content/analytics.md" },
   { slug: "import-export", title: "Import & Export", group: "reference", path: "content/import-export.md" },
   { slug: "settings", title: "Settings", group: "reference", path: "content/settings.md" },

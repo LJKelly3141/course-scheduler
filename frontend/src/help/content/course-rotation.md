@@ -1,10 +1,10 @@
-# Course Rotation
+# Course Plan
 
-The Course Rotation page lets you build a multi-semester plan that defines which courses your department offers each semester, how many sections to run, and with what modality and time preferences. Once your plan is set, you can apply it to a term to auto-generate sections.
+The Course Plan page lets you build a multi-semester plan that defines which courses your department offers each semester, how many sections to run, and with what modality and time preferences. Once your plan is set, you can apply it to a term to auto-generate sections.
 
 ## Getting There
 
-Click **Course Rotation** in the sidebar.
+Click **Course Plan** under **Planning** in the sidebar.
 
 ## Key Concepts
 

@@ -155,7 +155,9 @@ Repeat for each reassignment. These entries appear in the load report under the 
 > - **Course Release** — Bought-out credits (e.g., grant-funded release)
 > - **Overload** — Credits beyond the normal max (increases total load)
 
-You can also view and manage an individual instructor's load adjustments from their **Detail Page → Workload tab**.
+You can also view and manage an individual instructor's load adjustments from their **Detail Page → Reassignments tab**.
+
+> **Tip:** For department-wide reassignment planning across semesters, use the [Reassignment Plan](?page=reassignment-plan) page under **Planning** in the sidebar. It lets you define recurring patterns and apply them to new terms automatically.
 
 ## Tips
 
